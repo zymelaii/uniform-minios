@@ -47,8 +47,8 @@ QEMU_FLAGS += -display curses
 GDB ?= gdb
 
 GDB_FLAGS := -q -nx
-GDB_FLAGS += -x  '../misc/gdb/connect-qemu.gdb'
-GDB_FLAGS += -x  '../misc/gdb/instr-level.gdb'
+GDB_FLAGS += -x  'misc/gdb/connect-qemu.gdb'
+GDB_FLAGS += -x  'misc/gdb/instr-level.gdb'
 GDB_FLAGS += -ex 'set pagination off'
 GDB_FLAGS += -ex 'set confirm off'
 GDB_FLAGS += -ex 'set disassembly-flavor att'
