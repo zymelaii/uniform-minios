@@ -1,12 +1,12 @@
-#include "type.h"				
-#include "const.h"				
-#include "protect.h"		
-#include "string.h"				
-#include "proc.h"				
-#include "global.h"
-#include "proto.h"
-#include "memman.h"
-#include "stdio.h"
+#include <type.h>
+#include <const.h>
+#include <protect.h>
+#include <string.h>
+#include <proc.h>
+#include <global.h>
+#include <proto.h>
+#include <memman.h>
+#include <stdio.h>
 
 u32 MemInfo[256] = {0};			//存放FMIBuff后1k内容
 struct MEMMAN s_memman;
@@ -26,24 +26,24 @@ void init()	//初始化
 {
 	u32 memstart = MEMSTART;			//4M 开始初始化
 	u32 i,j;
-	
+
 	memcpy(MemInfo,(u32 *)(K_PHY2LIN(FMIBuff)),1024);		//复制内存
-	
+
 	memman_init(memman);				//初始化memman中frees,maxfrees,lostsize,losts
-	
+
 	for(i = 1; i <= MemInfo[0]; i++)
 	{
 		if(MemInfo[i] < memstart)continue;	//4M 之后开始free
 		memman_free(memman,memstart,MemInfo[i] - memstart);	//free每一段可用内存
 		memstart = MemInfo[i] + 0x1000;	//memtest_sub(start,end)中每4KB检测一次
 	}
-	
+
 	for(i = 0; i < memman->frees; i++)
 	{//6M处分开，4～6M为kmalloc_4k使用，6～8M为kmalloc使用
 		if((memman->free[i].addr <= KWALL)&&(memman->free[i].addr + memman->free[i].size > KWALL)){
 			if(memman->free[i].addr == KWALL)break;
 			else{
-				
+
 				for(j = memman->frees; j>i+1; j--)
 				{	//i之后向后一位
 					memman->free[j] = memman->free[j-1];
@@ -52,7 +52,7 @@ void init()	//初始化
 				if(memman->maxfrees < memman->frees){	//更新man->maxfrees
 					memman->maxfrees = memman->frees;
 				}
-				memman->free[i+1].addr = KWALL;	
+				memman->free[i+1].addr = KWALL;
 				memman->free[i+1].size = memman->free[i].addr + memman->free[i].size - KWALL;
 				memman->free[i].size = KWALL - 0x1000 - memman->free[i].addr;
 				break;
@@ -64,7 +64,7 @@ void init()	//初始化
 		if((memman->free[i].addr <= WALL)&&(memman->free[i].addr + memman->free[i].size > WALL)){
 			if(memman->free[i].addr == WALL)break;
 			else{
-				
+
 				for(j = memman->frees; j>i+1; j--)
 				{	//i之后向后一位
 					memman->free[j] = memman->free[j-1];
@@ -73,7 +73,7 @@ void init()	//初始化
 				if(memman->maxfrees < memman->frees){	//更新man->maxfrees
 					memman->maxfrees = memman->frees;
 				}
-				memman->free[i+1].addr = WALL;	
+				memman->free[i+1].addr = WALL;
 				memman->free[i+1].size = memman->free[i].addr + memman->free[i].size - WALL;
 				memman->free[i].size = WALL - 0x1000 - memman->free[i].addr;
 				break;
@@ -86,7 +86,7 @@ void init()	//初始化
 		if((memman->free[i].addr <= UWALL)&&(memman->free[i].addr + memman->free[i].size > UWALL)){
 			if(memman->free[i].addr == UWALL)break;
 			else{
-				
+
 				for(j = memman->frees; j>i+1; j--)
 				{	//i之后向后一位
 					memman->free[j] = memman->free[j-1];
@@ -95,22 +95,22 @@ void init()	//初始化
 				if(memman->maxfrees < memman->frees){	//更新man->maxfrees
 					memman->maxfrees = memman->frees;
 				}
-				memman->free[i+1].addr = UWALL;	
+				memman->free[i+1].addr = UWALL;
 				memman->free[i+1].size = memman->free[i].addr + memman->free[i].size - UWALL;
 				memman->free[i].size = UWALL - 0x1000 - memman->free[i].addr;
 				break;
 			}
 		}
 	}
-	
-	
+
+
 	//modified by xw, 18/6/18
 	//显示初始总容量
 	kprintf("Memory Available:%d\n", memman_total(memman));
 	//~xw
-	
+
 	return;
-	
+
 }	//于kernel_main()中调用，进行初始化
 
 void memman_init(struct MEMMAN *man)
@@ -166,7 +166,7 @@ u32 memman_kalloc(struct MEMMAN *man,u32 size)
 				return a;
 			}
 		}
-		
+
 	}
 	return -1;
 }
@@ -224,16 +224,16 @@ u32 memman_kalloc_4k(struct MEMMAN *man)
 u32 memman_free(struct MEMMAN *man, u32 addr, u32 size)
 {	//释放
 	int i,j;
-	
+
 	if(size == 0)return 0;	//初始化时，防止有连续坏块
-	
+
 	for(i=0; i<man->frees; i++)
 	{
 		if(man->free[i].addr > addr){
 			break;
 		}
 	}	//man->free[i-1].addr < addr <man->free[i].addr
-	
+
 	if(i > 0){	//前面有可分配内存
 		if(man->free[i-1].addr + man->free[i-1].size == addr){	//与前面相邻
 			man->free[i-1].size += size;
@@ -250,15 +250,15 @@ u32 memman_free(struct MEMMAN *man, u32 addr, u32 size)
 			return 0;
 		}	//与前面不相邻
 	}	//前面无可分配内存
-	
+
 	if(i < man->frees){	//后面有可分配内存
 		if(addr + size == man->free[i].addr){	//与后面相邻
 			man->free[i].addr = addr;
 			man->free[i].size += size;
 			return 0;
-		}	
+		}
 	}
-	
+
 	if(man->frees < MEMMAN_FREES){	//数组未满
 		for(j = man->frees; j>i; j--)
 		{	//i之后向后一位
@@ -272,7 +272,7 @@ u32 memman_free(struct MEMMAN *man, u32 addr, u32 size)
 		man->free[i].size = size;
 		return 0;
 	}
-	
+
 	man->losts++;	//free失败
 	man->lostsize += size;
 	return -1;
@@ -289,7 +289,7 @@ u32 do_malloc(u32 size)
 {
 	return memman_alloc(memman,size);
 }
-	
+
 u32 do_kmalloc(u32 size)
 {
 	return memman_kalloc(memman,size);
@@ -304,7 +304,7 @@ u32 do_kmalloc_4k()
 {
 	return memman_kalloc_4k(memman);
 }
-		
+
 u32 do_free(u32 addr,u32 size)
 {
 	return memman_free(memman,addr,size);
@@ -337,7 +337,7 @@ void memman_test()
 	u32 *p3 = 0;
 	u32 *p4 = 0;
 	u32 *p  = 0;
-	
+
 	p1 = (u32 *)do_malloc(4);
 	if(-1 != (u32)p1){	//打印p1，当前空闲内存信息，p1所指内存的内容
 		kprintf("START");
@@ -347,7 +347,7 @@ void memman_test()
 		kprintf("%d", *p1);
 		kprintf("END");
 	}
-	
+
 	p2 = (u32 *)do_kmalloc(4);
 	if(-1 != (u32)p2){
 		kprintf("START");
@@ -357,12 +357,12 @@ void memman_test()
 		kprintf("%d", *p2);
 		kprintf("END");
 	}
-	
+
 	do_free((u32)p1,4);
 	do_free((u32)p2,4);
-	
+
 	p3 = (u32 *)do_malloc_4k();
-	if(-1 != (u32)p3){	
+	if(-1 != (u32)p3){
 		kprintf("START");
 		kprintf("%d", (u32)p3);
 		//disp_free();
@@ -376,7 +376,7 @@ void memman_test()
 		kprintf("%d", *p);
 		kprintf("END");
 	}
-	
+
 	p4 = (u32 *)do_kmalloc_4k(4);
 	if(-1 != (u32)p4){
 		kprintf("START");
@@ -392,14 +392,13 @@ void memman_test()
 		kprintf("%d", *p);
 		kprintf("END");
 	}
-	
+
 	do_free_4k((u32)p3);
 	do_free_4k((u32)p4);
-	
+
 	kprintf("START");
 	disp_free();
 	kprintf("END");
-	
+
 	return;
 }
-

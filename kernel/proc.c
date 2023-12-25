@@ -5,13 +5,13 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
+#include <type.h>
+#include <const.h>
+#include <protect.h>
+#include <string.h>
+#include <proc.h>
+#include <global.h>
+#include <proto.h>
 
 /*======================================================================*
                               schedule
@@ -20,14 +20,14 @@
 {
 	PROCESS* p;
 	int	 greatest_ticks = 0;
-	
+
 	//Added by xw, 18/4/21
-	if (p_proc_current->task.stat == READY && p_proc_current->task.ticks > 0) {		
+	if (p_proc_current->task.stat == READY && p_proc_current->task.ticks > 0) {
 		p_proc_next = p_proc_current;	//added by xw, 18/4/26
 		return;
 	}
 
-	while (!greatest_ticks) 
+	while (!greatest_ticks)
 	{
 		for (p = proc_table; p < proc_table+NR_PCBS; p++)		//edit by visual 2016.4.5
 		{
@@ -40,7 +40,7 @@
 
 		}
 
-		if (!greatest_ticks) 
+		if (!greatest_ticks)
 		{
 			for (p = proc_table; p < proc_table+NR_PCBS; p++) //edit by visual 2016.4.5
 			{
@@ -61,7 +61,7 @@
 	 for(i=NR_K_PCBS;i<NR_PCBS;i++)
 	 {
 	   if(p->task.stat==IDLE)break;
-	   p++;	
+	   p++;
 	 }
 	if(i>=NR_PCBS)	return 0;   //NULL
 	else	return p;
@@ -89,10 +89,10 @@ void sys_yield()
 void sys_sleep(int n)
 {
 	int ticks0;
-	
+
 	ticks0 = ticks;
 	p_proc_current->task.channel = &ticks;
-	
+
 	while(ticks - ticks0 < n){
 		p_proc_current->task.stat = SLEEPING;
 //		save_context();
@@ -100,13 +100,13 @@ void sys_sleep(int n)
 	}
 }
 
-/*invoked by clock-interrupt handler to wakeup 
+/*invoked by clock-interrupt handler to wakeup
  *processes sleeping on ticks.
  */
 void sys_wakeup(void *channel)
 {
 	PROCESS *p;
-	
+
 	for(p = proc_table; p < proc_table + NR_PCBS; p++){
 		if(p->task.stat == SLEEPING && p->task.channel == channel){
 			p->task.stat = READY;
@@ -126,12 +126,11 @@ void* va2la(int pid, void* va)
 	if(kernel_initial == 1){
 		return va;
 	}
-	
+
 	PROCESS* p = &proc_table[pid];
 	u32 seg_base = ldt_seg_linear(p, INDEX_LDT_RW);
 	u32 la = seg_base + (u32)va;
-	
+
 	return (void*)la;
 }
 //~zcr
-

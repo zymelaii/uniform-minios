@@ -5,14 +5,14 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#include "stdio.h"
-#include "protect.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
+#include <stdio.h>
+#include <protect.h>
+#include <proc.h>
+#include <global.h>
+#include <proto.h>
 
-#include "assert.h"
-#include "string.h"
+#include <assert.h>
+#include <string.h>
 
 /*
  * 当发生不可挽回的错误时就打印错误信息并使CPU核休眠

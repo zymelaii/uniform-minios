@@ -5,15 +5,15 @@
 *
 **********************************************************/
 
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
-#include "memman.h"
-#include "stdio.h"
+#include <type.h>
+#include <const.h>
+#include <protect.h>
+#include <string.h>
+#include <proc.h>
+#include <global.h>
+#include <proto.h>
+#include <memman.h>
+#include <stdio.h>
 
 struct memfree *memarg = 0;
 
@@ -46,25 +46,25 @@ void* sys_kmalloc(int size)
                            sys_kmalloc_4k		add by visual 2016.4.7
  *======================================================================*/
 void* sys_kmalloc_4k()
-{						
+{
 	return (void*)(do_kmalloc_4k());
 }
- 
+
 /*======================================================================*
                            sys_malloc		edit by visual 2016.5.4
  *======================================================================*/
-void* sys_malloc(int size)		
-{	
+void* sys_malloc(int size)
+{
 	int vir_addr,AddrLin;
 	vir_addr = vmalloc(size);
-	
+
 	for( AddrLin=vir_addr; AddrLin<vir_addr+size ; AddrLin += num_4B )//一个字节一个字节处理
 	{
 		lin_mapping_phy(AddrLin,//线性地址					//add by visual 2016.5.9
 				MAX_UNSIGNED_INT,//物理地址						//edit by visual 2016.5.19
 				p_proc_current->task.pid,//进程pid				//edit by visual 2016.5.19
 				PG_P  | PG_USU | PG_RWW,//页目录的属性位
-				PG_P  | PG_USU | PG_RWW);//页表的属性位		
+				PG_P  | PG_USU | PG_RWW);//页表的属性位
 	}
 	return (void*)vir_addr;
 }
@@ -74,17 +74,17 @@ void* sys_malloc(int size)
                            sys_malloc_4k		edit by visual 2016.5.4
  *======================================================================*/
 void* sys_malloc_4k()
-{	
+{
 	int vir_addr,AddrLin;
 	vir_addr = vmalloc(num_4K);
-	
+
 	for( AddrLin=vir_addr; AddrLin<vir_addr+num_4K ; AddrLin += num_4K )//一页一页处理(事实上只有一页，而且一定没有填写页表，页目录是否填写不确定)
 	{
 		lin_mapping_phy(	AddrLin,//线性地址					//add by visual 2016.5.9
-							MAX_UNSIGNED_INT,//物理地址	
+							MAX_UNSIGNED_INT,//物理地址
 							p_proc_current->task.pid,//进程pid					//edit by visual 2016.5.19
 							PG_P  | PG_USU | PG_RWW,//页目录的属性位
-							PG_P  | PG_USU | PG_RWW);//页表的属性位				
+							PG_P  | PG_USU | PG_RWW);//页表的属性位
 	}
 	return (void*)vir_addr;
 }
@@ -94,7 +94,7 @@ void* sys_malloc_4k()
                            sys_free		add by visual 2016.4.7
  *======================================================================*/
 int sys_free(void *arg)
-{	
+{
 	memarg = (struct memfree *)arg;
 	return do_free(memarg->addr,memarg->size);
 }
@@ -105,13 +105,13 @@ int sys_free(void *arg)
 int sys_free_4k(void* AddrLin)
 {//线性地址可以不释放，但是页表映射关系必须清除！
 	int phy_addr;				//add by visual 2016.5.9
-	
+
 	phy_addr = get_page_phy_addr(p_proc_current->task.pid,(int)AddrLin);//获取物理页的物理地址		//edit by visual 2016.5.19
-	lin_mapping_phy(	(int)AddrLin,//线性地址					
+	lin_mapping_phy(	(int)AddrLin,//线性地址
 						phy_addr,//物理地址
 						p_proc_current->task.pid,//进程pid			//edit by visual 2016.5.19
 						PG_P  | PG_USU | PG_RWW,//页目录的属性位
-						0  | PG_USU | PG_RWW);//页表的属性位	
+						0  | PG_USU | PG_RWW);//页表的属性位
 	return do_free_4k(phy_addr);
 }
 

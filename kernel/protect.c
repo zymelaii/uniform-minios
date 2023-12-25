@@ -5,14 +5,14 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
-#include "string.h"
-#include "stdio.h"
+#include <type.h>
+#include <const.h>
+#include <protect.h>
+#include <proc.h>
+#include <global.h>
+#include <proto.h>
+#include <string.h>
+#include <stdio.h>
 
 
 /* 本文件内函数声明 */
@@ -163,13 +163,13 @@ void init_prot()
 
 	init_idt_desc(INT_VECTOR_SYS_CALL,	DA_386IGate,
 		      sys_call,			PRIVILEGE_USER);
-	
+
 	/*修改显存描述符*/ //add by visual 2016.5.12
 	init_descriptor(&gdt[INDEX_VIDEO],
 					K_PHY2LIN(0x0B8000),
 					0x0ffff,
-					DA_DRW | DA_DPL3);		  
-			  
+					DA_DRW | DA_DPL3);
+
 	/* 填充 GDT 中 TSS 这个描述符 */
 	memset(&tss, 0, sizeof(tss));
 	tss.ss0		= SELECTOR_KERNEL_DS;
@@ -183,7 +183,7 @@ void init_prot()
 	int i;
 	PROCESS* p_proc	= proc_table;
 	u16 selector_ldt = INDEX_LDT_FIRST << 3;
-	for(i=0;i<NR_PCBS;i++){										//edit by visual 2016.4.5	
+	for(i=0;i<NR_PCBS;i++){										//edit by visual 2016.4.5
 		init_descriptor(&gdt[selector_ldt>>3],
 				vir2phys(seg2phys(SELECTOR_KERNEL_DS),proc_table[i].task.ldts),
 				LDT_SIZE * sizeof(DESCRIPTOR) - 1,
@@ -292,7 +292,7 @@ static void init_descriptor(DESCRIPTOR * p_desc, u32 base, u32 limit, u16 attrib
 		vga_write_str_color("Error code:", text_color);
 		kprintf("%d", err_code);
 	}
-	
+
 	//added by xw, 18/12/19
 	kprintf("\n");
 
@@ -309,17 +309,17 @@ static void init_descriptor(DESCRIPTOR * p_desc, u32 base, u32 limit, u16 attrib
 {
 	int vec_no, err_code, eip, cs, eflags;
 	int i, j;
-	
+
 	asm volatile (	"mov 8(%%ebp), %0\n\t"	//get vec_no from stack
 			"mov 12(%%ebp), %1\n\t"	//get err_code from stack
 			"mov 16(%%ebp), %2\n\t"	//get eip from stack
 			"mov 20(%%ebp), %3\n\t"	//get cs from stack
 			"mov 24(%%ebp), %4\n\t"	//get eflags from stack
-			: "=r"(vec_no), "=r"(err_code), "=r"(eip), 
+			: "=r"(vec_no), "=r"(err_code), "=r"(eip),
 				"=r"(cs), "=r"(eflags)
 			);
 	exception_handler(vec_no, err_code, eip, cs, eflags);
-	
+
 	while (1)
 	{
 		kprintf("Loop in divide error handler...\n");
@@ -331,6 +331,3 @@ static void init_descriptor(DESCRIPTOR * p_desc, u32 base, u32 limit, u16 attrib
 		}
 	}
 }
-
-	
-

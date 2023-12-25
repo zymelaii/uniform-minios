@@ -20,5 +20,6 @@ sudo mount ${loop_device}p1 iso/
 sudo cp ${OBJDIR}/boot/loader.bin iso/ -v
 sudo cp ${OBJDIR}/kernel/kernel.bin iso/ -v
 sudo umount iso/
+rm -r iso
 
 sudo losetup -d ${loop_device}

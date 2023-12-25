@@ -2,20 +2,20 @@
 *	vfs.c       //added by mingxuan 2019-5-17
 ***********************************************************/
 
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
-#include "fs_const.h"
-#include "hd.h"
-#include "fs.h"
-#include "fs_misc.h"
-#include "vfs.h"
-#include "fat32.h"
-#include "stdio.h"
+#include <type.h>
+#include <const.h>
+#include <protect.h>
+#include <string.h>
+#include <proc.h>
+#include <global.h>
+#include <proto.h>
+#include <fs_const.h>
+#include <hd.h>
+#include <fs.h>
+#include <fs_misc.h>
+#include <vfs.h>
+#include <fat32.h>
+#include <stdio.h>
 
 //static struct device  device_table[NR_DEV];  //deleted by mingxuan 2020-10-18
 static struct vfs  vfs_table[NR_FS];   //modified by mingxuan 2020-10-18
@@ -41,7 +41,7 @@ void init_vfs()
 
     init_file_desc_table();
     init_fileop_table();
-  
+
     init_super_block_table();
     init_sb_op_table(); //added by mingxuan 2020-10-30
 
@@ -59,7 +59,7 @@ void init_file_desc_table()
 
 void init_fileop_table()
 {
-    // table[0] for tty 
+    // table[0] for tty
     f_op_table[0].open = real_open;
     f_op_table[0].close = real_close;
     f_op_table[0].write = real_write;
@@ -67,7 +67,7 @@ void init_fileop_table()
     f_op_table[0].unlink = real_unlink;
     f_op_table[0].read = real_read;
 
-    // table[1] for orange 
+    // table[1] for orange
     f_op_table[1].open = real_open;
     f_op_table[1].close = real_close;
     f_op_table[1].write = real_write;
@@ -93,26 +93,26 @@ void init_super_block_table(){
     struct super_block * sb = super_block;						//deleted by mingxuan 2020-10-30
 
     //super_block[0] is tty0, super_block[1] is tty1, uper_block[2] is tty2
-    for(; sb < &super_block[3]; sb++) {   
+    for(; sb < &super_block[3]; sb++) {
         sb->sb_dev =  DEV_CHAR_TTY;
         sb->fs_type = TTY_FS_TYPE;
     }
 
     //super_block[3] is orange's superblock
     sb->sb_dev = DEV_HD;
-    sb->fs_type = ORANGE_TYPE; 
+    sb->fs_type = ORANGE_TYPE;
     sb++;
 
     //super_block[4] is fat32's superblock
     sb->sb_dev = DEV_HD;
-    sb->fs_type = FAT32_TYPE; 
+    sb->fs_type = FAT32_TYPE;
     sb++;
 
     //another super_block are free
     for (; sb < &super_block[NR_SUPER_BLOCK]; sb++) {
 	sb->sb_dev = NO_DEV;
         sb->fs_type = NO_FS_TYPE;
-    } 
+    }
 }
 
 //added by mingxuan 2020-10-30
@@ -179,7 +179,7 @@ static int get_index(char path[]){
     //char dev_name[DEV_NAME_LEN];
     char fs_name[DEV_NAME_LEN];   //modified by mingxuan 2020-10-18
     int len = (pathlen < DEV_NAME_LEN) ? pathlen : DEV_NAME_LEN;
-    
+
     int i,a=0;
     for(i=0;i<len;i++){
         if( path[i] == '/'){
@@ -273,7 +273,7 @@ int do_vopen(const char *path, int flags) {
 
     int pathlen = strlen(path);
     char pathname[MAX_PATH];
-    
+
     strcpy(pathname,(char *)path);
     pathname[pathlen] = 0;
 
@@ -292,8 +292,8 @@ int do_vopen(const char *path, int flags) {
     } else {
         kprintf("          error!\n");
     }
-                   
-    return fd;    
+
+    return fd;
 }
 
 
@@ -337,7 +337,7 @@ int do_vwrite(int fd, const char *buf, int count) {
 int do_vunlink(const char *path) {
     int pathlen = strlen(path);
     char pathname[MAX_PATH];
-    
+
     strcpy(pathname,(char *)path);
     pathname[pathlen] = 0;
 
@@ -347,7 +347,7 @@ int do_vunlink(const char *path) {
         kprintf("pathname error!\n");
         return -1;
     }
-    
+
     //return device_table[index].op->unlink(pathname);
     return vfs_table[index].op->unlink(pathname);   //modified by mingxuan 2020-10-18
 }
@@ -362,13 +362,13 @@ int do_vlseek(int fd, int offset, int whence) {
 
 //int do_vcreate(char *pathname) {
 int do_vcreate(char *filepath) { //modified by mingxuan 2019-5-17
-    //added by mingxuan 2019-5-17  
+    //added by mingxuan 2019-5-17
     int state;
     const char *path = filepath;
 
     int pathlen = strlen(path);
     char pathname[MAX_PATH];
-    
+
     strcpy(pathname,(char *)path);
     pathname[pathlen] = 0;
 
@@ -391,7 +391,7 @@ int do_vdelete(char *path) {
 
     int pathlen = strlen(path);
     char pathname[MAX_PATH];
-    
+
     strcpy(pathname,path);
     pathname[pathlen] = 0;
 
@@ -409,7 +409,7 @@ int do_vopendir(char *path) {
 
     int pathlen = strlen(path);
     char pathname[MAX_PATH];
-    
+
     strcpy(pathname,path);
     pathname[pathlen] = 0;
 
@@ -425,7 +425,7 @@ int do_vopendir(char *path) {
         kprintf("          open dir success!");
     } else {
 		DisErrorInfo(state);
-    }    
+    }
     return state;
 }
 
@@ -434,7 +434,7 @@ int do_vcreatedir(char *path) {
 
     int pathlen = strlen(path);
     char pathname[MAX_PATH];
-    
+
     strcpy(pathname,path);
     pathname[pathlen] = 0;
 
@@ -450,7 +450,7 @@ int do_vcreatedir(char *path) {
         kprintf("          create dir success!");
     } else {
 		DisErrorInfo(state);
-    }    
+    }
     return state;
 }
 
@@ -458,7 +458,7 @@ int do_vdeletedir(char *path) {
     int state;
     int pathlen = strlen(path);
     char pathname[MAX_PATH];
-    
+
     strcpy(pathname,path);
     pathname[pathlen] = 0;
 
@@ -474,6 +474,6 @@ int do_vdeletedir(char *path) {
         kprintf("          delete dir success!");
     } else {
 		DisErrorInfo(state);
-    }   
+    }
     return state;
 }

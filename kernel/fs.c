@@ -1,18 +1,18 @@
 /// zcr copy from chapter9/d fs/main.c and modified it.
 
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
-#include "fs_const.h"
-#include "hd.h"
-#include "fs.h"
-#include "fs_misc.h"
-#include "stdio.h"
-#include "assert.h"
+#include <type.h>
+#include <const.h>
+#include <protect.h>
+#include <string.h>
+#include <proc.h>
+#include <global.h>
+#include <proto.h>
+#include <fs_const.h>
+#include <hd.h>
+#include <fs.h>
+#include <fs_misc.h>
+#include <stdio.h>
+#include <assert.h>
 
 //added by xw, 18/8/28
 /* data */
@@ -21,7 +21,7 @@ static struct inode* root_inode;
 //static struct file_desc f_desc_table[NR_FILE_DESC];	//deleted by mingxuan 2020-10-30
 extern struct file_desc f_desc_table[NR_FILE_DESC];	//modified by mingxuan 2020-10-30
 
-static struct inode inode_table[NR_INODE];	
+static struct inode inode_table[NR_INODE];
 
 //static struct super_block super_block[NR_SUPER_BLOCK];	//deleted by mingxuan 2020-10-30
 extern struct super_block super_block[NR_SUPER_BLOCK];	//modified by mingxuan 2020-10-30
@@ -87,16 +87,16 @@ int get_fs_dev(int drive, int fs_type)
 }
 
 /// zcr added
-void init_fs() 
+void init_fs()
 {
 
 	kprintf("Initializing file system...  ");
-	
+
 	int i;
 	for (i = 0; i < NR_INODE; i++)
 		memset(&inode_table[i], 0, sizeof(struct inode));
 	struct super_block * sb = super_block;						//deleted by mingxuan 2020-10-30
-	
+
 	int orange_dev = get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE);	//added by mingxuan 2020-10-27
 
 	/* load super block of ROOT */
@@ -166,12 +166,12 @@ static void mkfs()
 							sb.nr_imap_sects + sb.nr_smap_sects + sb.nr_inode_sects;
 	sb.root_inode	  = ROOT_INODE;
 	sb.inode_size	  = INODE_SIZE;
-	
+
 	struct inode x;
 	sb.inode_isize_off= (int)&x.i_size - (int)&x;
 	sb.inode_start_off= (int)&x.i_start_sect - (int)&x;
 	sb.dir_ent_size	  = DIR_ENTRY_SIZE;
-	
+
 	struct dir_entry de;
 	sb.dir_ent_inode_off = (int)&de.inode_nr - (int)&de;
 	sb.dir_ent_fname_off = (int)&de.name - (int)&de;
@@ -199,7 +199,7 @@ static void mkfs()
 	for (i = 0; i < (NR_CONSOLES + 3); i++)	  //modified by mingxuan 2019-5-22
 		fsbuf[0] |= 1 << i;
 
-	
+
 	WR_SECT(orange_dev, 2, fsbuf);	//modified by mingxuan 2020-10-27
 
 	/************************/
@@ -259,7 +259,7 @@ static void mkfs()
 
 	pi->i_start_sect = sb.n_1st_sect;
 	pi->i_nr_sects = NR_DEFAULT_FILE_SECTS;
-	
+
 	/* inode of `/dev_tty0~2' */
 	for (i = 0; i < NR_CONSOLES; i++) {
 		pi = (struct inode*)(fsbuf + (INODE_SIZE * (i + 1)));
@@ -293,14 +293,14 @@ static void mkfs()
 		pde++;
 		pde->inode_nr = i + 2; /* dev_tty0's inode_nr is 2 */
 		switch(i) {
-			case 0:	
-				strcpy(pde->name, "dev_tty0"); 
+			case 0:
+				strcpy(pde->name, "dev_tty0");
 				break;
 			case 1:
-				strcpy(pde->name, "dev_tty1"); 
+				strcpy(pde->name, "dev_tty1");
 				break;
 			case 2:
-				strcpy(pde->name, "dev_tty2"); 
+				strcpy(pde->name, "dev_tty2");
 				break;
 		}
 	}
@@ -317,21 +317,21 @@ static void mkfs()
  *****************************************************************************/
 /**
  * <Ring 1> R/W a sector via messaging with the corresponding driver.
- * 
+ *
  * @param io_type  DEV_READ or DEV_WRITE
  * @param dev      device nr
  * @param pos      Byte offset from/to where to r/w.
  * @param bytes    r/w count in bytes.
  * @param proc_nr  To whom the buffer belongs.
  * @param buf      r/w buffer.
- * 
+ *
  * @return Zero if success.
  *****************************************************************************/
 /// zcr: change the "u64 pos" to "int pos"
 static int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void* buf)
 {
 	MESSAGE driver_msg;
-	
+
 	driver_msg.type		= io_type;
 	driver_msg.DEVICE	= MINOR(dev);
 	driver_msg.POSITION	= pos;
@@ -347,7 +347,7 @@ static int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void
 static int rw_sector_sched(int io_type, int dev, int pos, int bytes, int proc_nr, void* buf)
 {
 	MESSAGE driver_msg;
-	
+
 	driver_msg.type		= io_type;
 	driver_msg.DEVICE	= MINOR(dev);
 
@@ -355,7 +355,7 @@ static int rw_sector_sched(int io_type, int dev, int pos, int bytes, int proc_nr
 	driver_msg.CNT		= bytes;	/// hu is: 512
 	driver_msg.PROC_NR	= proc_nr;
 	driver_msg.BUF		= buf;
-	
+
 	hd_rdwt_sched(&driver_msg);
 	return 0;
 }
@@ -368,10 +368,10 @@ static int rw_sector_sched(int io_type, int dev, int pos, int bytes, int proc_nr
  *****************************************************************************/
 /**
  * open/create a file.
- * 
+ *
  * @param pathname  The full path of the file to be opened/created.
  * @param flags     O_CREAT, O_RDWR, etc.
- * 
+ *
  * @return File descriptor if successful, otherwise -1.
  *****************************************************************************/
 //open is a syscall interface now. added by xw, 18/6/18
@@ -398,7 +398,7 @@ int real_open(const char *pathname, int flags)	//modified by mingxuan 2019-5-17
  *****************************************************************************/
 /**
  * Open a file and return the file descriptor.
- * 
+ *
  * @return File descriptor if successful, otherwise a negative error code.
  *****************************************************************************/
 /// zcr modified.
@@ -433,7 +433,7 @@ static int do_open(MESSAGE *fs_msg)
 		//modified by mingxuan 2019-5-17
 		if (f_desc_table[i].flag == 0)
 			break;
-	
+
 	assert(i < NR_FILE_DESC);
 
 	int inode_nr = search_file(pathname);
@@ -457,7 +457,7 @@ static int do_open(MESSAGE *fs_msg)
 	if (pin) {
 		/* connects proc with file_descriptor */
 		p_proc_current->task.filp[fd] = &f_desc_table[i];
-		
+
 		f_desc_table[i].flag = 1;	//added by mingxuan 2019-5-17
 
 		/* connects file_descriptor with inode */
@@ -502,7 +502,7 @@ static int do_open(MESSAGE *fs_msg)
  * @param[in] flags  Attribiutes of the new file
  *
  * @return           Ptr to i-node of the new file if successful, otherwise 0.
- * 
+ *
  * @see open()
  * @see do_open()
  *****************************************************************************/
@@ -533,11 +533,11 @@ static struct inode * create_file(char * path, int flags)
  *****************************************************************************/
 /**
  * Compare memory areas.
- * 
+ *
  * @param s1  The 1st area.
  * @param s2  The 2nd area.
  * @param n   The first n bytes will be compared.
- * 
+ *
  * @return  an integer less than, equal to, or greater than zero if the first
  *          n bytes of s1 is found, respectively, to be less than, to match,
  *          or  be greater than the first n bytes of s2.
@@ -568,7 +568,7 @@ static int memcmp(const void * s1, const void *s2, int n)
  *
  * @param[in] path The full path of the file to search.
  * @return         Ptr to the i-node of the file if successful, otherwise zero.
- * 
+ *
  * @see open()
  * @see do_open()
  *****************************************************************************/
@@ -643,7 +643,7 @@ static int search_file(char * path)
  * @param[out] filename The string for the result.
  * @param[in]  pathname The full pathname.
  * @param[out] ppinode  The ptr of the dir's inode will be stored here.
- * 
+ *
  * @return Zero if success, otherwise the pathname is not valid.
  *****************************************************************************/
 static int strip_path(char * filename, const char * pathname, struct inode** ppinode)
@@ -678,7 +678,7 @@ static int strip_path(char * filename, const char * pathname, struct inode** ppi
 /**
  * <Ring 1> Read super block from the given device then write it into a free
  *          super_block[] slot.
- * 
+ *
  * @param dev  From which device the super block comes.
  *****************************************************************************/
 //static void read_super_block(int dev)
@@ -717,9 +717,9 @@ void read_super_block(int dev)	//modified by mingxuan 2020-10-30
  *****************************************************************************/
 /**
  * <Ring 1> Get the super block from super_block[].
- * 
+ *
  * @param dev Device nr.
- * 
+ *
  * @return Super block ptr.
  *****************************************************************************/
 struct super_block * get_super_block(int dev)	//modified by mingxuan 2020-10-30
@@ -741,10 +741,10 @@ struct super_block * get_super_block(int dev)	//modified by mingxuan 2020-10-30
  * <Ring 1> Get the inode ptr of given inode nr. A cache -- inode_table[] -- is
  * maintained to make things faster. If the inode requested is already there,
  * just return it. Otherwise the inode will be read from the disk.
- * 
+ *
  * @param dev Device nr.
  * @param num I-node nr.
- * 
+ *
  * @return The inode ptr requested.
  *****************************************************************************/
 static struct inode * get_inode(int dev, int num)
@@ -841,7 +841,7 @@ static struct inode * get_inode_sched(int dev, int num)
  * Decrease the reference nr of a slot in inode_table[]. When the nr reaches
  * zero, it means the inode is not used any more and can be overwritten by
  * a new inode.
- * 
+ *
  * @param pinode I-node ptr.
  *****************************************************************************/
 static void put_inode(struct inode * pinode)
@@ -856,7 +856,7 @@ static void put_inode(struct inode * pinode)
 /**
  * <Ring 1> Write the inode back to the disk. Commonly invoked as soon as the
  *          inode is changed.
- * 
+ *
  * @param p I-node ptr.
  *****************************************************************************/
 static void sync_inode(struct inode * p)
@@ -882,11 +882,11 @@ static void sync_inode(struct inode * p)
  *****************************************************************************/
 /**
  * Generate a new i-node and write it to disk.
- * 
+ *
  * @param dev  Home device of the i-node.
  * @param inode_nr  I-node nr.
  * @param start_sect  Start sector of the file pointed by the new i-node.
- * 
+ *
  * @return  Ptr of the new i-node.
  *****************************************************************************/
 static struct inode * new_inode(int dev, int inode_nr, int start_sect)
@@ -914,7 +914,7 @@ static struct inode * new_inode(int dev, int inode_nr, int start_sect)
  *****************************************************************************/
 /**
  * Write a new entry into the directory.
- * 
+ *
  * @param dir_inode  I-node of the directory.
  * @param inode_nr   I-node nr of the new file.
  * @param filename   Filename of the new file.
@@ -974,9 +974,9 @@ static void new_dir_entry(struct inode *dir_inode,int inode_nr,char *filename)
  *****************************************************************************/
 /**
  * Allocate a bit in inode-map.
- * 
+ *
  * @param dev  In which device the inode-map is located.
- * 
+ *
  * @return  I-node nr.
  *****************************************************************************/
 static int alloc_imap_bit(int dev)
@@ -1022,10 +1022,10 @@ static int alloc_imap_bit(int dev)
  *****************************************************************************/
 /**
  * Allocate a bit in sector-map.
- * 
+ *
  * @param dev  In which device the sector-map is located.
  * @param nr_sects_to_alloc  How many sectors are allocated.
- * 
+ *
  * @return  The 1st sector nr allocated.
  *****************************************************************************/
 static int alloc_smap_bit(int dev, int nr_sects_to_alloc)
@@ -1086,9 +1086,9 @@ static int alloc_smap_bit(int dev, int nr_sects_to_alloc)
  *****************************************************************************/
 /**
  * Close a file descriptor.
- * 
+ *
  * @param fd  File descriptor.
- * 
+ *
  * @return Zero if successful, otherwise -1.
  *****************************************************************************/
 //close is a syscall interface now. added by xw, 18/6/18
@@ -1104,7 +1104,7 @@ int real_close(int fd)	//modified by mingxuan 2019-5-17
  *****************************************************************************/
 /**
  * Handle the message CLOSE.
- * 
+ *
  * @return Zero if success.
  *****************************************************************************/
 static int do_close(int fd)
@@ -1124,11 +1124,11 @@ static int do_close(int fd)
  *****************************************************************************/
 /**
  * Read from a file descriptor.
- * 
+ *
  * @param fd     File descriptor.
  * @param buf    Buffer to accept the bytes read.
  * @param count  How many bytes to read.
- * 
+ *
  * @return  On success, the number of bytes read are returned.
  *          On error, -1 is returned.
  *****************************************************************************/
@@ -1136,7 +1136,7 @@ int real_read(int fd, void *buf, int count)	//注意:buf的类型被修改成cha
 {
 	//added by xw, 18/8/27
 	MESSAGE fs_msg;
-	
+
 	fs_msg.type = READ;
 	fs_msg.FD   = fd;
 	fs_msg.BUF  = buf;
@@ -1154,11 +1154,11 @@ int real_read(int fd, void *buf, int count)	//注意:buf的类型被修改成cha
  *****************************************************************************/
 /**
  * Write to a file descriptor.
- * 
+ *
  * @param fd     File descriptor.
  * @param buf    Buffer including the bytes to write.
  * @param count  How many bytes to write.
- * 
+ *
  * @return  On success, the number of bytes written are returned.
  *          On error, -1 is returned.
  *****************************************************************************/
@@ -1166,7 +1166,7 @@ int real_write(int fd, const void *buf, int count)	//注意:buf的类型被修�
 {
 	//added by xw, 18/8/27
 	MESSAGE fs_msg;
-	
+
 	fs_msg.type = WRITE;
 	fs_msg.FD   = fd;
 	fs_msg.BUF  = (void*)buf;
@@ -1176,7 +1176,7 @@ int real_write(int fd, const void *buf, int count)	//注意:buf的类型被修�
 	// send_recv(BOTH, TASK_FS, &msg);
 	/// zcr added
 	do_rdwt(&fs_msg);
-	
+
 	return fs_msg.CNT;
 }
 
@@ -1189,7 +1189,7 @@ int real_write(int fd, const void *buf, int count)	//注意:buf的类型被修�
  *
  * Sector map is not needed to update, since the sectors for the file have been
  * allocated and the bits are set when the file was created.
- * 
+ *
  * @return How many bytes have been read/written.
  *****************************************************************************/
 static int do_rdwt(MESSAGE *fs_msg)
@@ -1243,11 +1243,11 @@ static int do_rdwt(MESSAGE *fs_msg)
 		//modified by xw, 18/12/27
 		int chunk = min(rw_sect_max - rw_sect_min + 1,
 				SECTOR_SIZE >> SECTOR_SIZE_SHIFT);
-		
+
 		int bytes_rw = 0;
 		int bytes_left = len;
 		int i;
-		
+
 		char fsbuf[SECTOR_SIZE];	//local array, to substitute global fsbuf. added by xw, 18/12/27
 
 		for (i = rw_sect_min; i <= rw_sect_max; i += chunk) {
@@ -1300,16 +1300,16 @@ static int do_rdwt(MESSAGE *fs_msg)
  *****************************************************************************/
 /**
  * Delete a file.
- * 
+ *
  * @param pathname  The full path of the file to delete.
- * 
+ *
  * @return Zero if successful, otherwise -1.
  *****************************************************************************/
 int real_unlink(const char * pathname)	//modified by mingxuan 2019-5-17
 {
 	//added by xw, 18/8/27
 	MESSAGE fs_msg;
-	
+
 	fs_msg.type   = UNLINK;
 	fs_msg.PATHNAME	= (void*)pathname;
 	fs_msg.NAME_LEN	= strlen(pathname);
@@ -1331,7 +1331,7 @@ int real_unlink(const char * pathname)	//modified by mingxuan 2019-5-17
  *
  * @note We clear the i-node in inode_array[] although it is not really needed.
  *       We don't clear the data bytes so the file is recoverable.
- * 
+ *
  * @return On success, zero is returned.  On error, -1 is returned.
  *****************************************************************************/
 static int do_unlink(MESSAGE *fs_msg)
@@ -1511,7 +1511,7 @@ int real_lseek(int fd, int offset, int whence)	//modified by mingxuan 2019-5-17
 {
 	//added by xw, 18/8/27
 	MESSAGE fs_msg;
-	
+
 	fs_msg.FD = fd;
 	fs_msg.OFFSET = offset;
 	fs_msg.WHENCE = whence;
@@ -1524,7 +1524,7 @@ int real_lseek(int fd, int offset, int whence)	//modified by mingxuan 2019-5-17
  *****************************************************************************/
 /**
  * Handle the message LSEEK.
- * 
+ *
  * @return The new offset in bytes from the beginning of the file if successful,
  *         otherwise a negative number.
  *****************************************************************************/

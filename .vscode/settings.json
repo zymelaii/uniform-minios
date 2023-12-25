@@ -1,0 +1,12 @@
+{
+    "clangd.fallbackFlags": [
+        "-x",
+        "c",
+        "-m32",
+        "-std=c99",
+        "-nostdinc",
+        "-nostdlib",
+        "-fno-builtin",
+        "-I${workspaceFolder}/include"
+    ],
+}

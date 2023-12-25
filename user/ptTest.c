@@ -1,4 +1,4 @@
-#include "stdio.h"
+#include <stdio.h>
 
 int global=0;
 
@@ -27,7 +27,7 @@ added by xw, 18/4/27
 int main(int arg,char *argv[])
 {
 	int i=0;
-	
+
 	pthread(pthread_test1);
 	while(1)
 	{

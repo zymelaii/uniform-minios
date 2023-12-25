@@ -1,19 +1,19 @@
 /**********************************************************
-*	vfs.h       //added by mingxuan 2019-5-17
-***********************************************************/
+ *	vfs.h       //added by mingxuan 2019-5-17
+ ***********************************************************/
 
-//#define NR_DEV 10
-#define NR_FS 10		//modified by mingxuan 2020-10-18
+// #define NR_DEV 10
+#define NR_FS        10 // modified by mingxuan 2020-10-18
 #define DEV_NAME_LEN 15
-//#define NR_fs 3
-#define NR_FS_OP 3		//modified by mingxuan 2020-10-18
-#define NR_SB_OP 2		//added by mingxuan 2020-10-30
+// #define NR_fs 3
+#define NR_FS_OP 3 // modified by mingxuan 2020-10-18
+#define NR_SB_OP 2 // added by mingxuan 2020-10-30
 
-//#define FILE_MAX_LEN 512*4	//最大长度为4个扇区
-#define FILE_MAX_LEN 512*16		//最大长度为16个扇区(8KB)
+// #define FILE_MAX_LEN 512*4	//最大长度为4个扇区
+#define FILE_MAX_LEN 512 * 16 // 最大长度为16个扇区(8KB)
 
 /* //deleted by mingxuan 2020-10-18
-//设备表	
+//设备表
 struct device{
     char * dev_name; 			//设备名
     struct file_op * op;          //指向操作表的一项
@@ -21,13 +21,13 @@ struct device{
 };
 */
 // Replace struct device, added by mingxuan 2020-10-18
-struct vfs{
-    char * fs_name; 			//设备名
-    struct file_op * op;        //指向操作表的一项
-    //int  dev_num;             //设备号	//deleted by mingxuan 2020-10-29
+struct vfs {
+    char           *fs_name; // 设备名
+    struct file_op *op;      // 指向操作表的一项
+    // int  dev_num;             //设备号	//deleted by mingxuan 2020-10-29
 
-	struct super_block *sb;		//added by mingxuan 2020-10-29
-	struct sb_op *s_op;			//added by mingxuan 2020-10-29
+    struct super_block *sb;   // added by mingxuan 2020-10-29
+    struct sb_op       *s_op; // added by mingxuan 2020-10-29
 };
 
 int sys_open(void *uesp);
@@ -69,23 +69,23 @@ int sys_CreateDir(void *uesp);
 int sys_DeleteDir(void *uesp);
 int sys_ListDir(void *uesp);
 
-//文件系统的操作函数
-struct file_op{
-    int (*create)   (const char*);
-	int (*open)    (const char* ,int);
-	int (*close)   (int);
-	int (*read)    (int,void * ,int);
-	int (*write)   (int ,const void* ,int);
-	int (*lseek)   (int ,int ,int);
-	int (*unlink)  (const char*);
-    int (*delete) (const char*);
-	int (*opendir) (const char *);
-	int (*createdir) (const char *);
-	int (*deletedir) (const char *);
+// 文件系统的操作函数
+struct file_op {
+    int (*create)(const char *);
+    int (*open)(const char *, int);
+    int (*close)(int);
+    int (*read)(int, void *, int);
+    int (*write)(int, const void *, int);
+    int (*lseek)(int, int, int);
+    int (*unlink)(const char *);
+    int (*delete)(const char *);
+    int (*opendir)(const char *);
+    int (*createdir)(const char *);
+    int (*deletedir)(const char *);
 };
 
-//added by mingxuan 2020-10-29
-struct sb_op{
-	void (*read_super_block) (int);
-	struct super_block* (*get_super_block) (int);
+// added by mingxuan 2020-10-29
+struct sb_op {
+    void (*read_super_block)(int);
+    struct super_block *(*get_super_block)(int);
 };

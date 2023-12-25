@@ -1,14 +1,14 @@
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "tty.h"
-#include "console.h"
-#include "global.h"
-#include "proto.h"
-#include "keyboard.h"
-#include "x86.h"
+#include <type.h>
+#include <const.h>
+#include <protect.h>
+#include <string.h>
+#include <proc.h>
+#include <tty.h>
+#include <console.h>
+#include <global.h>
+#include <proto.h>
+#include <keyboard.h>
+#include <x86.h>
 
 int current_console; //当前显示在屏幕上的console
 void tty_write(TTY *tty, char *buf, int len);

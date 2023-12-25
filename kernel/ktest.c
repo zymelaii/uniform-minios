@@ -1,18 +1,18 @@
 /*
- * To test if new kernel features work normally, and if old features still 
+ * To test if new kernel features work normally, and if old features still
  * work normally with new features added.
  * added by xw, 18/4/27
  */
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
-#include "fs.h"
-#include "vfs.h"
-#include "string.h"
+#include <type.h>
+#include <const.h>
+#include <protect.h>
+#include <string.h>
+#include <proc.h>
+#include <global.h>
+#include <proto.h>
+#include <fs.h>
+#include <vfs.h>
+#include <string.h>
 
 /**
  * @struct posix_tar_header
@@ -46,7 +46,7 @@ struct posix_tar_header
  *****************************************************************************/
 /**
  * Extract the tar file and store them.
- * 
+ *
  * @param filename The tar file.
  *****************************************************************************/
 static void untar(const char * filename)
@@ -88,9 +88,9 @@ static void untar(const char * filename)
 		printf("    %s \n", phdr->name);	//deleted by mingxuan 2019-5-22
 		while (bytes_left) {
 			int iobytes = min(chunk, bytes_left);
-			
+
 			do_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512);	//modified by mingxuan 2019-5-21
-			
+
 			do_vwrite(fdout, buf, iobytes); //modified by mingxuan 2019-5-21
 			bytes_left -= iobytes;
 		}
@@ -111,7 +111,7 @@ static void untar(const char * filename)
 
 void initial()
 {
-	
+
 	int stdin = do_vopen("dev_tty0",O_RDWR);
 	int stdout= do_vopen("dev_tty0",O_RDWR);
 	int stderr= do_vopen("dev_tty0",O_RDWR);
