@@ -1,0 +1,16 @@
+OBJDIRS 	+= boot
+
+$(OBJDIR)/boot/mbr.bin: boot/mbr/mbr.asm
+	@echo + as bin $<
+	@mkdir -p $(@D)
+	@$(AS) -I ./boot/mbr/include/ -o $@ $<
+
+$(OBJDIR)/boot/boot.bin: boot/mbr/boot.asm
+	@echo + as bin $<
+	@mkdir -p $(@D)
+	@$(AS) -I ./boot/mbr/include/ -o $@ $<
+
+$(OBJDIR)/boot/loader.bin: boot/mbr/loader.asm
+	@echo + as bin $<
+	@mkdir -p $(@D)
+	@$(AS) -I ./boot/mbr/include/ -o $@ $<

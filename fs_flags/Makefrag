@@ -1,0 +1,11 @@
+OBJDIRS		+= fs_flags
+
+FS_FLAG_SRCFILES:=	fs_flags/orange_flag.asm	\
+			fs_flags/fat32_flag.asm
+
+FS_FLAG_OBJFILES:= $(patsubst %.asm, $(OBJDIR)/%.bin, $(FS_FLAG_SRCFILES))
+
+$(OBJDIR)/fs_flags/%.bin: fs_flags/%.asm
+	@echo + as obj $<
+	@mkdir -p $(@D)
+	@$(AS) -o $@ $<

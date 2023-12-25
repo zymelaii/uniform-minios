@@ -1,0 +1,73 @@
+OBJDIRS 	+= kern
+
+KERN_ENTRY_ADDR	:= 0xC0030400
+
+KERN_SRCFILES :=kernel/kernel.asm	\
+		kernel/hd.c	\
+		kernel/fat32.c	\
+		kernel/tty.c	\
+		kernel/fs.c	\
+		kernel/global.c	\
+		kernel/clock.c	\
+		kernel/elf.c	\
+		kernel/spinlock.c	\
+		kernel/keyboard.c	\
+		kernel/assist.c	\
+		kernel/fork.c	\
+		kernel/file.c	\
+		kernel/console.c	\
+		kernel/syscallc.c	\
+		kernel/vfs.c	\
+		kernel/proc.c	\
+		kernel/pagetbl.c	\
+		kernel/pthread.c	\
+		kernel/memman.c	\
+		kernel/main.c	\
+		kernel/exec.c	\
+		kernel/ktest.c	\
+		kernel/base.c	\
+		kernel/start.c	\
+		kernel/i8259.c	\
+		kernel/testfunc.c	\
+		kernel/protect.c	\
+		kernel/uart.c	\
+
+
+KERN_OBJFILES	:= $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
+KERN_OBJFILES	:= $(patsubst %.asm, $(OBJDIR)/%.o, $(KERN_OBJFILES))
+
+$(OBJDIR)/kernel/ktest.o: kernel/ktest.c $(OBJDIR)/.vars.CFLAGS
+	@echo + cc $<
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) -c -o $@ $<	\
+		-D INSTALL_FILENAME='"$(INSTALL_FILENAME)"' \
+		-D $(INSTALL_TYPE) \
+
+$(OBJDIR)/kernel/fs.o: kernel/fs.c $(OBJDIR)/.vars.CFLAGS
+	@echo + cc $<
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) -c -o $@ $<	\
+		-D INSTALL_FILENAME='"$(INSTALL_FILENAME)"' \
+		-D INSTALL_NR_SECTORS=$(INSTALL_NR_SECTORS) \
+		-D INSTALL_START_SECTOR=$(INSTALL_START_SECTOR) \
+		-D $(INSTALL_TYPE) \
+
+$(OBJDIR)/kernel/spinlock.o: kernel/spinlock.c $(OBJDIR)/.vars.CFLAGS
+	@echo + cc $<
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) -masm=intel -c -o $@ $<
+
+$(OBJDIR)/kernel/%.o: kernel/%.c $(OBJDIR)/.vars.CFLAGS
+	@echo + cc $<
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/kernel/%.o: kernel/%.asm
+	@echo + as obj $<
+	@mkdir -p $(@D)
+	@$(AS) -I ./include -f elf -o $@ $<
+
+$(OBJDIR)/kernel/kernel.bin: $(KERN_OBJFILES) $(LIB_A) $(OBJDIR)/.vars.LDFLAGS
+	@echo + ld $@
+	@$(LD) $(LDFLAGS) -s -Ttext $(KERN_ENTRY_ADDR) -o $@ $(KERN_OBJFILES) $(LIB_A) $(GCC_LIB)
+	@$(LD) $(LDFLAGS) -Ttext $(KERN_ENTRY_ADDR) -o $(OBJDIR)/kernel/kernel.dbg $(KERN_OBJFILES) $(LIB_A) $(GCC_LIB)

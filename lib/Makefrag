@@ -1,0 +1,27 @@
+OBJDIRS		+= lib
+
+LIB_OBJS :=	lib/string.o		\
+		kernel/syscall.o	\
+		lib/printf.o		\
+		lib/kprintf.o		\
+		lib/scanf.o		\
+		lib/printfmt.o		\
+		lib/vga_display.o		\
+
+LIB_OBJS := $(patsubst %, $(OBJDIR)/%, $(LIB_OBJS))
+
+LIB_A =	$(OBJDIR)/lib/ulib.a	
+
+$(OBJDIR)/lib/%.o: lib/%.c $(OBJDIR)/.vars.CFLAGS
+	@echo + cc $<
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/lib/%.o: lib/%.asm
+	@echo + as obj $<
+	@mkdir -p $(@D)
+	@$(AS) -I ./include -f elf -o $@ $<
+
+$(LIB_A): $(LIB_OBJS)
+	@echo + ar $@
+	@$(AR) $(ARFLAGS) -o $@ $(LIB_OBJS)
