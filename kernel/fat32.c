@@ -24,7 +24,7 @@ extern DWORD            Sectors_Per_FAT;
 extern UINT             Position_Of_RootDir;
 extern UINT             Position_Of_FAT1;
 extern UINT             Position_Of_FAT2;
-extern struct file_desc f_desc_table[NR_FILE_DESC];
+extern struct file_desc file_desc_table[NR_FILE_DESC];
 CHAR                    VDiskPath[256] = {0};
 CHAR                    cur_path[256]  = {0};
 u8                     *buf;
@@ -374,7 +374,7 @@ STATE OpenFile(const char *filename, int mode) {
 
     // 找一个未用的文件描述符
     for (i = 0; i < NR_FILE_DESC; i++)
-        if (f_desc_table[i].flag == 0) break;
+        if (file_desc_table[i].flag == 0) break;
     if (i >= NR_FILE_DESC) {
         kprintf("f_desc_table[] is full (PID:");
         kprintf("%d", proc2pid(p_proc_current));
@@ -382,8 +382,8 @@ STATE OpenFile(const char *filename, int mode) {
         return -1;
     }
 
-    p_proc_current->task.filp[fd] = &f_desc_table[i];
-    f_desc_table[i].flag          = 1;
+    p_proc_current->task.filp[fd] = &file_desc_table[i];
+    file_desc_table[i].flag       = 1;
 
     // 找一个未用的FILE
     for (i = 0; i < NR_FILE_DESC; i++)

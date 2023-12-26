@@ -31,7 +31,7 @@ struct dev_drv_map {
  *
  * Remember to change SUPER_BLOCK_SIZE if the members are changed.
  */
-struct super_block {
+typedef struct super_block {
     u32 magic;             /**< Magic number */
     u32 nr_inodes;         /**< How many inodes */
     u32 nr_sects;          /**< How many sectors */
@@ -52,7 +52,7 @@ struct super_block {
      */
     int sb_dev;  /**< the super block's home device */
     int fs_type; // added by mingxuan 2020-10-30
-};
+} superblock_t;
 
 /**
  * @def   SUPER_BLOCK_SIZE
@@ -125,7 +125,7 @@ union ptr_node {
     PFile         fd_file;  // 指向fat32的file结构体
 };
 
-struct file_desc {
+typedef struct file_desc {
     int fd_mode; /**< R or W */
     int fd_pos;  /**< Current position for R/W. */
     // struct inode*	fd_inode;	/**< Ptr to the i-node */	//deleted by
@@ -135,7 +135,7 @@ struct file_desc {
     union ptr_node fd_node;
     int            flag; // 用于标志描述符是否被使用
     int            dev_index;
-};
+} file_desc_t;
 
 /**
  * Since all invocations of `rw_sector()' in FS look similar (most of the

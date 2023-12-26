@@ -1,479 +1,412 @@
-/**********************************************************
-*	vfs.c       //added by mingxuan 2019-5-17
-***********************************************************/
-
-#include <type.h>
-#include <const.h>
-#include <protect.h>
+#include <unios/vfs.h>
 #include <string.h>
-#include <proc.h>
+#include <assert.h>
+#include <stdio.h>
 #include <global.h>
 #include <proto.h>
-#include <fs_const.h>
-#include <hd.h>
-#include <fs.h>
-#include <fs_misc.h>
-#include <vfs.h>
-#include <fat32.h>
-#include <stdio.h>
 
-//static struct device  device_table[NR_DEV];  //deleted by mingxuan 2020-10-18
-static struct vfs  vfs_table[NR_FS];   //modified by mingxuan 2020-10-18
+file_desc_t  file_desc_table[NR_FILE_DESC];
+superblock_t superblock_table[NR_SUPER_BLOCK];
 
-struct file_desc f_desc_table[NR_FILE_DESC];
-struct super_block super_block[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
+static vfs_t               vfs_table[NR_FS];
+static file_op_set_t       fs_op_table[NR_FS_OP];
+static superblock_op_set_t sb_op_table[NR_SB_OP];
 
-//static struct file_op f_op_table[NR_fs]; //文件系统操作表
-static struct file_op f_op_table[NR_FS_OP]; //modified by mingxuan 2020-10-18
-static struct sb_op   sb_op_table[NR_SB_OP];   //added by mingxuan 2020-10-30
+//! NOTE: used in get_next_dev_nr, generate available dev_nr from global counter
+//! FIXME: static variable failed to initialized in original minios
+int dev_nr_counter = 0;
 
-//static void init_dev_table();//deleted by mingxuan 2020-10-30
-static void init_vfs_table();  //modified by mingxuan 2020-10-30
-void init_file_desc_table();   //added by mingxuan 2020-10-30
-void init_fileop_table();
-void init_super_block_table();  //added by mingxuan 2020-10-30
-void init_sb_op_table();
+//! initial vfs assignment: {tty0, tty1, tty2, orange, fat32}
+#define NR_TTY         (3)
+#define NR_INITIAL_VFS (NR_TTY + 2)
 
-static int get_index(char path[]);
+//! vfs set
+#define TTY_VFS(i) (vfs_table[i])
+#define ORANGE_VFS (vfs_table[NR_TTY + 0])
+#define FAT32_VFS  (vfs_table[NR_TTY + 1])
 
-void init_vfs()
-{
+//! fs op set
+#define TTY_FS_OP    (fs_op_table[0])
+#define ORANGE_FS_OP (fs_op_table[1])
+#define FAT32_FS_OP  (fs_op_table[2])
 
-    init_file_desc_table();
-    init_fileop_table();
+//! superblock set
+#define TTY_SUPERBLOCK(i) (superblock_table[i])
+#define ORANGE_SUPERBLOCK (superblock_table[NR_TTY + 0])
+#define FAT32_SUPERBLOCK  (superblock_table[NR_TTY + 1])
 
-    init_super_block_table();
-    init_sb_op_table(); //added by mingxuan 2020-10-30
+//! superblock op set
+#define NULL_SB_OP   (sb_op_table[0])
+#define ORANGE_SB_OP (sb_op_table[1])
 
-    //init_dev_table(); //deleted by mingxuan 2020-10-30
-    init_vfs_table();   //modified by mingxuan 2020-10-30
+static int prefix_match(const char *src, const char *dst) {
+    assert(src != NULL);
+    assert(dst != NULL);
+    const char *p = src;
+    const char *q = dst;
+    while (*p && *q) {
+        if (*p != *q) { break; }
+        ++p;
+        ++q;
+    }
+    return p - src;
 }
 
-//added by mingxuan 2020-10-30
-void init_file_desc_table()
-{
-    int i;
-	for (i = 0; i < NR_FILE_DESC; i++)
-		memset(&f_desc_table[i], 0, sizeof(struct file_desc));
+//! NOTE: use longest prefix matching alg
+static int get_vfs_index(const char *path) {
+    int nr     = -1; //<! vfs nr
+    int maxlen = -1; //<! current longest prefix length
+    for (int i = 0; i < NR_FS; ++i) {
+        const char *vfs_name = vfs_table[i].name;
+        if (vfs_name == NULL) {
+            assert(vfs_table[i].nr_dev == -1 && "dirty invalid vfs entry");
+            continue;
+        }
+        int matched = prefix_match(vfs_name, path);
+        if (matched == 0) { continue; }
+        if (!(path[matched] == '\0' || path[matched] == '/')) { continue; }
+        assert(matched != maxlen && "duplicate vfs entry");
+        if (matched > maxlen) {
+            maxlen = matched;
+            nr     = i;
+        }
+    }
+    return nr;
 }
 
-void init_fileop_table()
-{
-    // table[0] for tty
-    f_op_table[0].open = real_open;
-    f_op_table[0].close = real_close;
-    f_op_table[0].write = real_write;
-    f_op_table[0].lseek = real_lseek;
-    f_op_table[0].unlink = real_unlink;
-    f_op_table[0].read = real_read;
+static int get_vfs_index_and_relpath(const char *path, const char **p_relpath) {
+    assert(p_relpath != NULL);
+    *p_relpath = NULL;
 
-    // table[1] for orange
-    f_op_table[1].open = real_open;
-    f_op_table[1].close = real_close;
-    f_op_table[1].write = real_write;
-    f_op_table[1].lseek = real_lseek;
-    f_op_table[1].unlink = real_unlink;
-    f_op_table[1].read = real_read;
+    int index = get_vfs_index(path);
+    if (index != -1) {
+        int devlen = strlen(vfs_table[index].name);
+        assert(devlen > 0);
+        assert(path[devlen - 1] == '/');
 
-    // table[2] for fat32
-    f_op_table[2].create = CreateFile;
-    f_op_table[2].delete = DeleteFile;
-    f_op_table[2].open = OpenFile;
-    f_op_table[2].close = CloseFile;
-    f_op_table[2].write = WriteFile;
-    f_op_table[2].read = ReadFile;
-    f_op_table[2].opendir = OpenDir;
-    f_op_table[2].createdir = CreateDir;
-    f_op_table[2].deletedir = DeleteDir;
-
-}
-
-//added by mingxuan 2020-10-30
-void init_super_block_table(){
-    struct super_block * sb = super_block;						//deleted by mingxuan 2020-10-30
-
-    //super_block[0] is tty0, super_block[1] is tty1, uper_block[2] is tty2
-    for(; sb < &super_block[3]; sb++) {
-        sb->sb_dev =  DEV_CHAR_TTY;
-        sb->fs_type = TTY_FS_TYPE;
+        //! get path relative to vfs device
+        *p_relpath = path + devlen + 1;
+        assert((*p_relpath)[0] != '/' && (*p_relpath)[0] != '\0');
     }
 
-    //super_block[3] is orange's superblock
-    sb->sb_dev = DEV_HD;
-    sb->fs_type = ORANGE_TYPE;
-    sb++;
+    return index;
+}
 
-    //super_block[4] is fat32's superblock
-    sb->sb_dev = DEV_HD;
-    sb->fs_type = FAT32_TYPE;
-    sb++;
-
-    //another super_block are free
-    for (; sb < &super_block[NR_SUPER_BLOCK]; sb++) {
-	sb->sb_dev = NO_DEV;
-        sb->fs_type = NO_FS_TYPE;
+static void init_superblock_table() {
+    for (int i = 0; i < NR_TTY; ++i) {
+        TTY_SUPERBLOCK(i).sb_dev  = DEV_CHAR_TTY;
+        TTY_SUPERBLOCK(i).fs_type = TTY_FS_TYPE;
     }
+
+    ORANGE_SUPERBLOCK.sb_dev  = DEV_HD;
+    ORANGE_SUPERBLOCK.fs_type = ORANGE_TYPE;
+
+    FAT32_SUPERBLOCK.sb_dev  = DEV_HD;
+    FAT32_SUPERBLOCK.fs_type = FAT32_TYPE;
 }
 
-//added by mingxuan 2020-10-30
-void init_sb_op_table(){
-    //orange
-    sb_op_table[0].read_super_block = read_super_block;
-    sb_op_table[0].get_super_block = get_super_block;
-
-    //fat32 and tty
-    sb_op_table[1].read_super_block = NULL;
-    sb_op_table[1].get_super_block = NULL;
+static int get_next_dev_nr() {
+    int dev_nr = ++dev_nr_counter;
+    assert(dev_nr > 0 && "dev nr out of range");
+    return dev_nr;
 }
 
-//static void init_dev_table(){
-static void init_vfs_table(){  // modified by mingxuan 2020-10-30
+static void init_vfs_table() {
+    //! FIXME: minios doesn't support strdup yet, use literal instead
+    //! FIXME: should i use the absolute path or dev name only?
+    const char *tty_name_list[NR_TTY] = {
+        "/dev/tty0",
+        "/dev/tty1",
+        "/dev/tty2",
+    };
 
-    // 我们假设每个tty就是一个文件系统
-    // tty0
-    // device_table[0].dev_name="dev_tty0";
-    // device_table[0].op = &f_op_table[0];
+    for (int i = 0; i < NR_TTY; ++i) {
+        TTY_VFS(i).name   = tty_name_list[i];
+        TTY_VFS(i).nr_dev = get_next_dev_nr();
+        TTY_VFS(i).ops    = &TTY_FS_OP;
+        TTY_VFS(i).sb     = &TTY_SUPERBLOCK(i);
+        TTY_VFS(i).sb_ops = &NULL_SB_OP;
+    }
+
+    ORANGE_VFS.name   = "/orange";
+    ORANGE_VFS.nr_dev = get_next_dev_nr();
+    ORANGE_VFS.ops    = &ORANGE_FS_OP;
+    ORANGE_VFS.sb     = &ORANGE_SUPERBLOCK;
+    ORANGE_VFS.sb_ops = &NULL_SB_OP;
+
+    FAT32_VFS.name   = "/fat0";
+    FAT32_VFS.nr_dev = get_next_dev_nr();
+    FAT32_VFS.ops    = &FAT32_FS_OP;
+    FAT32_VFS.sb     = &FAT32_SUPERBLOCK;
+    FAT32_VFS.sb_ops = &NULL_SB_OP;
+}
+
+static void init_fs_op_table() {
+    TTY_FS_OP.open   = real_open;
+    TTY_FS_OP.close  = real_close;
+    TTY_FS_OP.write  = real_write;
+    TTY_FS_OP.lseek  = real_lseek;
+    TTY_FS_OP.unlink = real_unlink;
+    TTY_FS_OP.read   = real_read;
+
+    ORANGE_FS_OP.open   = real_open;
+    ORANGE_FS_OP.close  = real_close;
+    ORANGE_FS_OP.write  = real_write;
+    ORANGE_FS_OP.lseek  = real_lseek;
+    ORANGE_FS_OP.unlink = real_unlink;
+    ORANGE_FS_OP.read   = real_read;
+
+    FAT32_FS_OP.create    = CreateFile;
+    FAT32_FS_OP.delete    = DeleteFile;
+    FAT32_FS_OP.open      = OpenFile;
+    FAT32_FS_OP.close     = CloseFile;
+    FAT32_FS_OP.write     = WriteFile;
+    FAT32_FS_OP.read      = ReadFile;
+    FAT32_FS_OP.opendir   = OpenDir;
+    FAT32_FS_OP.createdir = CreateDir;
+    FAT32_FS_OP.deletedir = DeleteDir;
+}
+
+static void _null_sb_op_read(int unused) {}
+
+static superblock_t *_null_sb_op_get(int unused) {
+    return NULL;
+}
+
+static void init_sb_op_table() {
+    NULL_SB_OP.read = _null_sb_op_read;
+    NULL_SB_OP.get  = _null_sb_op_get;
+
+    ORANGE_SB_OP.read = read_super_block;
+    ORANGE_SB_OP.get  = get_super_block;
+}
+
+void vfs_setup_and_init() {
+    //! init fd table
+    const int nr_file_desc = sizeof(file_desc_table) / sizeof(file_desc_t);
+    memset(file_desc_table, 0, sizeof(file_desc_table));
+
+    //! init superblock table
+    const int nr_superblock = sizeof(superblock_table) / sizeof(superblock_t);
+    memset(superblock_table, 0, sizeof(superblock_table));
+    for (int i = 0; i < nr_superblock; ++i) {
+        superblock_table[i].sb_dev  = NO_DEV;
+        superblock_table[i].fs_type = NO_FS_TYPE;
+    }
+    init_superblock_table();
+
+    //! init vfs table
+    const int nr_fs = sizeof(vfs_table) / sizeof(vfs_t);
     memset(vfs_table, 0, sizeof(vfs_table));
-    vfs_table[0].fs_name = "dev_tty0"; //modifed by mingxuan 2020-10-18
-    vfs_table[0].op = &f_op_table[0];
-    vfs_table[0].sb = &super_block[0];  //每个tty都有一个superblock //added by mingxuan 2020-10-30
-    vfs_table[0].s_op = &sb_op_table[1];    //added by mingxuan 2020-10-30
+    for (int i = 0; i < nr_fs; ++i) { vfs_table[i].nr_dev = -1; }
+    init_vfs_table();
 
-    // tty1
-    //device_table[1].dev_name="dev_tty1";
-    //device_table[1].op =&f_op_table[0];
-    vfs_table[1].fs_name = "dev_tty1"; //modifed by mingxuan 2020-10-18
-    vfs_table[1].op = &f_op_table[0];
-    vfs_table[1].sb = &super_block[1];  //每个tty都有一个superblock //added by mingxuan 2020-10-30
-    vfs_table[1].s_op = &sb_op_table[1];    //added by mingxuan 2020-10-30
+    //! init fs op table
+    const int nr_fs_op = sizeof(fs_op_table) / sizeof(file_op_set_t);
+    memset(fs_op_table, 0, sizeof(fs_op_table));
+    init_fs_op_table();
 
-    // tty2
-    //device_table[2].dev_name="dev_tty2";
-    //device_table[2].op=&f_op_table[0];
-    vfs_table[2].fs_name = "dev_tty2"; //modifed by mingxuan 2020-10-18
-    vfs_table[2].op = &f_op_table[0];
-    vfs_table[2].sb = &super_block[2];  //每个tty都有一个superblock //added by mingxuan 2020-10-30
-    vfs_table[2].s_op = &sb_op_table[1];    //added by mingxuan 2020-10-30
-
-    // fat32
-    //device_table[3].dev_name="fat0";
-    //device_table[3].op=&f_op_table[2];
-    vfs_table[3].fs_name = "fat0"; //modifed by mingxuan 2020-10-18
-    vfs_table[3].op = &f_op_table[2];
-    vfs_table[3].sb = &super_block[4];      //added by mingxuan 2020-10-30
-    vfs_table[3].s_op = &sb_op_table[1];    //added by mingxuan 2020-10-30
-
-    // orange
-    //device_table[4].dev_name="orange";
-    //device_table[4].op=&f_op_table[1];
-    vfs_table[4].fs_name = "orange"; //modifed by mingxuan 2020-10-18
-    vfs_table[4].op = &f_op_table[1];
-    vfs_table[4].sb = &super_block[3];      //added by mingxuan 2020-10-30
-    vfs_table[4].s_op = &sb_op_table[0];    //added by mingxuan 2020-10-30
-
+    //! init superblock op table
+    const int nr_sb_op = sizeof(sb_op_table) / sizeof(superblock_op_set_t);
+    memset(sb_op_table, 0, sizeof(sb_op_table));
+    init_sb_op_table();
 }
-
-static int get_index(char path[]){
-
-    int pathlen = strlen(path);
-    //char dev_name[DEV_NAME_LEN];
-    char fs_name[DEV_NAME_LEN];   //modified by mingxuan 2020-10-18
-    int len = (pathlen < DEV_NAME_LEN) ? pathlen : DEV_NAME_LEN;
-
-    int i,a=0;
-    for(i=0;i<len;i++){
-        if( path[i] == '/'){
-            a=i;
-            a++;
-            break;
-        }
-        else {
-            //dev_name[i] = path[i];
-            fs_name[i] = path[i];   //modified by mingxuan 2020-10-18
-        }
-    }
-    //dev_name[i] = '\0';
-    fs_name[i] = '\0';  //modified by mingxuan 2020-10-18
-    for(i=0;i<pathlen-a;i++)
-        path[i] = path[i+a];
-    path[pathlen-a] = '\0';
-
-    //for(i=0;i<NR_DEV;i++)
-    for(i=0;i<NR_FS;i++)    //modified by mingxuan 2020-10-29
-    {
-        // if(!strcmp(dev_name, device_table[i].dev_name))
-        if(vfs_table[i].fs_name == NULL) continue;
-        if(!strcmp(fs_name, vfs_table[i].fs_name)) //modified by mingxuan 2020-10-18
-            return i;
-    }
-
-    return -1;
-}
-
-
-/*======================================================================*
-                              sys_* 系列函数
- *======================================================================*/
-
-int sys_open(void *uesp)
-{
-    return do_vopen((const char *)get_arg(uesp, 1), get_arg(uesp, 2));
-}
-
-int sys_close(void *uesp)
-{
-    return do_vclose(get_arg(uesp, 1));
-}
-
-int sys_read(void *uesp)
-{
-    return do_vread(get_arg(uesp, 1), (char *)get_arg(uesp, 2), get_arg(uesp, 3));
-}
-
-int sys_write(void *uesp)
-{
-    return do_vwrite(get_arg(uesp, 1), (const char *)get_arg(uesp, 2), get_arg(uesp, 3));
-}
-
-int sys_lseek(void *uesp)
-{
-    return do_vlseek(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
-}
-
-int sys_unlink(void *uesp) {
-    return do_vunlink((const char *)get_arg(uesp, 1));
-}
-
-int sys_create(void *uesp) {
-    return do_vcreate((char *)get_arg(uesp, 1));
-}
-
-int sys_delete(void *uesp) {
-    return do_vdelete((char *)get_arg(uesp, 1));
-}
-
-int sys_opendir(void *uesp) {
-    return do_vopendir((char *)get_arg(uesp, 1));
-}
-
-int sys_createdir(void *uesp) {
-    return do_vcreatedir((char *)get_arg(uesp, 1));
-}
-
-int sys_deletedir(void *uesp) {
-    return do_vdeletedir((char *)get_arg(uesp, 1));
-}
-
-
-/*======================================================================*
-                              do_v* 系列函数
- *======================================================================*/
 
 int do_vopen(const char *path, int flags) {
-
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,(char *)path);
-    pathname[pathlen] = 0;
-
-    int index;
-    int fd = -1;
-    index = get_index(pathname);
-    if(index == -1){
-        kprintf("pathname error! path: %s\n", path);
+    const char *relpath = NULL;
+    int         index   = get_vfs_index_and_relpath(path, &relpath);
+    if (index == -1) {
+        kprintf("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
 
-    fd = vfs_table[index].op->open(pathname, flags);    //modified by mingxuan 2020-10-18
-    if(fd != -1)
-    {
-        p_proc_current -> task.filp[fd] -> dev_index = index;
+    int fd = vfs_table[index].ops->open(relpath, flags);
+    if (fd != -1) {
+        p_proc_current->task.filp[fd]->dev_index = index;
     } else {
-        kprintf("          error!\n");
+        kprintf("filesystem error: invalid path: %s\n", path);
     }
 
     return fd;
 }
 
-
 int do_vclose(int fd) {
+    assert(fd != -1 && "invalid fd");
     int index = p_proc_current->task.filp[fd]->dev_index;
-    return vfs_table[index].op->close(fd);  //modified by mingxuan 2020-10-18
+    assert(index != -1 && "invalid vfs index");
+    return vfs_table[index].ops->close(fd);
 }
 
 int do_vread(int fd, char *buf, int count) {
+    assert(fd != -1 && "invalid fd");
     int index = p_proc_current->task.filp[fd]->dev_index;
-    return vfs_table[index].op->read(fd, buf, count);   //modified by mingxuan 2020-10-18
+    assert(index != -1 && "invalid vfs index");
+    return vfs_table[index].ops->read(fd, buf, count);
 }
 
 int do_vwrite(int fd, const char *buf, int count) {
-    //modified by mingxuan 2019-5-23
-    char s[512];
+    assert(fd != -1 && "invalid fd");
     int index = p_proc_current->task.filp[fd]->dev_index;
-    const char *fsbuf = buf;
-    int f_len = count;
-    int bytes;
-    while(f_len)
-    {
-        int iobytes = min(512, f_len);
-        int i=0;
-        for(i=0; i<iobytes; i++)
-        {
-            s[i] = *fsbuf;
-            fsbuf++;
+    assert(index != -1 && "invalid vfs index");
+
+    char wrbuf[512] = {};
+    int  left       = count;
+    while (left > 0) {
+        //! copy to kernel buffer
+        //! FIXME: really necessary?
+        int nbytes = min(512, left);
+        memcpy(wrbuf, buf, nbytes);
+        buf += nbytes;
+
+        int resp = vfs_table[index].ops->write(fd, wrbuf, nbytes);
+        if (resp != nbytes) {
+            assert(resp < 0);
+            return resp;
         }
-        //bytes = device_table[index].op->write(fd,s,iobytes);
-        bytes = vfs_table[index].op->write(fd,s,iobytes);   //modified by mingxuan 2020-10-18
-        if(bytes != iobytes)
-        {
-            return bytes;
-        }
-        f_len -= bytes;
+        left -= nbytes;
     }
+    assert(left == 0);
+
     return count;
 }
 
 int do_vunlink(const char *path) {
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,(char *)path);
-    pathname[pathlen] = 0;
-
-    int index;
-    index = get_index(pathname);
-    if(index==-1){
-        kprintf("pathname error!\n");
+    const char *relpath = NULL;
+    int         index   = get_vfs_index_and_relpath(path, &relpath);
+    if (index == -1) {
+        kprintf("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
-
-    //return device_table[index].op->unlink(pathname);
-    return vfs_table[index].op->unlink(pathname);   //modified by mingxuan 2020-10-18
+    return vfs_table[index].ops->unlink(relpath);
 }
 
 int do_vlseek(int fd, int offset, int whence) {
+    assert(fd != -1 && "invalid fd");
     int index = p_proc_current->task.filp[fd]->dev_index;
-
-    //return device_table[index].op->lseek(fd, offset, whence);
-    return vfs_table[index].op->lseek(fd, offset, whence);  //modified by mingxuan 2020-10-18
-
+    assert(index != -1 && "invalid vfs index");
+    return vfs_table[index].ops->lseek(fd, offset, whence);
 }
 
-//int do_vcreate(char *pathname) {
-int do_vcreate(char *filepath) { //modified by mingxuan 2019-5-17
-    //added by mingxuan 2019-5-17
-    int state;
-    const char *path = filepath;
-
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,(char *)path);
-    pathname[pathlen] = 0;
-
-    int index;
-    index = get_index(pathname);
-    if(index == -1){
-        kprintf("pathname error! path: %s\n", path);
+int do_vcreate(const char *path) {
+    const char *relpath = NULL;
+    int         index   = get_vfs_index_and_relpath(path, &relpath);
+    if (index == -1) {
+        kprintf("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
-    state = vfs_table[index].op->create(pathname); //modified by mingxuan 2020-10-18
-    if (state == 1) {
-        kprintf("          create file success!");
-    } else {
-		DisErrorInfo(state);
-    }
+
+    int state = vfs_table[index].ops->create(relpath);
+    if (state != OK) { DisErrorInfo(state); }
     return state;
 }
 
-int do_vdelete(char *path) {
-
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-    index = get_index(pathname);
-    if(index==-1){
-        kprintf("pathname error!\n");
+int do_vdelete(const char *path) {
+    const char *relpath = NULL;
+    int         index   = get_vfs_index_and_relpath(path, &relpath);
+    if (index == -1) {
+        kprintf("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
-    //return device_table[index].op->delete(pathname);
-    return vfs_table[index].op->delete(pathname);   //modified by mingxuan 2020-10-18
+    return vfs_table[index].ops->delete (relpath);
 }
-int do_vopendir(char *path) {
-    int state;
 
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-    index = (int)(pathname[1]-'0');
-
-    for(int j=0;j<= pathlen-3;j++)
-    {
-        pathname[j] = pathname[j+3];
+int do_vopendir(const char *path) {
+    const char *relpath = NULL;
+    int         index   = get_vfs_index_and_relpath(path, &relpath);
+    if (index == -1) {
+        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        return -1;
     }
-    state = f_op_table[index].opendir(pathname);
-    if (state == 1) {
-        kprintf("          open dir success!");
-    } else {
-		DisErrorInfo(state);
-    }
+
+    int state = vfs_table[index].ops->opendir(relpath);
+    if (state != OK) { DisErrorInfo(state); }
     return state;
 }
 
-int do_vcreatedir(char *path) {
-    int state;
-
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-    index = (int)(pathname[1]-'0');
-
-    for(int j=0;j<= pathlen-3;j++)
-    {
-        pathname[j] = pathname[j+3];
+int do_vcreatedir(const char *path) {
+    const char *relpath = NULL;
+    int         index   = get_vfs_index_and_relpath(path, &relpath);
+    if (index == -1) {
+        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        return -1;
     }
-    state = f_op_table[index].createdir(pathname);
-    if (state == 1) {
-        kprintf("          create dir success!");
-    } else {
-		DisErrorInfo(state);
-    }
+
+    int state = vfs_table[index].ops->createdir(relpath);
+    if (state != OK) { DisErrorInfo(state); }
     return state;
 }
 
-int do_vdeletedir(char *path) {
-    int state;
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-    index = (int)(pathname[1]-'0');
-
-    for(int j=0;j<= pathlen-3;j++)
-    {
-        pathname[j] = pathname[j+3];
+int do_vdeletedir(const char *path) {
+    const char *relpath = NULL;
+    int         index   = get_vfs_index_and_relpath(path, &relpath);
+    if (index == -1) {
+        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        return -1;
     }
-    state = f_op_table[index].deletedir(pathname);
-    if (state == 1) {
-        kprintf("          delete dir success!");
-    } else {
-		DisErrorInfo(state);
-    }
+
+    int state = vfs_table[index].ops->deletedir(relpath);
+    if (state != OK) { DisErrorInfo(state); }
     return state;
+}
+
+int sys_open(void *uesp) {
+    const char *path  = (const char *)get_arg(uesp, 1);
+    int         flags = get_arg(uesp, 2);
+    return do_vopen(path, flags);
+}
+
+int sys_close(void *uesp) {
+    int fd = get_arg(uesp, 1);
+    return do_vclose(fd);
+}
+
+int sys_read(void *uesp) {
+    int   fd    = get_arg(uesp, 1);
+    char *buf   = (char *)get_arg(uesp, 2);
+    int   count = get_arg(uesp, 3);
+    return do_vread(fd, buf, count);
+}
+
+int sys_write(void *uesp) {
+    int         fd    = get_arg(uesp, 1);
+    const char *buf   = (const char *)get_arg(uesp, 2);
+    int         count = get_arg(uesp, 3);
+    return do_vwrite(fd, buf, count);
+}
+
+int sys_lseek(void *uesp) {
+    int fd     = get_arg(uesp, 1);
+    int offset = get_arg(uesp, 2);
+    int whence = get_arg(uesp, 3);
+    return do_vlseek(fd, offset, whence);
+}
+
+int sys_unlink(void *uesp) {
+    const char *path = (const char *)get_arg(uesp, 1);
+    return do_vunlink(path);
+}
+
+int sys_create(void *uesp) {
+    const char *path = (const char *)get_arg(uesp, 1);
+    return do_vcreate(path);
+}
+
+int sys_delete(void *uesp) {
+    const char *path = (const char *)get_arg(uesp, 1);
+    return do_vdelete(path);
+}
+
+int sys_opendir(void *uesp) {
+    const char *path = (const char *)get_arg(uesp, 1);
+    return do_vopendir(path);
+}
+
+int sys_createdir(void *uesp) {
+    const char *path = (const char *)get_arg(uesp, 1);
+    return do_vcreatedir(path);
+}
+
+int sys_deletedir(void *uesp) {
+    const char *path = (const char *)get_arg(uesp, 1);
+    return do_vdeletedir(path);
 }

@@ -17,7 +17,7 @@
 #include <proto.h>
 #include <fs_const.h>
 #include <hd.h>
-#include <vfs.h> //added by mingxuan 2019-5-17
+#include <unios/vfs.h>
 
 int        kernel_initial;
 int        ticks;

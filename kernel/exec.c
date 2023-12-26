@@ -10,7 +10,7 @@
 #include <proto.h>
 #include <elf.h>
 #include <fs.h> //added by mingxuan 2019-5-19
-#include <vfs.h>
+#include <unios/vfs.h>
 
 static u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute);
 static u32 exec_load(
