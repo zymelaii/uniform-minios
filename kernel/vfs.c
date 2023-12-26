@@ -86,8 +86,10 @@ static int get_vfs_index_and_relpath(const char *path, const char **p_relpath) {
         assert(devlen > 0);
         assert(path[devlen] == '/' || path[devlen] == '\0');
         //! get path relative to vfs device
-        //! NOTE: relpath may be '.', then make it empty
-        *p_relpath = path + devlen + (path[devlen] != '\0');
+        //! NOTE: relpath rules:
+        //! 1. given path `/dev/a/cc/e`, dev `/dev/a`, then relpath is `/cc/e`
+        //! 2. given path `/dev/a`, dev `/dev/a`, then relpath is `` (empty)
+        *p_relpath = path + devlen;
     }
 
     return index;

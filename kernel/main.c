@@ -111,7 +111,8 @@ int kernel_main() {
     p_proc_current = proc_table;
     kernel_initial = 0; // kernel initialization is done. added by xw, 18/5/31
     restart_initial();  // modified by xw, 18/4/19
-    while (1) {}
+
+    panic("unreachable");
 }
 
 /*************************************************************************
