@@ -1,0 +1,21 @@
+#pragma once
+
+#ifndef INSTALL_FILENAME
+#define INSTALL_FILENAME "app.tar"
+#endif
+
+#ifndef INSTALL_PHY_SECTOR
+#define INSTALL_PHY_SECTOR 7095
+#endif
+
+#ifndef INSTALL_NR_SECTORS
+#define INSTALL_NR_SECTORS 1000
+#endif
+
+#ifndef PART_START_SECTOR
+#define PART_START_SECTOR 6144
+#endif
+
+#ifndef INSTALL_START_SECTOR
+#define INSTALL_START_SECTOR ((INSTALL_PHY_SECTOR) - (PART_START_SECTOR))
+#endif

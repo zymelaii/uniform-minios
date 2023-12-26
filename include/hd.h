@@ -264,11 +264,11 @@ struct hd_cmd {
 #define FAT32_TYPE  0x2
 #define TTY_FS_TYPE 0x3 // added by mingxuan 2020-10-30
 
-struct part_info {
+typedef struct part_info {
     u32 base;    /* # of start sector (NOT byte offset, but SECTOR) */
     u32 size;    /* how many sectors in this partition */
     u32 fs_type; // added by mingxuan 2020-10-27
-};
+} part_info_t;
 
 /* main drive struct, one entry per drive */
 struct hd_info {

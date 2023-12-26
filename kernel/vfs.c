@@ -1,4 +1,5 @@
 #include <unios/vfs.h>
+#include <fs_const.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
@@ -13,11 +14,12 @@ static file_op_set_t       fs_op_table[NR_FS_OP];
 static superblock_op_set_t sb_op_table[NR_SB_OP];
 
 //! NOTE: used in get_next_dev_nr, generate available dev_nr from global counter
-//! FIXME: static variable failed to initialized in original minios
-int dev_nr_counter = 0;
+//! NOTE: auto zero is not available in kernel.bin, so mannually do it in
+//! vfs_setup_and_init
+int dev_nr_counter;
 
 //! initial vfs assignment: {tty0, tty1, tty2, orange, fat32}
-#define NR_TTY         (3)
+#define NR_TTY         (NR_CONSOLES)
 #define NR_INITIAL_VFS (NR_TTY + 2)
 
 //! vfs set
@@ -82,11 +84,10 @@ static int get_vfs_index_and_relpath(const char *path, const char **p_relpath) {
     if (index != -1) {
         int devlen = strlen(vfs_table[index].name);
         assert(devlen > 0);
-        assert(path[devlen - 1] == '/');
-
+        assert(path[devlen] == '/' || path[devlen] == '\0');
         //! get path relative to vfs device
-        *p_relpath = path + devlen + 1;
-        assert((*p_relpath)[0] != '/' && (*p_relpath)[0] != '\0');
+        //! NOTE: relpath may be '.', then make it empty
+        *p_relpath = path + devlen + (path[devlen] != '\0');
     }
 
     return index;
@@ -177,11 +178,14 @@ static void init_sb_op_table() {
     NULL_SB_OP.read = _null_sb_op_read;
     NULL_SB_OP.get  = _null_sb_op_get;
 
-    ORANGE_SB_OP.read = read_super_block;
-    ORANGE_SB_OP.get  = get_super_block;
+    ORANGE_SB_OP.read = read_orange_superblock;
+    ORANGE_SB_OP.get  = get_unique_superblock;
 }
 
 void vfs_setup_and_init() {
+    //! manually reset dev_nr_counter
+    dev_nr_counter = 0;
+
     //! init fd table
     const int nr_file_desc = sizeof(file_desc_table) / sizeof(file_desc_t);
     memset(file_desc_table, 0, sizeof(file_desc_table));

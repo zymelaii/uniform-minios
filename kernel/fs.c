@@ -1,5 +1,4 @@
-/// zcr copy from chapter9/d fs/main.c and modified it.
-
+#include <unios/config.h>
 #include <type.h>
 #include <const.h>
 #include <protect.h>
@@ -14,49 +13,13 @@
 #include <stdio.h>
 #include <assert.h>
 
-// added by xw, 18/8/28
-/* data */
+extern struct file_desc   file_desc_table[NR_FILE_DESC];
+extern struct super_block superblock_table[NR_SUPER_BLOCK];
+
 static struct inode *root_inode;
+static struct inode  inode_table[NR_INODE];
 
-// static struct file_desc f_desc_table[NR_FILE_DESC];	//deleted by mingxuan
-// 2020-10-30
-extern struct file_desc
-    file_desc_table[NR_FILE_DESC]; // modified by mingxuan 2020-10-30
-
-static struct inode inode_table[NR_INODE];
-
-// static struct super_block super_block[NR_SUPER_BLOCK];	//deleted by
-// mingxuan 2020-10-30
-extern struct super_block
-    superblock_table[NR_SUPER_BLOCK]; // modified by mingxuan 2020-10-30
-
-/* functions */
 static void mkfs();
-// static void read_super_block(int dev);
-void read_super_block(int dev); // modified by mingxuan 2020-10-30
-// static struct super_block* get_super_block(int dev);
-struct super_block *get_super_block(int dev); // modified by mingxuan 2020-10-30
-
-static int do_open(MESSAGE *fs_msg);
-static int do_close(int fd);
-static int do_lseek(MESSAGE *fs_msg);
-static int do_rdwt(MESSAGE *fs_msg);
-static int do_unlink(MESSAGE *fs_msg);
-
-int real_open(const char *pathname, int flags); // modified by mingxuan
-                                                // 2019-5-17
-int real_close(int fd); // modified by mingxuan 2019-5-17
-int real_read(
-    int   fd,
-    void *buf,
-    int count); // 注意:buf的类型被修改成char //modified by mingxuan 2019-5-17
-int real_write(
-    int         fd,
-    const void *buf,
-    int count); // 注意:buf的类型被修改成char //modified by mingxuan 2019-5-17
-int real_unlink(const char *pathname); // modified by mingxuan 2019-5-17
-int real_lseek(int fd, int offset, int whence); // modified by mingxuan
-                                                // 2019-5-17
 
 static int
     rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
@@ -77,11 +40,8 @@ static void
 static int alloc_imap_bit(int dev);
 static int alloc_smap_bit(int dev, int nr_sects_to_alloc);
 
-static int memcmp(const void *s1, const void *s2, int n);
-//~xw
-int get_fs_dev(int drive, int fs_type); // added by mingxuan 2020-10-27
+int get_fs_dev(int drive, int fs_type);
 
-// added by mingxuan 2020-10-27
 int get_fs_dev(int drive, int fs_type) {
     int i = 0;
     for (i = 0; i < NR_PRIM_PER_DRIVE; i++) {
@@ -89,13 +49,10 @@ int get_fs_dev(int drive, int fs_type) {
             return ((DEV_HD << MAJOR_SHIFT) | i);
     }
 
-    // added by mingxuan 2020-10-29
     for (i = 0; i < NR_SUB_PER_DRIVE; i++) {
         if (hd_info[drive].logical[i].fs_type == fs_type)
-            return (
-                (DEV_HD << MAJOR_SHIFT)
-                | (i
-                   + MINOR_hd1a)); // logic的下标i加上hd1a才是该逻辑分区的次设备号
+            // logic的下标i加上hd1a才是该逻辑分区的次设备号
+            return ((DEV_HD << MAJOR_SHIFT) | (i + MINOR_hd1a));
     }
     return 0;
 }
@@ -103,29 +60,24 @@ int get_fs_dev(int drive, int fs_type) {
 /// zcr added
 void init_fs() {
     kprintf("Initializing file system...  ");
+    memset(inode_table, 0, sizeof(inode_table));
+    superblock_t *sb = superblock_table;
 
-    int i;
-    for (i = 0; i < NR_INODE; i++)
-        memset(&inode_table[i], 0, sizeof(struct inode));
-    struct super_block *sb = superblock_table; // deleted by mingxuan 2020-10-30
+    int orange_dev = get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE);
 
-    int orange_dev =
-        get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE); // added by mingxuan 2020-10-27
+    //! load super block of ROOT
+    read_orange_superblock(orange_dev);
+    superblock_t *sb_root = get_unique_superblock(orange_dev);
 
-    /* load super block of ROOT */
-    read_super_block(orange_dev);     // modified by mingxuan 2020-10-27
-    sb = get_super_block(orange_dev); // modified by mingxuan 2020-10-27
+    kprintf("Superblock Address:0x%x \n", sb_root);
 
-    kprintf("Superblock Address:0x%x \n", sb);
-
-    if (sb->magic != MAGIC_V1) { // deleted by mingxuan 2019-5-20
+    if (sb_root->magic != MAGIC_V1) {
         mkfs();
         kprintf("Make file system Done.\n");
-        read_super_block(orange_dev); // modified by mingxuan 2020-10-27
+        read_orange_superblock(orange_dev);
     }
 
-    root_inode =
-        get_inode(orange_dev, ROOT_INODE); // modified by mingxuan 2020-10-27
+    root_inode = get_inode(orange_dev, ROOT_INODE);
 }
 
 /*****************************************************************************
@@ -134,146 +86,119 @@ void init_fs() {
 /**
  * <Ring 1> Make a available Orange'S FS in the disk. It will
  *          - Write a super block to sector 1.
- *          - Create three special files: dev_tty0, dev_tty1, dev_tty2
+ *          - Create three special files: dev/tty0, dev/tty1, dev/tty2
  *          - Create the inode map
  *          - Create the sector map
  *          - Create the inodes of the files
  *          - Create `/', the root directory
  *****************************************************************************/
 static void mkfs() {
-    MESSAGE driver_msg;
-    int     i, j;
-
     int bits_per_sect = SECTOR_SIZE * 8; /* 8 bits per byte */
 
     // local array, to substitute global fsbuf. added by xw, 18/12/27
     char fsbuf[SECTOR_SIZE];
 
-    int orange_dev =
-        get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE); // added by mingxuan 2020-10-27
+    int orange_dev = get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE);
 
-    /* get the geometry of ROOTDEV */
-    struct part_info geo;
-    driver_msg.type = DEV_IOCTL;
-    // driver_msg.DEVICE	= MINOR(ROOT_DEV);		// deleted by mingxuan
-    // 2020-10-27
-    driver_msg.DEVICE  = MINOR(orange_dev); // modified by mingxuan 2020-10-27
-    driver_msg.REQUEST = DIOCTL_GET_GEO;
-    driver_msg.BUF     = &geo;
-    driver_msg.PROC_NR = proc2pid(p_proc_current);
-    // assert(dd_map[MAJOR(ROOT_DEV)].driver_nr != INVALID_DRIVER);
-    // send_recv(BOTH, dd_map[MAJOR(ROOT_DEV)].driver_nr, &driver_msg);
-    hd_ioctl(&driver_msg);
+    MESSAGE     msg = {};
+    part_info_t geo = {};
+    msg.type        = DEV_IOCTL;
+    msg.DEVICE      = MINOR(orange_dev);
+    msg.REQUEST     = DIOCTL_GET_GEO;
+    msg.BUF         = &geo;
+    msg.PROC_NR     = proc2pid(p_proc_current);
+    hd_ioctl(&msg);
 
     kprintf("dev size: 0x%x sectors\n", geo.size);
 
-    /************************/
-    /*      super block     */
-    /************************/
-    struct super_block sb;
+    superblock_t sb   = {};
     sb.magic          = MAGIC_V1;
     sb.nr_inodes      = bits_per_sect;
     sb.nr_inode_sects = sb.nr_inodes * INODE_SIZE / SECTOR_SIZE;
     sb.nr_sects       = geo.size; /* partition size in sector */
     sb.nr_imap_sects  = 1;
     sb.nr_smap_sects  = sb.nr_sects / bits_per_sect + 1;
-    sb.n_1st_sect     = 1 + 1 + /* boot sector & super block */
-                    sb.nr_imap_sects + sb.nr_smap_sects + sb.nr_inode_sects;
+    //! include boot sector & superblock
+    sb.n_1st_sect = sb.nr_imap_sects + sb.nr_smap_sects + sb.nr_inode_sects + 2;
     sb.root_inode = ROOT_INODE;
     sb.inode_size = INODE_SIZE;
 
-    struct inode x;
+    struct inode x     = {};
     sb.inode_isize_off = (int)&x.i_size - (int)&x;
     sb.inode_start_off = (int)&x.i_start_sect - (int)&x;
     sb.dir_ent_size    = DIR_ENTRY_SIZE;
 
-    struct dir_entry de;
-    sb.dir_ent_inode_off = (int)&de.inode_nr - (int)&de;
-    sb.dir_ent_fname_off = (int)&de.name - (int)&de;
+    struct dir_entry de  = {};
+    sb.dir_ent_inode_off = (void *)&de.inode_nr - (void *)&de;
+    sb.dir_ent_fname_off = (void *)&de.name - (void *)&de;
 
-    sb.sb_dev  = orange_dev;  // added by mingxuan 2020-10-30
-    sb.fs_type = ORANGE_TYPE; // added by mingxuan 2020-10-30
+    sb.sb_dev  = orange_dev;
+    sb.fs_type = ORANGE_TYPE;
 
+    //! FIXME: 0x90 is opcode of nop, but why?
     memset(fsbuf, 0x90, SECTOR_SIZE);
+    //! FIXME: size should ignore mem member field
     memcpy(fsbuf, &sb, SUPER_BLOCK_SIZE);
+    WR_SECT(orange_dev, 1, fsbuf);
 
-    /* write the super block */
-    WR_SECT(orange_dev, 1, fsbuf); // modified by mingxuan 2020-10-27
-
-    kprintf("devbase:0x%x00", (geo.base + 0) * 2);
-    kprintf(" sb:0x%x00", (geo.base + 1) * 2);
-    kprintf(" imap:0x%x00", (geo.base + 2) * 2);
-    kprintf(" smap:0x%x00\n", (geo.base + 2 + sb.nr_imap_sects) * 2);
     kprintf(
-        "        inodes:0x%x00",
-        (geo.base + 2 + sb.nr_imap_sects + sb.nr_smap_sects) * 2);
-    kprintf(" 1st_sector:0x%x00\n", (geo.base + sb.n_1st_sect) * 2);
+        "{\n"
+        "  device base: 0x%x00,\n"
+        "  superbock: 0x%x00,\n"
+        "  inode map: 0x%x00,\n"
+        "  sector map: 0x%x00,\n"
+        "  inodes: 0x%x00,\n"
+        "  first sector: 0x%x00,\n"
+        "}\n",
+        (geo.base + 0) * 2,
+        (geo.base + 1) * 2,
+        (geo.base + 2) * 2,
+        (geo.base + 2 + sb.nr_imap_sects) * 2,
+        (geo.base + 2 + sb.nr_imap_sects + sb.nr_smap_sects) * 2,
+        (geo.base + sb.n_1st_sect) * 2);
 
-    /************************/
-    /*       inode map      */
-    /************************/
+    //! resolve inode map
+    //! include root, curdir, tty0, tty1, tty2, orange
     memset(fsbuf, 0, SECTOR_SIZE);
-    for (i = 0; i < (NR_CONSOLES + 3); i++) // modified by mingxuan 2019-5-22
-        fsbuf[0] |= 1 << i;
+    for (int i = 0; i < (NR_CONSOLES + 3); ++i) { fsbuf[0] |= 1 << i; };
+    WR_SECT(orange_dev, 2, fsbuf);
 
-    WR_SECT(orange_dev, 2, fsbuf); // modified by mingxuan 2020-10-27
-
-    /************************/
-    /*      secter map      */
-    /************************/
-    memset(fsbuf, 0, SECTOR_SIZE);
+    //! resolve sector map
+    //! FIXME: why assume 1 sector is enough for nr_sects in sector map
     int nr_sects = NR_DEFAULT_FILE_SECTS + 1;
-    for (i = 0; i < nr_sects / 8; i++) fsbuf[i] = 0xFF;
-
-    for (j = 0; j < nr_sects % 8; j++) fsbuf[i] |= (1 << j);
-
-    WR_SECT(
-        orange_dev,
-        2 + sb.nr_imap_sects,
-        fsbuf); // modified by mingxuan 2020-10-27
-
-    /* zeromemory the rest sector-map */
     memset(fsbuf, 0, SECTOR_SIZE);
-    for (i = 1; i < sb.nr_smap_sects; i++)
-        WR_SECT(
-            orange_dev,
-            2 + sb.nr_imap_sects + i,
-            fsbuf); // modified by mingxuan 2020-10-27
+    //! NOTE: the following 2 lines fills nr_sects bits
+    memset(fsbuf, 0xff, nr_sects / 8);
+    fsbuf[nr_sects / 8] |= (1 << (nr_sects % 8 + 1)) - 1;
+    //! write first sector map
+    WR_SECT(orange_dev, 2 + sb.nr_imap_sects, fsbuf);
+    //! zero the rest sector map
+    memset(fsbuf, 0, SECTOR_SIZE);
+    for (int i = 1; i < sb.nr_smap_sects; ++i) {
+        WR_SECT(orange_dev, 2 + sb.nr_imap_sects + i, fsbuf);
+    }
 
-    /* app.tar */
-    // added by mingxuan 2019-5-19
-    int bit_offset = INSTALL_START_SECTOR - sb.n_1st_sect
-                   + 1; /* sect M <-> bit (M - sb.n_1stsect + 1) */
+    //! resolve app.tar
+    //! sect M <-> bit (M - sb.n_1stsect + 1)
+    int bit_offset      = INSTALL_START_SECTOR - sb.n_1st_sect + 1;
     int bit_off_in_sect = bit_offset % (SECTOR_SIZE * 8);
     int bit_left        = INSTALL_NR_SECTORS;
     int cur_sect        = bit_offset / (SECTOR_SIZE * 8);
-    RD_SECT(
-        orange_dev,
-        2 + sb.nr_imap_sects + cur_sect,
-        fsbuf); // modified by mingxuan 2020-10-27
+    RD_SECT(orange_dev, 2 + sb.nr_imap_sects + cur_sect, fsbuf);
     while (bit_left) {
         int byte_off = bit_off_in_sect / 8;
         /* this line is ineffecient in a loop, but I don't care */
         fsbuf[byte_off] |= 1 << (bit_off_in_sect % 8);
-        bit_left--;
-        bit_off_in_sect++;
+        --bit_left;
+        ++bit_off_in_sect;
         if (bit_off_in_sect == (SECTOR_SIZE * 8)) {
-            WR_SECT(
-                orange_dev,
-                2 + sb.nr_imap_sects + cur_sect,
-                fsbuf); // modified by mingxuan 2020-10-27
-            cur_sect++;
-            RD_SECT(
-                orange_dev,
-                2 + sb.nr_imap_sects + cur_sect,
-                fsbuf); // modified by mingxuan 2020-10-27
+            WR_SECT(orange_dev, 2 + sb.nr_imap_sects + cur_sect, fsbuf);
+            ++cur_sect;
+            RD_SECT(orange_dev, 2 + sb.nr_imap_sects + cur_sect, fsbuf);
             bit_off_in_sect = 0;
         }
     }
-    WR_SECT(
-        orange_dev,
-        2 + sb.nr_imap_sects + cur_sect,
-        fsbuf); // modified by mingxuan 2020-10-27
+    WR_SECT(orange_dev, 2 + sb.nr_imap_sects + cur_sect, fsbuf);
 
     /************************/
     /*       inodes         */
@@ -283,18 +208,19 @@ static void mkfs() {
     struct inode *pi = (struct inode *)fsbuf;
     pi->i_mode       = I_DIRECTORY;
 
-    // modified by mingxuan 2019-5-21
-    pi->i_size =
-        DIR_ENTRY_SIZE * 5; /* 5 files: (预定义5个文件)
-                             * `.',
-                             * `dev_tty0', `dev_tty1', `dev_tty2','app.tar'
-                             */
+    //! 预定义 5 个文件
+    //! 1. 当前目录 .
+    //! 2. TTY0 dev/tty0
+    //! 3. TTY1 dev/tty1
+    //! 4. TTY2 dev/tty2
+    //! 5. app.tar
+    pi->i_size = DIR_ENTRY_SIZE * 5;
 
     pi->i_start_sect = sb.n_1st_sect;
     pi->i_nr_sects   = NR_DEFAULT_FILE_SECTS;
 
-    /* inode of `/dev_tty0~2' */
-    for (i = 0; i < NR_CONSOLES; i++) {
+    /* inode of `/dev/tty0~2' */
+    for (int i = 0; i < NR_CONSOLES; ++i) {
         pi               = (struct inode *)(fsbuf + (INODE_SIZE * (i + 1)));
         pi->i_mode       = I_CHAR_SPECIAL;
         pi->i_size       = 0;
@@ -303,17 +229,13 @@ static void mkfs() {
     }
 
     /* inode of /app.tar */
-    // added by mingxuan 2019-5-19
     pi         = (struct inode *)(fsbuf + (INODE_SIZE * (NR_CONSOLES + 1)));
     pi->i_mode = I_REGULAR;
     pi->i_size = INSTALL_NR_SECTORS * SECTOR_SIZE;
     pi->i_start_sect = INSTALL_START_SECTOR;
     pi->i_nr_sects   = INSTALL_NR_SECTORS;
 
-    WR_SECT(
-        orange_dev,
-        2 + sb.nr_imap_sects + sb.nr_smap_sects,
-        fsbuf); // modified by mingxuan 2020-10-27
+    WR_SECT(orange_dev, 2 + sb.nr_imap_sects + sb.nr_smap_sects, fsbuf);
 
     /************************/
     /*          `/'         */
@@ -324,30 +246,17 @@ static void mkfs() {
     pde->inode_nr = 1;
     strcpy(pde->name, ".");
 
-    /* dir entries of `/dev_tty0~2' */
-    for (i = 0; i < NR_CONSOLES; i++) {
-        pde++;
-        pde->inode_nr = i + 2; /* dev_tty0's inode_nr is 2 */
-        switch (i) {
-            case 0:
-                strcpy(pde->name, "dev_tty0");
-                break;
-            case 1:
-                strcpy(pde->name, "dev_tty1");
-                break;
-            case 2:
-                strcpy(pde->name, "dev_tty2");
-                break;
-        }
+    //! assign dir entry for tty
+    for (int i = 0; i < NR_CONSOLES; i++) {
+        ++pde;
+        pde->inode_nr = i + 2; /* dev/tty0's inode_nr is 2 */
+        snprintf(pde->name, sizeof(pde->name), "dev/tty%d", i);
     }
 
-    (++pde)->inode_nr = NR_CONSOLES + 2; // added by mingxuan 2019-5-19
-    strcpy(pde->name, INSTALL_FILENAME); // added by mingxuan 2019-5-19
-
-    // WR_SECT(ROOT_DEV, sb.n_1st_sect, fsbuf);	//modified by xw, 18/12/27
-    // //deleted by mingxuan 2020-10-27
-    WR_SECT(orange_dev, sb.n_1st_sect, fsbuf); // modified by mingxuan
-                                               // 2020-10-27
+    //! assign dir entrie
+    (++pde)->inode_nr = NR_CONSOLES + 2;
+    strcpy(pde->name, INSTALL_FILENAME);
+    WR_SECT(orange_dev, sb.n_1st_sect, fsbuf);
 }
 
 /*****************************************************************************
@@ -381,7 +290,6 @@ static int rw_sector(
     return 0;
 }
 
-// added by xw, 18/8/27
 static int rw_sector_sched(
     int io_type, int dev, int pos, int bytes, int proc_nr, void *buf) {
     MESSAGE driver_msg;
@@ -396,135 +304,6 @@ static int rw_sector_sched(
 
     hd_rdwt_sched(&driver_msg);
     return 0;
-}
-
-//~xw
-
-// added by zcr from chapter9/e/lib/open.c and modified it.
-
-/*****************************************************************************
- *                                open
- *****************************************************************************/
-/**
- * open/create a file.
- *
- * @param pathname  The full path of the file to be opened/created.
- * @param flags     O_CREAT, O_RDWR, etc.
- *
- * @return File descriptor if successful, otherwise -1.
- *****************************************************************************/
-// open is a syscall interface now. added by xw, 18/6/18
-//   int open(const char *pathname, int flags)
-//  static int real_open(const char *pathname, int flags)	//deleted by
-//  mingxuan 2019-5-17
-int real_open(const char *pathname, int flags) // modified by mingxuan 2019-5-17
-{
-    // added by xw, 18/8/27
-    MESSAGE fs_msg;
-
-    fs_msg.type     = OPEN;
-    fs_msg.PATHNAME = (void *)pathname;
-    fs_msg.FLAGS    = flags;
-    fs_msg.NAME_LEN = strlen(pathname);
-    fs_msg.source   = proc2pid(p_proc_current);
-
-    int fd = do_open(&fs_msg);
-
-    return fd;
-}
-
-/*****************************************************************************
- *                                do_open
- *****************************************************************************/
-/**
- * Open a file and return the file descriptor.
- *
- * @return File descriptor if successful, otherwise a negative error code.
- *****************************************************************************/
-/// zcr modified.
-static int do_open(MESSAGE *fs_msg) {
-    /*caller_nr is the process number of the */
-    int fd = -1; /* return value */
-
-    char pathname[MAX_PATH];
-
-    /* get parameters from the message */
-    int flags    = fs_msg->FLAGS;    /* access mode */
-    int name_len = fs_msg->NAME_LEN; /* length of filename */
-    int src      = fs_msg->source;   /* caller proc nr. */
-
-    memcpy(
-        (void *)va2la(src, pathname),
-        (void *)va2la(src, fs_msg->PATHNAME),
-        name_len);
-    pathname[name_len] = 0;
-
-    /* find a free slot in PROCESS::filp[] */
-    int i;
-    for (i = 0; i < NR_FILES; i++) { // modified by mingxuan 2019-5-20
-        if (p_proc_current->task.filp[i] == 0) {
-            fd = i;
-            break;
-        }
-    }
-
-    assert(0 <= fd && fd < NR_FILES);
-
-    /* find a free slot in f_desc_table[] */
-    for (i = 0; i < NR_FILE_DESC; i++)
-        // modified by mingxuan 2019-5-17
-        if (file_desc_table[i].flag == 0) break;
-
-    assert(i < NR_FILE_DESC);
-
-    int           inode_nr = search_file(pathname);
-    struct inode *pin      = 0;
-    if (flags & O_CREAT) {
-        if (inode_nr) {
-            return -1;
-        } else {
-            pin = create_file(pathname, flags);
-        }
-    } else {
-        char          filename[MAX_PATH];
-        struct inode *dir_inode;
-        if (strip_path(filename, pathname, &dir_inode) != 0) return -1;
-        pin = get_inode(
-            dir_inode->i_dev, inode_nr); // modified by mingxuan 2019-5-20
-    }
-
-    if (pin) {
-        /* connects proc with file_descriptor */
-        p_proc_current->task.filp[fd] = &file_desc_table[i];
-
-        file_desc_table[i].flag = 1; // added by mingxuan 2019-5-17
-
-        /* connects file_descriptor with inode */
-        file_desc_table[i].fd_node.fd_inode =
-            pin; // modified by mingxuan 2019-5-17
-
-        file_desc_table[i].fd_mode = flags;
-        file_desc_table[i].fd_pos  = 0;
-
-        int imode = pin->i_mode & I_TYPE_MASK;
-
-        if (imode == I_CHAR_SPECIAL) {
-            // MESSAGE driver_msg;
-
-            // int dev = pin->i_start_sect;
-            //?
-        } else if (imode == I_DIRECTORY) {
-            if (pin->i_num != ROOT_INODE) { panic("pin->i_num != ROOT_INODE"); }
-        } else {
-            if (pin->i_mode != I_REGULAR) {
-                panic("Panic: pin->i_mode != I_REGULAR");
-            }
-        }
-    } else {
-        return -1;
-    }
-
-    return fd;
 }
 
 /*****************************************************************************
@@ -544,48 +323,12 @@ static int do_open(MESSAGE *fs_msg) {
 static struct inode *create_file(char *path, int flags) {
     char          filename[MAX_PATH];
     struct inode *dir_inode;
-
     if (strip_path(filename, path, &dir_inode) != 0) return 0;
-
-    int inode_nr = alloc_imap_bit(dir_inode->i_dev);
-
+    int inode_nr     = alloc_imap_bit(dir_inode->i_dev);
     int free_sect_nr = alloc_smap_bit(dir_inode->i_dev, NR_DEFAULT_FILE_SECTS);
-
     struct inode *newino = new_inode(dir_inode->i_dev, inode_nr, free_sect_nr);
-
     new_dir_entry(dir_inode, newino->i_num, filename);
-
     return newino;
-}
-
-/// zcr copied from ch9/e/fs/misc.c
-
-/*****************************************************************************
- *                                memcmp
- *****************************************************************************/
-/**
- * Compare memory areas.
- *
- * @param s1  The 1st area.
- * @param s2  The 2nd area.
- * @param n   The first n bytes will be compared.
- *
- * @return  an integer less than, equal to, or greater than zero if the first
- *          n bytes of s1 is found, respectively, to be less than, to match,
- *          or  be greater than the first n bytes of s2.
- *****************************************************************************/
-static int memcmp(const void *s1, const void *s2, int n) {
-    if ((s1 == 0) || (s2 == 0)) { /* for robustness */
-        return (s1 - s2);
-    }
-
-    const char *p1 = (const char *)s1;
-    const char *p2 = (const char *)s2;
-    int         i;
-    for (i = 0; i < n; i++, p1++, p2++) {
-        if (*p1 != *p2) { return (*p1 - *p2); }
-    }
-    return 0;
 }
 
 /*****************************************************************************
@@ -608,12 +351,10 @@ static int search_file(char *path) {
     struct inode *dir_inode;
     if (strip_path(filename, path, &dir_inode) != 0) return 0;
 
-    if (filename[0] == 0) /* path: "/" */
-        return dir_inode->i_num;
+    //! path must begin with root dir "/"
+    if (filename[0] == 0) { return dir_inode->i_num; }
 
-    /**
-     * Search the dir for the file.
-     */
+    //! Search the dir for the file.
     int dir_blk0_nr = dir_inode->i_start_sect;
     int nr_dir_blks = (dir_inode->i_size + SECTOR_SIZE - 1) / SECTOR_SIZE;
     int nr_dir_entries =
@@ -629,10 +370,7 @@ static int search_file(char *path) {
     for (i = 0; i < nr_dir_blks; i++) {
         // RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified
         // by xw, 18/12/27
-        RD_SECT(
-            dir_inode->i_dev,
-            dir_blk0_nr + i,
-            fsbuf); // modified by mingxuan 2019-5-20
+        RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
         pde = (struct dir_entry *)fsbuf;
         for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++, pde++) {
             if (memcmp(filename, pde->name, MAX_FILENAME_LEN) == 0)
@@ -676,83 +414,57 @@ static int search_file(char *path) {
  *
  * @return Zero if success, otherwise the pathname is not valid.
  *****************************************************************************/
-static int
-    strip_path(char *filename, const char *pathname, struct inode **ppinode) {
-    const char *s = pathname;
-    char       *t = filename;
 
-    if (s == 0) return -1;
-
-    if (*s == '/') s++;
-
+static int strip_path(char *file, const char *path, struct inode **ppinode) {
+    const char *s = path;
+    char       *t = file;
+    if (s == 0) { return -1; }
+    if (*s == '/') { s++; }
     while (*s) { /* check each character */
-        if (*s == '/') return -1;
+        if (*s == '/') { return -1; }
         *t++ = *s++;
-        /* if filename is too long, just truncate it */
-        if (t - filename >= MAX_FILENAME_LEN) break;
+        /* if file is too long, just truncate it */
+        if (t - file >= MAX_FILENAME_LEN) { break; }
     }
-    *t = 0;
-
+    *t       = 0;
     *ppinode = root_inode;
-
     return 0;
 }
 
-/*****************************************************************************
- *                                read_super_block
- *****************************************************************************/
-/**
- * <Ring 1> Read super block from the given device then write it into a free
- *          super_block[] slot.
- *
- * @param dev  From which device the super block comes.
- *****************************************************************************/
-// static void read_super_block(int dev)
-void read_super_block(int dev) // modified by mingxuan 2020-10-30
-{
-    int     i;
-    MESSAGE driver_msg;
-    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
-                             // by xw, 18/12/27
+void read_orange_superblock(int dev) {
+    char fsbuf[SECTOR_SIZE] = {};
 
+    MESSAGE driver_msg  = {};
     driver_msg.type     = DEV_READ;
     driver_msg.DEVICE   = MINOR(dev);
     driver_msg.POSITION = SECTOR_SIZE * 1;
     driver_msg.BUF      = fsbuf;
     driver_msg.CNT      = SECTOR_SIZE;
     driver_msg.PROC_NR  = proc2pid(p_proc_current); /// TASK_A
-
     hd_rdwt(&driver_msg);
 
-    for (i = 0; i < NR_SUPER_BLOCK; i++)
-        if (superblock_table[i].fs_type == ORANGE_TYPE) break;
-    if (i == NR_SUPER_BLOCK) panic("Cannot find orange's superblock!");
+    int index = 0;
+    while (index < NR_SUPER_BLOCK) {
+        if (superblock_table[index].fs_type == ORANGE_TYPE) { break; }
+        ++index;
+    }
+    assert(index < NR_SUPER_BLOCK && "orange's surblock not exists");
 
-    struct super_block *psb = (struct super_block *)fsbuf;
-
-    superblock_table[i] = *psb;
-
-    superblock_table[i].sb_dev  = dev;
-    superblock_table[i].fs_type = ORANGE_TYPE; // added by mingxuan 2020-10-30
+    superblock_t *sb = &superblock_table[index];
+    memcpy(sb, fsbuf, sizeof(superblock_t));
+    sb->sb_dev  = dev;
+    sb->fs_type = ORANGE_TYPE;
 }
 
-/*****************************************************************************
- *                                get_super_block
- *****************************************************************************/
-/**
- * <Ring 1> Get the super block from super_block[].
- *
- * @param dev Device nr.
- *
- * @return Super block ptr.
- *****************************************************************************/
-struct super_block *get_super_block(int dev) // modified by mingxuan 2020-10-30
-{
-    struct super_block *sb = superblock_table;
-    for (; sb < &superblock_table[NR_SUPER_BLOCK]; sb++) {
-        if (sb->sb_dev == dev) return sb;
+superblock_t *get_unique_superblock(int dev) {
+    superblock_t *sb = NULL;
+    for (int i = 0; i < NR_SUPER_BLOCK; ++i) {
+        if (superblock_table[i].sb_dev != dev) { continue; }
+        //! expected device is not unique
+        if (sb != NULL) { return NULL; }
+        sb = &superblock_table[i];
     }
-    return 0;
+    return sb;
 }
 
 /*****************************************************************************
@@ -792,12 +504,11 @@ static struct inode *get_inode(int dev, int num) {
     q->i_num = num;
     q->i_cnt = 1;
 
-    struct super_block *sb     = get_super_block(dev);
-    int                 blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
+    superblock_t *sb     = get_unique_superblock(dev);
+    int           blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
                + ((num - 1) / (SECTOR_SIZE / INODE_SIZE));
-    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
-                             // by xw, 18/12/27
-    RD_SECT(dev, blk_nr, fsbuf); // added by xw, 18/12/27
+    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
+    RD_SECT(dev, blk_nr, fsbuf);
     struct inode *pinode =
         (struct inode
              *)((u8 *)fsbuf + ((num - 1) % (SECTOR_SIZE / INODE_SIZE)) * INODE_SIZE);
@@ -808,7 +519,6 @@ static struct inode *get_inode(int dev, int num) {
     return q;
 }
 
-// added by xw, 18/8/27
 static struct inode *get_inode_sched(int dev, int num) {
     if (num == 0) return 0;
 
@@ -833,12 +543,12 @@ static struct inode *get_inode_sched(int dev, int num) {
     q->i_num = num;
     q->i_cnt = 1;
 
-    struct super_block *sb     = get_super_block(dev);
-    int                 blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
+    superblock_t *sb     = get_unique_superblock(dev);
+    int           blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
                + ((num - 1) / (SECTOR_SIZE / INODE_SIZE));
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
                              // by xw, 18/12/27
-    RD_SECT_SCHED(dev, blk_nr, fsbuf); // added by xw, 18/12/27
+    RD_SECT_SCHED(dev, blk_nr, fsbuf);
     struct inode *pinode =
         (struct inode
              *)((u8 *)fsbuf + ((num - 1) % (SECTOR_SIZE / INODE_SIZE)) * INODE_SIZE);
@@ -860,7 +570,7 @@ static struct inode *get_inode_sched(int dev, int num) {
  * @param pinode I-node ptr.
  *****************************************************************************/
 static void put_inode(struct inode *pinode) {
-    // assert(pinode->i_cnt > 0);
+    assert(pinode->i_cnt > 0);
     pinode->i_cnt--;
 }
 
@@ -874,13 +584,13 @@ static void put_inode(struct inode *pinode) {
  * @param p I-node ptr.
  *****************************************************************************/
 static void sync_inode(struct inode *p) {
-    struct inode       *pinode;
-    struct super_block *sb     = get_super_block(p->i_dev);
-    int                 blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
+    struct inode *pinode;
+    superblock_t *sb     = get_unique_superblock(p->i_dev);
+    int           blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
                + ((p->i_num - 1) / (SECTOR_SIZE / INODE_SIZE));
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
                              // by xw, 18/12/27
-    RD_SECT(p->i_dev, blk_nr, fsbuf); // modified by mingxuan 2019-5-20
+    RD_SECT(p->i_dev, blk_nr, fsbuf);
     pinode =
         (struct inode
              *)((u8 *)fsbuf + (((p->i_num - 1) % (SECTOR_SIZE / INODE_SIZE)) * INODE_SIZE));
@@ -888,10 +598,9 @@ static void sync_inode(struct inode *p) {
     pinode->i_size       = p->i_size;
     pinode->i_start_sect = p->i_start_sect;
     pinode->i_nr_sects   = p->i_nr_sects;
-    WR_SECT(p->i_dev, blk_nr, fsbuf); // modified by mingxuan 2019-5-20
+    WR_SECT(p->i_dev, blk_nr, fsbuf);
 }
 
-/// added by zcr (from ch9/e/fs/open.c)
 /*****************************************************************************
  *                                new_inode
  *****************************************************************************/
@@ -907,8 +616,7 @@ static void sync_inode(struct inode *p) {
 static struct inode *new_inode(int dev, int inode_nr, int start_sect) {
     // struct inode * new_inode = get_inode_sched(dev, inode_nr);	//modified
     // by xw, 18/8/28
-    struct inode *new_inode =
-        get_inode(dev, inode_nr); // modified by mingxuan 2019-5-20
+    struct inode *new_inode = get_inode(dev, inode_nr);
 
     new_inode->i_mode       = I_REGULAR;
     new_inode->i_size       = 0;
@@ -955,10 +663,7 @@ static void
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
                              // by xw, 18/12/27
     for (i = 0; i < nr_dir_blks; i++) {
-        RD_SECT(
-            dir_inode->i_dev,
-            dir_blk0_nr + i,
-            fsbuf); // modified by mingxuan 2019-5-20
+        RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
 
         pde = (struct dir_entry *)fsbuf;
         for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++, pde++) {
@@ -981,41 +686,27 @@ static void
     strcpy(new_de->name, filename);
 
     /* write dir block -- ROOT dir block */
-    WR_SECT(
-        dir_inode->i_dev,
-        dir_blk0_nr + i,
-        fsbuf); // added by mingxuan 2019-5-20
+    WR_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
 
     /* update dir inode */
     sync_inode(dir_inode);
 }
 
-/*****************************************************************************
- *                                alloc_imap_bit
- *****************************************************************************/
-/**
- * Allocate a bit in inode-map.
- *
- * @param dev  In which device the inode-map is located.
- *
- * @return  I-node nr.
- *****************************************************************************/
 static int alloc_imap_bit(int dev) {
     int inode_nr = 0;
     int i, j, k;
 
-    int imap_blk0_nr       = 1 + 1; /* 1 boot sector & 1 super block */
-    struct super_block *sb = get_super_block(dev);
+    int           imap_blk0_nr = 1 + 1; /* 1 boot sector & 1 super block */
+    superblock_t *sb           = get_unique_superblock(dev);
 
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
                              // by xw, 18/12/27
 
     for (i = 0; i < sb->nr_imap_sects; i++) {
-        RD_SECT(dev, imap_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
+        RD_SECT(dev, imap_blk0_nr + i, fsbuf);
 
         for (j = 0; j < SECTOR_SIZE; j++) {
-            if (fsbuf[j] == '\xFF') // modified by xw, 18/12/28
-                continue;
+            if (fsbuf[j] == '\xFF') continue;
 
             /* skip `1' bits */
             for (k = 0; ((fsbuf[j] >> k) & 1) != 0; k++) {}
@@ -1025,8 +716,8 @@ static int alloc_imap_bit(int dev) {
             fsbuf[j] |= (1 << k);
 
             /* write the bit to imap */
-            WR_SECT(dev, imap_blk0_nr + i, fsbuf); // added by mingxuan
-                                                   // 2019-5-20
+            WR_SECT(dev, imap_blk0_nr + i, fsbuf);
+            // 2019-5-20
             break;
         }
 
@@ -1039,17 +730,7 @@ static int alloc_imap_bit(int dev) {
     return 0;
 }
 
-/*****************************************************************************
- *                                alloc_smap_bit
- *****************************************************************************/
-/**
- * Allocate a bit in sector-map.
- *
- * @param dev  In which device the sector-map is located.
- * @param nr_sects_to_alloc  How many sectors are allocated.
- *
- * @return  The 1st sector nr allocated.
- *****************************************************************************/
+//! \return 1st sector nr allocated.
 static int alloc_smap_bit(int dev, int nr_sects_to_alloc) {
     /* int nr_sects_to_alloc = NR_DEFAULT_FILE_SECTS; */
 
@@ -1057,7 +738,7 @@ static int alloc_smap_bit(int dev, int nr_sects_to_alloc) {
     int j; /* byte index */
     int k; /* bit index */
 
-    struct super_block *sb = get_super_block(dev);
+    superblock_t *sb = get_unique_superblock(dev);
 
     int  smap_blk0_nr = 1 + 1 + sb->nr_imap_sects;
     int  free_sect_nr = 0;
@@ -1068,159 +749,127 @@ static int alloc_smap_bit(int dev, int nr_sects_to_alloc) {
                              current sect nr. */
         // RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw,
         // 18/12/27
-        RD_SECT(dev, smap_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
+        RD_SECT(dev, smap_blk0_nr + i, fsbuf);
 
         /* byte offset in current sect */
         for (j = 0; j < SECTOR_SIZE && nr_sects_to_alloc > 0; j++) {
             k = 0;
             if (!free_sect_nr) {
-                /* loop until a free bit is found */
+                //! loop until a free bit is found
                 // if (fsbuf[j] == 0xFF) continue;
-                if (fsbuf[j] == '\xFF') continue; // modified by xw, 18/12/28
+                if (fsbuf[j] == '\xFF') continue;
                 for (; ((fsbuf[j] >> k) & 1) != 0; k++) {}
                 free_sect_nr =
                     (i * SECTOR_SIZE + j) * 8 + k - 1 + sb->n_1st_sect;
             }
 
-            for (; k < 8; k++) { /* repeat till enough bits are set */
-                // assert(((fsbuf[j] >> k) & 1) == 0);
+            //! repeat till enough bits are set
+            for (; k < 8; k++) {
                 fsbuf[j] |= (1 << k);
                 if (--nr_sects_to_alloc == 0) break;
             }
         }
 
-        if (free_sect_nr) /* free bit found, write the bits to smap */
-            // WR_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw,
-            // 18/12/27
-            WR_SECT(dev, smap_blk0_nr + i, fsbuf); // added by mingxuan
-                                                   // 2019-5-20
-
-        if (nr_sects_to_alloc == 0) break;
+        //! free bit found, write the bits to smap
+        if (free_sect_nr) { WR_SECT(dev, smap_blk0_nr + i, fsbuf); }
+        if (nr_sects_to_alloc == 0) { break; }
     }
-
-    // assert(nr_sects_to_alloc == 0);
-
     return free_sect_nr;
 }
 
-/// zcr added and modified from ch9/e/fs.open.c and close.c
-/*****************************************************************************
- *                                close
- *****************************************************************************/
-/**
- * Close a file descriptor.
- *
- * @param fd  File descriptor.
- *
- * @return Zero if successful, otherwise -1.
- *****************************************************************************/
-// close is a syscall interface now. added by xw, 18/6/18
-//   int close(int fd)
-// static int real_close(int fd)	//deleted by mingxuan 2019-5-17
-int real_close(int fd) // modified by mingxuan 2019-5-17
-{
-    return do_close(fd); // terrible(always returns 0)
+static int do_open(MESSAGE *fs_msg) {
+    /*caller_nr is the process number of the */
+    int fd = -1; /* return value */
+
+    char pathname[MAX_PATH];
+
+    /* get parameters from the message */
+    int flags    = fs_msg->FLAGS;    /* access mode */
+    int name_len = fs_msg->NAME_LEN; /* length of filename */
+    int src      = fs_msg->source;   /* caller proc nr. */
+
+    memcpy(
+        (void *)va2la(src, pathname),
+        (void *)va2la(src, fs_msg->PATHNAME),
+        name_len);
+    pathname[name_len] = 0;
+
+    /* find a free slot in PROCESS::filp[] */
+    int i;
+    for (i = 0; i < NR_FILES; i++) {
+        if (p_proc_current->task.filp[i] == 0) {
+            fd = i;
+            break;
+        }
+    }
+
+    assert(0 <= fd && fd < NR_FILES);
+
+    /* find a free slot in file_desc_table[] */
+    for (i = 0; i < NR_FILE_DESC; i++)
+
+        if (file_desc_table[i].flag == 0) break;
+
+    assert(i < NR_FILE_DESC);
+
+    int           inode_nr = search_file(pathname);
+    struct inode *pin      = 0;
+    if (flags & O_CREAT) {
+        if (inode_nr) {
+            return -1;
+        } else {
+            pin = create_file(pathname, flags);
+        }
+    } else {
+        char          filename[MAX_PATH];
+        struct inode *dir_inode;
+        if (strip_path(filename, pathname, &dir_inode) != 0) return -1;
+        pin = get_inode(dir_inode->i_dev, inode_nr);
+    }
+
+    if (pin) {
+        /* connects proc with file_descriptor */
+        p_proc_current->task.filp[fd] = &file_desc_table[i];
+
+        file_desc_table[i].flag = 1;
+
+        /* connects file_descriptor with inode */
+        file_desc_table[i].fd_node.fd_inode = pin;
+
+        file_desc_table[i].fd_mode = flags;
+        file_desc_table[i].fd_pos  = 0;
+
+        int imode = pin->i_mode & I_TYPE_MASK;
+
+        if (imode == I_CHAR_SPECIAL) {
+            // MESSAGE driver_msg;
+            // int dev = pin->i_start_sect;
+        } else if (imode == I_DIRECTORY) {
+            if (pin->i_num != ROOT_INODE) { panic("pin->i_num != ROOT_INODE"); }
+        } else {
+            if (pin->i_mode != I_REGULAR) {
+                panic("Panic: pin->i_mode != I_REGULAR");
+            }
+        }
+    } else {
+        return -1;
+    }
+
+    return fd;
 }
 
-/*****************************************************************************
- *                                do_close
- *****************************************************************************/
-/**
- * Handle the message CLOSE.
- *
- * @return Zero if success.
- *****************************************************************************/
 static int do_close(int fd) {
-    put_inode(p_proc_current->task.filp[fd]
-                  ->fd_node.fd_inode); // modified by mingxuan 2019-5-17
-    p_proc_current->task.filp[fd]->fd_node.fd_inode =
-        0;                                   // modified by mingxuan 2019-5-17
-    p_proc_current->task.filp[fd]->flag = 0; // added by mingxuan 2019-5-17
-    p_proc_current->task.filp[fd]       = 0;
-
+    //! FIXME: check succeed or not
+    file_desc_t **p_desc = &p_proc_current->task.filp[fd];
+    put_inode((*p_desc)->fd_node.fd_inode);
+    (*p_desc)->fd_node.fd_inode = NULL;
+    (*p_desc)->flag             = 0;
+    *p_desc                     = NULL;
     return 0;
 }
 
-/// zcr copied from ch9/f/fs/read_write.c and modified it.
-
-/*****************************************************************************
- *                                read
- *****************************************************************************/
-/**
- * Read from a file descriptor.
- *
- * @param fd     File descriptor.
- * @param buf    Buffer to accept the bytes read.
- * @param count  How many bytes to read.
- *
- * @return  On success, the number of bytes read are returned.
- *          On error, -1 is returned.
- *****************************************************************************/
-int real_read(
-    int   fd,
-    void *buf,
-    int count) // 注意:buf的类型被修改成char //modified by mingxuan 2019-5-17
-{
-    // added by xw, 18/8/27
-    MESSAGE fs_msg;
-
-    fs_msg.type   = READ;
-    fs_msg.FD     = fd;
-    fs_msg.BUF    = buf;
-    fs_msg.CNT    = count;
-    fs_msg.source = proc2pid(p_proc_current); // added by xw, 18/12/22
-
-    // send_recv(BOTH, TASK_FS, &msg);
-    do_rdwt(&fs_msg);
-
-    return fs_msg.CNT;
-}
-
-/*****************************************************************************
- *                                write
- *****************************************************************************/
-/**
- * Write to a file descriptor.
- *
- * @param fd     File descriptor.
- * @param buf    Buffer including the bytes to write.
- * @param count  How many bytes to write.
- *
- * @return  On success, the number of bytes written are returned.
- *          On error, -1 is returned.
- *****************************************************************************/
-int real_write(
-    int         fd,
-    const void *buf,
-    int count) // 注意:buf的类型被修改成char //modified by mingxuan 2019-5-17
-{
-    // added by xw, 18/8/27
-    MESSAGE fs_msg;
-
-    fs_msg.type   = WRITE;
-    fs_msg.FD     = fd;
-    fs_msg.BUF    = (void *)buf;
-    fs_msg.CNT    = count;
-    fs_msg.source = proc2pid(p_proc_current); // added by xw, 18/12/22
-
-    // send_recv(BOTH, TASK_FS, &msg);
-    /// zcr added
-    do_rdwt(&fs_msg);
-
-    return fs_msg.CNT;
-}
-
-/*****************************************************************************
- *                                do_rdwt
- *****************************************************************************/
-/**
- * Read/Write file and return byte count read/written.
- *
- * Sector map is not needed to update, since the sectors for the file have been
- * allocated and the bits are set when the file was created.
- *
- * @return How many bytes have been read/written.
- *****************************************************************************/
+//! NOTE: Sector map is not needed to update, since the sectors for the file
+//! have been allocated and the bits are set when the file was created.
 static int do_rdwt(MESSAGE *fs_msg) {
     int   fd  = fs_msg->FD;  /**< file descriptor. */
     void *buf = fs_msg->BUF; /**< r/w buffer */
@@ -1234,9 +883,7 @@ static int do_rdwt(MESSAGE *fs_msg) {
 
     // struct inode * pin = p_proc_current->task.filp[fd]->fd_inode;
     // //deleted by mingxuan 2019-5-17
-    struct inode *pin =
-        p_proc_current->task.filp[fd]
-            ->fd_node.fd_inode; // modified by mingxuan 2019-5-17
+    struct inode *pin = p_proc_current->task.filp[fd]->fd_node.fd_inode;
 
     int imode = pin->i_mode & I_TYPE_MASK;
 
@@ -1244,7 +891,6 @@ static int do_rdwt(MESSAGE *fs_msg) {
         int t        = fs_msg->type == READ ? DEV_READ : DEV_WRITE;
         fs_msg->type = t;
 
-        // added by mingxuan 2019-5-19
         int dev    = pin->i_start_sect;
         int nr_tty = MINOR(dev);
         if (MAJOR(dev) != 4) { panic("Error: MAJOR(dev) == 4\n"); }
@@ -1267,7 +913,6 @@ static int do_rdwt(MESSAGE *fs_msg) {
         int rw_sect_min = pin->i_start_sect + (pos >> SECTOR_SIZE_SHIFT);
         int rw_sect_max = pin->i_start_sect + (pos_end >> SECTOR_SIZE_SHIFT);
 
-        // modified by xw, 18/12/27
         int chunk = min(
             rw_sect_max - rw_sect_min + 1, SECTOR_SIZE >> SECTOR_SIZE_SHIFT);
 
@@ -1276,13 +921,12 @@ static int do_rdwt(MESSAGE *fs_msg) {
         int i;
 
         char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
-                                 // added by xw, 18/12/27
 
         for (i = rw_sect_min; i <= rw_sect_max; i += chunk) {
             /* read/write this amount of bytes every time */
             int bytes = min(bytes_left, chunk * SECTOR_SIZE - off);
             rw_sector(
-                DEV_READ, // modified by mingxuan 2019-5-21
+                DEV_READ,
                 pin->i_dev,
                 i * SECTOR_SIZE,
                 chunk * SECTOR_SIZE,
@@ -1301,7 +945,7 @@ static int do_rdwt(MESSAGE *fs_msg) {
                     bytes);
 
                 rw_sector(
-                    DEV_WRITE, // modified by mingxuan 2019-5-21
+                    DEV_WRITE,
                     pin->i_dev,
                     i * SECTOR_SIZE,
                     chunk * SECTOR_SIZE,
@@ -1324,47 +968,8 @@ static int do_rdwt(MESSAGE *fs_msg) {
     }
 }
 
-/// zcr copied from ch9/h/lib/unlink.c and modified it
-
-/*****************************************************************************
- *                                unlink
- *****************************************************************************/
-/**
- * Delete a file.
- *
- * @param pathname  The full path of the file to delete.
- *
- * @return Zero if successful, otherwise -1.
- *****************************************************************************/
-int real_unlink(const char *pathname) // modified by mingxuan 2019-5-17
-{
-    // added by xw, 18/8/27
-    MESSAGE fs_msg;
-
-    fs_msg.type     = UNLINK;
-    fs_msg.PATHNAME = (void *)pathname;
-    fs_msg.NAME_LEN = strlen(pathname);
-    fs_msg.source   = proc2pid(p_proc_current); // added by xw, 18/12/22
-
-    // send_recv(BOTH, TASK_FS, &msg);
-
-    // return fs_msg.RETVAL;
-    /// zcr added
-    return do_unlink(&fs_msg);
-}
-
-/// zcr copied from the ch9/h/fs/link.c and modified it
-/*****************************************************************************
- *                                do_unlink
- *****************************************************************************/
-/**
- * Remove a file.
- *
- * @note We clear the i-node in inode_array[] although it is not really needed.
- *       We don't clear the data bytes so the file is recoverable.
- *
- * @return On success, zero is returned.  On error, -1 is returned.
- *****************************************************************************/
+//! NOTE: We clear the i-node in inode_array[] although it is not really needed.
+//! We don't clear the data bytes so the file is recoverable.
 static int do_unlink(MESSAGE *fs_msg) {
     char pathname[MAX_PATH];
 
@@ -1395,8 +1000,7 @@ static int do_unlink(MESSAGE *fs_msg) {
     struct inode *dir_inode;
     if (strip_path(filename, pathname, &dir_inode) != 0) return -1;
 
-    struct inode *pin =
-        get_inode_sched(dir_inode->i_dev, inode_nr); // modified by xw, 18/8/28
+    struct inode *pin = get_inode_sched(dir_inode->i_dev, inode_nr);
 
     if (pin->i_mode != I_REGULAR) { /* can only remove regular files */
         kprintf(
@@ -1413,7 +1017,7 @@ static int do_unlink(MESSAGE *fs_msg) {
         return -1;
     }
 
-    struct super_block *sb = get_super_block(pin->i_dev);
+    superblock_t *sb = get_unique_superblock(pin->i_dev);
 
     /*************************/
     /* free the bit in i-map */
@@ -1424,10 +1028,10 @@ static int do_unlink(MESSAGE *fs_msg) {
     /* read sector 2 (skip bootsect and superblk): */
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
                              // by xw, 18/12/27
-    RD_SECT_SCHED(pin->i_dev, 2, fsbuf); // modified by xw, 18/12/27
+    RD_SECT_SCHED(pin->i_dev, 2, fsbuf);
     // assert(fsbuf[byte_idx % SECTOR_SIZE] & (1 << bit_idx));
     fsbuf[byte_idx % SECTOR_SIZE] &= ~(1 << bit_idx);
-    WR_SECT_SCHED(pin->i_dev, 2, fsbuf); // modified by xw, 18/12/27
+    WR_SECT_SCHED(pin->i_dev, 2, fsbuf);
 
     /**************************/
     /* free the bits in s-map */
@@ -1453,7 +1057,7 @@ static int do_unlink(MESSAGE *fs_msg) {
     int s = 2 /* 2: bootsect + superblk */
           + sb->nr_imap_sects + byte_idx / SECTOR_SIZE;
 
-    RD_SECT_SCHED(pin->i_dev, s, fsbuf); // modified by xw, 18/12/27
+    RD_SECT_SCHED(pin->i_dev, s, fsbuf);
 
     int i;
     /* clear the first byte */
@@ -1468,8 +1072,8 @@ static int do_unlink(MESSAGE *fs_msg) {
     for (k = 0; k < byte_cnt; k++, i++, bits_left -= 8) {
         if (i == SECTOR_SIZE) {
             i = 0;
-            WR_SECT_SCHED(pin->i_dev, s, fsbuf);   // modified by xw, 18/12/27
-            RD_SECT_SCHED(pin->i_dev, ++s, fsbuf); // modified by xw, 18/12/27
+            WR_SECT_SCHED(pin->i_dev, s, fsbuf);
+            RD_SECT_SCHED(pin->i_dev, ++s, fsbuf);
         }
         // assert(fsbuf[i] == 0xFF);
         fsbuf[i] = 0;
@@ -1478,12 +1082,12 @@ static int do_unlink(MESSAGE *fs_msg) {
     /* clear the last byte */
     if (i == SECTOR_SIZE) {
         i = 0;
-        WR_SECT_SCHED(pin->i_dev, s, fsbuf);   // modified by xw, 18/12/27
-        RD_SECT_SCHED(pin->i_dev, ++s, fsbuf); // modified by xw, 18/12/27
+        WR_SECT_SCHED(pin->i_dev, s, fsbuf);
+        RD_SECT_SCHED(pin->i_dev, ++s, fsbuf);
     }
     // assert((fsbuf[i] & mask) == mask);
     fsbuf[i] &= (~0) << bits_left;
-    WR_SECT_SCHED(pin->i_dev, s, fsbuf); // modified by xw, 18/12/27
+    WR_SECT_SCHED(pin->i_dev, s, fsbuf);
 
     /***************************/
     /* clear the i-node itself */
@@ -1513,10 +1117,7 @@ static int do_unlink(MESSAGE *fs_msg) {
     int               dir_size = 0;
 
     for (i = 0; i < nr_dir_blks; i++) {
-        RD_SECT_SCHED(
-            dir_inode->i_dev,
-            dir_blk0_nr + i,
-            fsbuf); // modified by xw, 18/12/27
+        RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
 
         pde = (struct dir_entry *)fsbuf;
         int j;
@@ -1526,10 +1127,7 @@ static int do_unlink(MESSAGE *fs_msg) {
             if (pde->inode_nr == inode_nr) {
                 /* pde->inode_nr = 0; */
                 memset(pde, 0, DIR_ENTRY_SIZE);
-                WR_SECT_SCHED(
-                    dir_inode->i_dev,
-                    dir_blk0_nr + i,
-                    fsbuf); // modified by xw, 18/12/27
+                WR_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
                 flg = 1;
                 break;
             }
@@ -1550,55 +1148,83 @@ static int do_unlink(MESSAGE *fs_msg) {
     return 0;
 }
 
-int real_lseek(int fd, int offset, int whence) // modified by mingxuan 2019-5-17
-{
-    // added by xw, 18/8/27
-    MESSAGE fs_msg;
-
-    fs_msg.FD     = fd;
-    fs_msg.OFFSET = offset;
-    fs_msg.WHENCE = whence;
-
-    return do_lseek(&fs_msg);
-}
-
-/// zcr copied from ch9/j/fs/open.c
-/*****************************************************************************
- *                                do_lseek
- *****************************************************************************/
-/**
- * Handle the message LSEEK.
- *
- * @return The new offset in bytes from the beginning of the file if successful,
- *         otherwise a negative number.
- *****************************************************************************/
 static int do_lseek(MESSAGE *fs_msg) {
     int fd     = fs_msg->FD;
     int off    = fs_msg->OFFSET;
     int whence = fs_msg->WHENCE;
 
-    int pos = p_proc_current->task.filp[fd]->fd_pos;
-    // int f_size = p_proc_current->task.filp[fd]->fd_inode->i_size; //deleted
-    // by mingxuan 2019-5-17
-    int f_size =
-        p_proc_current->task.filp[fd]
-            ->fd_node.fd_inode->i_size; // modified by mingxuan 2019-5-17
+    int pos    = p_proc_current->task.filp[fd]->fd_pos;
+    int f_size = p_proc_current->task.filp[fd]->fd_node.fd_inode->i_size;
 
-    switch (whence) {
-        case SEEK_SET:
-            pos = off;
-            break;
-        case SEEK_CUR:
-            pos += off;
-            break;
-        case SEEK_END:
-            pos = f_size + off;
-            break;
-        default:
-            return -1;
-            break;
+    if (whence == SEEK_SET) {
+        pos = off;
+    } else if (whence == SEEK_CUR) {
+        pos += off;
+    } else if (whence == SEEK_END) {
+        //! here off is expected to be negative
+        pos = f_size + off;
+    } else {
+        //! invalid whence
+        return -1;
     }
-    if ((pos > f_size) || (pos < 0)) { return -1; }
+
+    if (pos < 0 || pos > f_size) { return -1; }
     p_proc_current->task.filp[fd]->fd_pos = pos;
     return pos;
+}
+
+int real_open(const char *pathname, int flags) {
+    MESSAGE fs_msg  = {};
+    fs_msg.type     = OPEN;
+    fs_msg.PATHNAME = (void *)pathname;
+    fs_msg.FLAGS    = flags;
+    fs_msg.NAME_LEN = strlen(pathname);
+    fs_msg.source   = proc2pid(p_proc_current);
+    return do_open(&fs_msg);
+}
+
+int real_close(int fd) {
+    return do_close(fd);
+}
+
+int real_read(int fd, void *buf, int count) {
+    MESSAGE fs_msg = {};
+
+    fs_msg.type   = READ;
+    fs_msg.FD     = fd;
+    fs_msg.BUF    = buf;
+    fs_msg.CNT    = count;
+    fs_msg.source = proc2pid(p_proc_current);
+    int total_r   = do_rdwt(&fs_msg);
+    assert(total_r == fs_msg.CNT);
+    return total_r;
+}
+
+int real_write(int fd, const void *buf, int count) {
+    MESSAGE fs_msg = {};
+    fs_msg.type    = WRITE;
+    fs_msg.FD      = fd;
+    fs_msg.BUF     = (void *)buf;
+    fs_msg.CNT     = count;
+    fs_msg.source  = proc2pid(p_proc_current);
+    int total_wr   = do_rdwt(&fs_msg);
+    assert(total_wr == fs_msg.CNT);
+    return total_wr;
+}
+
+int real_unlink(const char *pathname) {
+    MESSAGE fs_msg  = {};
+    fs_msg.type     = UNLINK;
+    fs_msg.PATHNAME = (void *)pathname;
+    fs_msg.NAME_LEN = strlen(pathname);
+    fs_msg.source   = proc2pid(p_proc_current);
+    return do_unlink(&fs_msg);
+}
+
+int real_lseek(int fd, int offset, int whence) {
+    MESSAGE fs_msg = {};
+    fs_msg.FD      = fd;
+    fs_msg.OFFSET  = offset;
+    fs_msg.WHENCE  = whence;
+    return do_lseek(&fs_msg);
 }

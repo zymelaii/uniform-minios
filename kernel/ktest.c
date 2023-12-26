@@ -4,6 +4,7 @@
  * added by xw, 18/4/27
  */
 #include <unios/vfs.h>
+#include <unios/config.h>
 #include <type.h>
 #include <string.h>
 #include <stdio.h>
@@ -108,10 +109,6 @@ static void untar(const char *filename) {
 
     printf(" done, %d files extracted]\n", i);
 }
-
-#ifndef INSTALL_FILENAME
-#define INSTALL_FILENAME "app.tar"
-#endif
 
 void initial() {
     int stdin  = do_vopen("/dev/tty0", O_RDWR);

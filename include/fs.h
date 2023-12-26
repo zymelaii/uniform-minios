@@ -30,8 +30,8 @@ int real_unlink(const char *pathname);
 int real_lseek(int fd, int offset, int whence);
 
 // added by mingxuan 2020-10-30
-void                read_super_block(int dev);
-struct super_block *get_super_block(int dev);
+void                read_orange_superblock(int dev);
+struct super_block *get_unique_superblock(int dev);
 int                 get_fs_dev(int drive, int fs_type);
 
 #endif /* FS_H */

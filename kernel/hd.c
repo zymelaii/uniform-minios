@@ -75,19 +75,7 @@ void init_hd() {
     init_hd_queue(&hdque);
 }
 
-/*****************************************************************************
- *                                hd_open
- *****************************************************************************/
-/**
- * <Ring 1> This routine handles DEV_OPEN message. It identify the drive
- * of the given device and read the partition table of the drive if it
- * has not been read.
- *
- * @param device The device to be opened.
- *****************************************************************************/
-// void hd_open(int device) //no need for int device, mingxuan
-void hd_open(int drive) // modified by mingxuan 2020-10-27
-{
+void hd_open(int drive) {
     kprintf("Read hd information...  ");
 
     /* Get the number of drives from the BIOS data area */
@@ -100,28 +88,11 @@ void hd_open(int drive) // modified by mingxuan 2020-10-27
     }
 }
 
-/*****************************************************************************
- *                                hd_close
- *****************************************************************************/
-/**
- * <Ring 1> This routine handles DEV_CLOSE message.
- *
- * @param device The device to be opened.
- *****************************************************************************/
 void hd_close(int device) {
     int drive = DRV_OF_DEV(device);
-
     hd_info[drive].open_cnt--;
 }
 
-/*****************************************************************************
- *                                hd_rdwt
- *****************************************************************************/
-/**
- * <Ring 1> This routine handles DEV_READ and DEV_WRITE message.
- *
- * @param p Message ptr.
- *****************************************************************************/
 void hd_rdwt(MESSAGE *p) {
     int drive = DRV_OF_DEV(p->DEVICE);
 
