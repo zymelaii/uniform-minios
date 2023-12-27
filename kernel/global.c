@@ -78,5 +78,5 @@ system_call sys_call_table[NR_SYS_CALL] = {
     sys_deletedir   // added by mingxuan 2019-5-17
 };
 
-TTY     tty_table[NR_CONSOLES];     // added by mingxuan 2019-5-19
+tty_t   tty_table[NR_CONSOLES];     // added by mingxuan 2019-5-19
 CONSOLE console_table[NR_CONSOLES]; // added by mingxuan 2019-5-19

@@ -8,8 +8,8 @@
 #ifndef MINIOS_PROTO_H
 #define MINIOS_PROTO_H
 
+#include "unios/tty.h"
 #include "type.h"
-#include "tty.h"
 #include "proc.h"
 
 /* klib.asm */
@@ -50,14 +50,14 @@ void initial();
 /* keyboard.c */
 // added by mingxuan 2019-5-19
 void init_kb();
-void keyboard_read();
+void keyboard_read(tty_t* p_tty);
 
 /* tty.c */
 // added by mingxuan 2019-5-19
-void in_process(TTY* p_tty, u32 key);
+void tty_keyboard_proc(tty_t* tty, u32 key);
 void task_tty();
-void tty_write(TTY* tty, char* buf, int len);
-int  tty_read(TTY* tty, char* buf, int len);
+void tty_write(tty_t* tty, char* buf, int len);
+int  tty_read(tty_t* tty, char* buf, int len);
 
 /* printf.c */
 // added by mingxuan 2019-5-19

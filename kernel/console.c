@@ -1,7 +1,7 @@
 #include <type.h>
 #include <stdio.h>
 #include <const.h>
-#include <tty.h>
+#include <unios/tty.h>
 #include <console.h>
 #include <global.h>
 #include <proto.h>
@@ -24,7 +24,7 @@ void        scroll_screen(CONSOLE* con, int dir);
  *
  * @param tty  Whose console is to be initialized.
  *****************************************************************************/
-void init_screen(TTY* tty) {
+void init_screen(tty_t* tty) {
     int nr_tty = tty - tty_table;
 
     tty->console = console_table + nr_tty;

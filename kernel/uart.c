@@ -1,6 +1,6 @@
 #include <uart.h>
 #include <x86.h>
-#include <tty.h>
+#include <unios/tty.h>
 #include <const.h>
 #include <type.h>
 #include <assert.h>

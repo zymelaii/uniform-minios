@@ -41,10 +41,10 @@ extern irq_handler irq_table[];
 
 /* tty */
 // added by mingxuan 2019-5-19
-#include "tty.h"
+#include "unios/tty.h"
 #include "console.h"
 
-extern TTY     tty_table[];
+extern tty_t   tty_table[];
 extern CONSOLE console_table[];
 extern int     current_console;
 
