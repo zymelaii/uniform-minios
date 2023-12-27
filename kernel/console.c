@@ -68,26 +68,22 @@ void out_char(CONSOLE* con, char ch) {
     int cursor_y = (con->cursor - con->orig) / SCR_WIDTH;
 
     switch (ch) {
-        case '\n':
+        case '\n': {
             con->cursor = con->orig + SCR_WIDTH * (cursor_y + 1);
-            break;
-        case '\b':
+            vga_set_disppos(con->cursor);
+        } break;
+        case '\b': {
             if (con->cursor > con->orig) {
-                con->cursor--;
-                //*(pch - 2) = ' ';
-                //*(pch - 1) = DEFAULT_CHAR_COLOR;
+                --con->cursor;
                 vga_set_disppos(con->cursor);
                 vga_write_char(' ', WHITE_CHAR);
             }
-            break;
-        default:
-            //*pch++ = ch;
-            //*pch++ = DEFAULT_CHAR_COLOR;
+        } break;
+        default: {
             vga_set_disppos(con->cursor);
             vga_write_char(ch, WHITE_CHAR);
-            con->cursor++;
-
-            break;
+            ++con->cursor;
+        } break;
     }
 
     if (con->cursor - con->orig >= con->con_size) {
@@ -106,7 +102,6 @@ void out_char(CONSOLE* con, char ch) {
     while (con->cursor >= con->crtc_start + SCR_SIZE
            || con->cursor < con->crtc_start) {
         scroll_screen(con, SCR_UP);
-
         clear_screen(con->cursor, SCR_WIDTH);
     }
 
