@@ -136,6 +136,18 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/c,c++,cmake,makefile,windows,linux
 
-.*/
-obj/
+### Understand project files ###
+/*.und/
+
+### Misc ###
+.*/*
+
+build/*
+BUILD/*
+BUILD_*/*
+
+obj/*
+
 *.log
+
+!.vscode/settings.json
