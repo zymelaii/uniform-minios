@@ -29,17 +29,17 @@ int untar(const char *tar_path, const char *extract_dir) {
 
         snprintf(pathbuf, sizeof(pathbuf), "%s/%s", extract_dir, phdr->name);
         int fdout = do_vopen(pathbuf, O_CREAT | O_RDWR);
-        //! FIXME: handle already existed file
-        assert(fdout != -1 && "failed to create target file");
+        //! TODO: enable custome handler for existed file
+        bool skip = fdout == -1;
 
         while (left > 0) {
             int iobytes = min(sizeof(buf), left);
             do_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512);
-            do_vwrite(fdout, buf, iobytes);
+            if (!skip) { do_vwrite(fdout, buf, iobytes); }
             left -= iobytes;
         }
 
-        do_vclose(fdout);
+        if (!skip) { do_vclose(fdout); }
         ++nr_file;
     }
 
