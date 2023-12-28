@@ -7,14 +7,14 @@
 #include <proto.h>
 #include <stdio.h>
 
-#define assert(expected)                                     \
- do {                                                        \
-  if (expected) { break; }                                   \
-  const char *file = __FILE__;                               \
-  int         line = __LINE__;                               \
-  const char *expr = #expected;                              \
-  printf("%s:%d: assertion failed: %s\n", file, line, expr); \
-  __asm__ volatile("hlt");                                   \
+#define assert(expected)                                    \
+ do {                                                       \
+  if (expected) { break; }                                  \
+  const char *file = __FILE__;                              \
+  int         line = __LINE__;                              \
+  const char *expr = #expected;                             \
+  printf("assertion failed:%s:%d: %s\n", file, line, expr); \
+  while (true) { sleep(1000); }                             \
  } while (0);
 
 #define CHECK_PTR(p) assert((p) != NULL)

@@ -95,3 +95,22 @@ int memcmp(const void *s1, const void *s2, int n) {
     }
     return 0;
 }
+
+char *strstr(const char *src, const char *find) {
+    for (; *src != '\0'; src++) {
+        if (*src == *find) {
+            const char *c   = find;
+            char       *dst = (char *)src;
+            while (*src != '\0' && *c != '\0') {
+                if (*src == *c) {
+                    src++;
+                    c++;
+                } else {
+                    break;
+                }
+            }
+            if (*c == '\0') { return dst; }
+        }
+    }
+    return NULL;
+}

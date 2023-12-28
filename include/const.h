@@ -83,7 +83,7 @@
 
 /* system call */
 // #define NR_SYS_CALL     23	//last modified by xw, 18/6/19
-#define NR_SYS_CALL 28 // modified by mingxuan 2019-5-17
+#define NR_SYS_CALL 29 // modified by mingxuan 2019-5-17
 
 /* TTY */
 // added by mingxuan 2019-5-19

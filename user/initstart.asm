@@ -1,10 +1,5 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 	initstart.asm  //add by visual 2016.5.16
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 extern main
-
+extern exit
 bits 32
 
 [section .text]
@@ -15,5 +10,5 @@ _start:
 	push 	eax
 	push	ecx
 	call	main
-	
-	hlt
+	push 	eax 
+	call 	exit

@@ -31,7 +31,8 @@ KERN_SRCFILES :=kernel/kernel.asm	\
 		kernel/testfunc.c	\
 		kernel/protect.c	\
 		kernel/uart.c	\
-		kernel/tar.c
+		kernel/tar.c	\
+		kernel/exit.c  	\
 
 
 KERN_OBJFILES	:= $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
