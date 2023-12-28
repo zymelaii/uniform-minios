@@ -495,7 +495,7 @@ STATE IsFile(PCHAR path, PUINT tag) {
 }
 
 void init_fs_fat() {
-    kprintf("Initializing fat32 file system...  \n");
+    uart_kprintf("-----initialize fat32 filesystem-----\n");
 
     buf = (u8 *)K_PHY2LIN(sys_kmalloc(FSBUF_SIZE));
 
@@ -555,9 +555,8 @@ static void mkfs_fat() {
     driver_msg.PROC_NR = proc2pid(p_proc_current);
     hd_ioctl(&driver_msg);
 
-    kprintf("dev size: ");
-    kprintf("%d", geo.size);
-    kprintf(" sectors\n");
+    uart_kprintf("-----make fat filesystem-----\n");
+    uart_kprintf("device size: 0x%x sectors\n", geo.size);
 
     TotalSectors = geo.size;
 

@@ -307,7 +307,11 @@ void task_tty() {
 
     while (true) {
         for (tty = TTY_FIRST; tty < TTY_END; ++tty) {
-            //! NOTE: the loop condition is
+            //! NOTE: always try recv before handle
+            //! NOTE: actually this is expected to be a dead loop, here we break
+            //! the loop only to free up the cpu at a convenient time to allow
+            //! other ttys handle its own jobs, that is, this is just a very
+            //! simple schedule program
             do {
                 tty_mouse(tty);
                 tty_dev_read(tty);

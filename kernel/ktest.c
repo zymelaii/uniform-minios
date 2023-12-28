@@ -6,9 +6,9 @@
 #include <proto.h>
 
 void initial() {
-    int stdin  = do_vopen("/dev/tty0", O_RDWR);
-    int stdout = do_vopen("/dev/tty0", O_RDWR);
-    int stderr = do_vopen("/dev/tty0", O_RDWR);
+    int stdin  = do_vopen("/dev_tty0", O_RDWR);
+    int stdout = do_vopen("/dev_tty0", O_RDWR);
+    int stderr = do_vopen("/dev_tty0", O_RDWR);
 
     char path[MAX_PATH] = {};
     snprintf(path, sizeof(path), "/orange/%s", INSTALL_FILENAME);

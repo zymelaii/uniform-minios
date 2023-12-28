@@ -40,8 +40,6 @@ static void
 static int alloc_imap_bit(int dev);
 static int alloc_smap_bit(int dev, int nr_sects_to_alloc);
 
-int get_fs_dev(int drive, int fs_type);
-
 int get_fs_dev(int drive, int fs_type) {
     int i = 0;
     for (i = 0; i < NR_PRIM_PER_DRIVE; i++) {
@@ -59,7 +57,7 @@ int get_fs_dev(int drive, int fs_type) {
 
 /// zcr added
 void init_fs() {
-    kprintf("Initializing file system...  ");
+    uart_kprintf("-----initialize filesystem-----\n");
     memset(inode_table, 0, sizeof(inode_table));
     superblock_t *sb = superblock_table;
 
@@ -69,11 +67,11 @@ void init_fs() {
     read_orange_superblock(orange_dev);
     superblock_t *sb_root = get_unique_superblock(orange_dev);
 
-    kprintf("Superblock Address:0x%x \n", sb_root);
+    uart_kprintf("Superblock Address: 0x%x\n", sb_root);
 
     if (sb_root->magic != MAGIC_V1) {
         mkfs();
-        kprintf("Make file system Done.\n");
+        uart_kprintf("-----make filesystem done-----\n");
         read_orange_superblock(orange_dev);
     }
 
@@ -86,7 +84,7 @@ void init_fs() {
 /**
  * <Ring 1> Make a available Orange'S FS in the disk. It will
  *          - Write a super block to sector 1.
- *          - Create three special files: dev/tty0, dev/tty1, dev/tty2
+ *          - Create three special files: dev_tty0, dev_tty1, dev_tty2
  *          - Create the inode map
  *          - Create the sector map
  *          - Create the inodes of the files
@@ -100,6 +98,7 @@ static void mkfs() {
 
     int orange_dev = get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE);
 
+    //! get device geometry
     MESSAGE     msg = {};
     part_info_t geo = {};
     msg.type        = DEV_IOCTL;
@@ -109,7 +108,8 @@ static void mkfs() {
     msg.PROC_NR     = proc2pid(p_proc_current);
     hd_ioctl(&msg);
 
-    kprintf("dev size: 0x%x sectors\n", geo.size);
+    uart_kprintf("-----make orange filesystem-----\n");
+    uart_kprintf("device size: 0x%x sectors\n", geo.size);
 
     superblock_t sb   = {};
     sb.magic          = MAGIC_V1;
@@ -141,8 +141,8 @@ static void mkfs() {
     memcpy(fsbuf, &sb, SUPER_BLOCK_SIZE);
     WR_SECT(orange_dev, 1, fsbuf);
 
-    kprintf(
-        "{\n"
+    uart_kprintf(
+        "orange geometry {\n"
         "  device base: 0x%x00,\n"
         "  superbock: 0x%x00,\n"
         "  inode map: 0x%x00,\n"
@@ -210,16 +210,16 @@ static void mkfs() {
 
     //! 预定义 5 个文件
     //! 1. 当前目录 .
-    //! 2. TTY0 dev/tty0
-    //! 3. TTY1 dev/tty1
-    //! 4. TTY2 dev/tty2
+    //! 2. TTY0 dev_tty0
+    //! 3. TTY1 dev_tty1
+    //! 4. TTY2 dev_tty2
     //! 5. app.tar
     pi->i_size = DIR_ENTRY_SIZE * 5;
 
     pi->i_start_sect = sb.n_1st_sect;
     pi->i_nr_sects   = NR_DEFAULT_FILE_SECTS;
 
-    /* inode of `/dev/tty0~2' */
+    /* inode of `/dev_tty0~2' */
     for (int i = 0; i < NR_CONSOLES; ++i) {
         pi               = (struct inode *)(fsbuf + (INODE_SIZE * (i + 1)));
         pi->i_mode       = I_CHAR_SPECIAL;
@@ -249,8 +249,8 @@ static void mkfs() {
     //! assign dir entry for tty
     for (int i = 0; i < NR_CONSOLES; i++) {
         ++pde;
-        pde->inode_nr = i + 2; /* dev/tty0's inode_nr is 2 */
-        snprintf(pde->name, sizeof(pde->name), "dev/tty%d", i);
+        pde->inode_nr = i + 2; /* dev_tty0's inode_nr is 2 */
+        snprintf(pde->name, sizeof(pde->name), "dev_tty%d", i);
     }
 
     //! assign dir entrie
@@ -778,8 +778,11 @@ static int alloc_smap_bit(int dev, int nr_sects_to_alloc) {
 }
 
 static int do_open(MESSAGE *fs_msg) {
+    //! FIXME: minios do not recursively setup fs from the stroage, but do_open
+    //! will try to read infomation from sectors, then inconsistency occurs
+
     /*caller_nr is the process number of the */
-    int fd = -1; /* return value */
+    int fd = -1;
 
     char pathname[MAX_PATH];
 
@@ -794,50 +797,46 @@ static int do_open(MESSAGE *fs_msg) {
         name_len);
     pathname[name_len] = 0;
 
-    /* find a free slot in PROCESS::filp[] */
-    int i;
-    for (i = 0; i < NR_FILES; i++) {
+    //! find a free slot in proc file_desc
+    for (int i = 0; i < NR_FILES; i++) {
         if (p_proc_current->task.filp[i] == 0) {
             fd = i;
             break;
         }
     }
-
     assert(0 <= fd && fd < NR_FILES);
 
-    /* find a free slot in file_desc_table[] */
-    for (i = 0; i < NR_FILE_DESC; i++)
-
-        if (file_desc_table[i].flag == 0) break;
-
-    assert(i < NR_FILE_DESC);
+    //! find a free slot in file_desc_table
+    int index = -1;
+    while (index < NR_FILE_DESC) {
+        if (file_desc_table[index].flag == 0) { break; }
+        ++index;
+    }
+    assert(index < NR_FILE_DESC);
 
     int           inode_nr = search_file(pathname);
     struct inode *pin      = 0;
     if (flags & O_CREAT) {
-        if (inode_nr) {
-            return -1;
-        } else {
-            pin = create_file(pathname, flags);
-        }
+        if (inode_nr) { return -1; }
+        pin = create_file(pathname, flags);
     } else {
-        char          filename[MAX_PATH];
-        struct inode *dir_inode;
-        if (strip_path(filename, pathname, &dir_inode) != 0) return -1;
+        char          filename[MAX_PATH] = {};
+        struct inode *dir_inode          = NULL;
+        if (strip_path(filename, pathname, &dir_inode) != 0) { return -1; }
         pin = get_inode(dir_inode->i_dev, inode_nr);
     }
 
     if (pin) {
         /* connects proc with file_descriptor */
-        p_proc_current->task.filp[fd] = &file_desc_table[i];
+        p_proc_current->task.filp[fd] = &file_desc_table[index];
 
-        file_desc_table[i].flag = 1;
+        file_desc_table[index].flag = 1;
 
         /* connects file_descriptor with inode */
-        file_desc_table[i].fd_node.fd_inode = pin;
+        file_desc_table[index].fd_node.fd_inode = pin;
 
-        file_desc_table[i].fd_mode = flags;
-        file_desc_table[i].fd_pos  = 0;
+        file_desc_table[index].fd_mode = flags;
+        file_desc_table[index].fd_pos  = 0;
 
         int imode = pin->i_mode & I_TYPE_MASK;
 
@@ -875,14 +874,13 @@ static int do_rdwt(MESSAGE *fs_msg) {
     void *buf = fs_msg->BUF; /**< r/w buffer */
     int   len = fs_msg->CNT; /**< r/w bytes */
 
-    int src = fs_msg->source; /* caller proc nr. */
+    //! caller proc nr
+    int caller = fs_msg->source;
 
     if (!(p_proc_current->task.filp[fd]->fd_mode & O_RDWR)) return -1;
 
     int pos = p_proc_current->task.filp[fd]->fd_pos;
 
-    // struct inode * pin = p_proc_current->task.filp[fd]->fd_inode;
-    // //deleted by mingxuan 2019-5-17
     struct inode *pin = p_proc_current->task.filp[fd]->fd_node.fd_inode;
 
     int imode = pin->i_mode & I_TYPE_MASK;
@@ -902,70 +900,70 @@ static int do_rdwt(MESSAGE *fs_msg) {
         }
 
         return fs_msg->CNT;
-    } else {
-        int pos_end;
-        if (fs_msg->type == READ)
-            pos_end = min(pos + len, pin->i_size);
-        else /* WRITE */
-            pos_end = min(pos + len, pin->i_nr_sects * SECTOR_SIZE);
+    }
 
-        int off         = pos % SECTOR_SIZE;
-        int rw_sect_min = pin->i_start_sect + (pos >> SECTOR_SIZE_SHIFT);
-        int rw_sect_max = pin->i_start_sect + (pos_end >> SECTOR_SIZE_SHIFT);
+    int pos_end;
+    if (fs_msg->type == READ)
+        pos_end = min(pos + len, pin->i_size);
+    else /* WRITE */
+        pos_end = min(pos + len, pin->i_nr_sects * SECTOR_SIZE);
 
-        int chunk = min(
-            rw_sect_max - rw_sect_min + 1, SECTOR_SIZE >> SECTOR_SIZE_SHIFT);
+    int off         = pos % SECTOR_SIZE;
+    int rw_sect_min = pin->i_start_sect + (pos >> SECTOR_SIZE_SHIFT);
+    int rw_sect_max = pin->i_start_sect + (pos_end >> SECTOR_SIZE_SHIFT);
 
-        int bytes_rw   = 0;
-        int bytes_left = len;
-        int i;
+    int chunk =
+        min(rw_sect_max - rw_sect_min + 1, SECTOR_SIZE >> SECTOR_SIZE_SHIFT);
 
-        char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
+    int bytes_rw   = 0;
+    int bytes_left = len;
+    int i;
 
-        for (i = rw_sect_min; i <= rw_sect_max; i += chunk) {
-            /* read/write this amount of bytes every time */
-            int bytes = min(bytes_left, chunk * SECTOR_SIZE - off);
+    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
+
+    for (i = rw_sect_min; i <= rw_sect_max; i += chunk) {
+        /* read/write this amount of bytes every time */
+        int bytes = min(bytes_left, chunk * SECTOR_SIZE - off);
+        rw_sector(
+            DEV_READ,
+            pin->i_dev,
+            i * SECTOR_SIZE,
+            chunk * SECTOR_SIZE,
+            proc2pid(p_proc_current), /// TASK_FS
+            fsbuf);
+
+        if (fs_msg->type == READ) {
+            memcpy(
+                (void *)va2la(caller, buf + bytes_rw),
+                (void *)va2la(proc2pid(p_proc_current), fsbuf + off),
+                bytes);
+        } else { /* WRITE */
+            memcpy(
+                (void *)va2la(proc2pid(p_proc_current), fsbuf + off),
+                (void *)va2la(caller, buf + bytes_rw),
+                bytes);
+
             rw_sector(
-                DEV_READ,
+                DEV_WRITE,
                 pin->i_dev,
                 i * SECTOR_SIZE,
                 chunk * SECTOR_SIZE,
-                proc2pid(p_proc_current), /// TASK_FS
+                proc2pid(p_proc_current),
                 fsbuf);
-
-            if (fs_msg->type == READ) {
-                memcpy(
-                    (void *)va2la(src, buf + bytes_rw),
-                    (void *)va2la(proc2pid(p_proc_current), fsbuf + off),
-                    bytes);
-            } else { /* WRITE */
-                memcpy(
-                    (void *)va2la(proc2pid(p_proc_current), fsbuf + off),
-                    (void *)va2la(src, buf + bytes_rw),
-                    bytes);
-
-                rw_sector(
-                    DEV_WRITE,
-                    pin->i_dev,
-                    i * SECTOR_SIZE,
-                    chunk * SECTOR_SIZE,
-                    proc2pid(p_proc_current),
-                    fsbuf);
-            }
-            off                                   = 0;
-            bytes_rw                              += bytes;
-            p_proc_current->task.filp[fd]->fd_pos += bytes;
-            bytes_left                            -= bytes;
         }
-
-        if (p_proc_current->task.filp[fd]->fd_pos > pin->i_size) {
-            /* update inode::size */
-            pin->i_size = p_proc_current->task.filp[fd]->fd_pos;
-            sync_inode(pin);
-        }
-
-        return bytes_rw;
+        off                                   = 0;
+        bytes_rw                              += bytes;
+        p_proc_current->task.filp[fd]->fd_pos += bytes;
+        bytes_left                            -= bytes;
     }
+
+    if (p_proc_current->task.filp[fd]->fd_pos > pin->i_size) {
+        /* update inode::size */
+        pin->i_size = p_proc_current->task.filp[fd]->fd_pos;
+        sync_inode(pin);
+    }
+
+    return bytes_rw;
 }
 
 //! NOTE: We clear the i-node in inode_array[] although it is not really needed.
@@ -1189,15 +1187,14 @@ int real_close(int fd) {
 
 int real_read(int fd, void *buf, int count) {
     MESSAGE fs_msg = {};
-
-    fs_msg.type   = READ;
-    fs_msg.FD     = fd;
-    fs_msg.BUF    = buf;
-    fs_msg.CNT    = count;
-    fs_msg.source = proc2pid(p_proc_current);
-    int total_r   = do_rdwt(&fs_msg);
-    assert(total_r == fs_msg.CNT);
-    return total_r;
+    fs_msg.type    = READ;
+    fs_msg.FD      = fd;
+    fs_msg.BUF     = buf;
+    fs_msg.CNT     = count;
+    fs_msg.source  = proc2pid(p_proc_current);
+    int total_rd   = do_rdwt(&fs_msg);
+    assert(total_rd == fs_msg.CNT);
+    return total_rd;
 }
 
 int real_write(int fd, const void *buf, int count) {

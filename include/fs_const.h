@@ -104,8 +104,8 @@
 #define NO_PART      0x00 /* unused entry */
 #define EXT_PART     0x05 /* extended partition */
 
-#define NR_FILE_DESC   128 /* FIXME */ // modified by mingxuan 2019-5-19
-#define NR_INODE       64              /* FIXME */
+#define NR_FILE_DESC   128 /* FIXME: nr file desc */
+#define NR_INODE       64  /* FIXME: nr inode */
 #define NR_SUPER_BLOCK 8
 
 /* INODE::i_mode (octal, lower 32 bits reserved) */

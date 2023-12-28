@@ -15,7 +15,7 @@
 /************************************************************************/
 /*                          Macros Declaration                          */
 /************************************************************************/
-#define KB_IN_BYTES    320 /* size of keyboard input buffer */ /* FIXME */
+#define KB_IN_BYTES    320 /* FIXME: size of keyboard input buffer */
 #define MOUSE_IN_BYTES 3
 #define MAP_COLS       3    /* Number of columns in keymap */
 #define NR_SCAN_CODES  0x80 /* Number of scan codes (rows in keymap) */

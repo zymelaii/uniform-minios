@@ -54,9 +54,9 @@ int sys_fork() {
         /****************用户进程数+1****************************/
         u_proc_sum += 1;
 
-        vga_write_str_color("[fork success:", 0x72);
-        vga_write_str_color(p_proc_current->task.p_name, 0x72);
-        vga_write_str_color("]", 0x72);
+        // vga_write_str_color("[fork success:", 0x72);
+        // vga_write_str_color(p_proc_current->task.p_name, 0x72);
+        // vga_write_str_color("]", 0x72);
 
         // anything child need is prepared now, set its state to ready. added by
         // xw, 17/12/11

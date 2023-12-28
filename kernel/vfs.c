@@ -118,9 +118,9 @@ static void init_vfs_table() {
     //! FIXME: minios doesn't support strdup yet, use literal instead
     //! FIXME: should i use the absolute path or dev name only?
     const char *tty_name_list[NR_TTY] = {
-        "/dev/tty0",
-        "/dev/tty1",
-        "/dev/tty2",
+        "/dev_tty0",
+        "/dev_tty1",
+        "/dev_tty2",
     };
 
     for (int i = 0; i < NR_TTY; ++i) {
@@ -224,6 +224,11 @@ int do_vopen(const char *path, int flags) {
     if (index == -1) {
         kprintf("filesystem error: invalid vfs path: %s\n", path);
         return -1;
+    }
+
+    if (relpath[0] == '\0') {
+        //! a tty file
+        relpath = path + 1;
     }
 
     int fd = vfs_table[index].ops->open(relpath, flags);

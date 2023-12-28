@@ -62,6 +62,7 @@ void init_screen(tty_t* tty) {
  *****************************************************************************/
 
 void out_char(CONSOLE* con, char ch) {
+    //! FIXME: dirty current_line
     disable_int();
 
     int cursor_x = (con->cursor - con->orig) % SCR_WIDTH;

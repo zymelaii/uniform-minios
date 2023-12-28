@@ -21,6 +21,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <unios/vfs.h>
+#include <console.h>
 
 static int initialize_processes(); // added by xw, 18/5/26
 static int initialize_cpus();      // added by xw, 18/6/2
@@ -29,15 +30,14 @@ static int initialize_cpus();      // added by xw, 18/6/2
                             kernel_main
  *======================================================================*/
 int kernel_main() {
-    int error;
+    //! clear screen
+    vga_set_disppos(0);
+    for (int i = 0; i < SCR_WIDTH * SCR_HEIGHT; ++i) { kprintf(" "); }
+    vga_set_disppos(0);
 
-    vga_set_disppos(0);
-    for (int i = 0; i < 25; i++) {
-        for (int j = 0; j < 80; j++) { kprintf(" "); }
-    }
-    vga_set_disppos(0);
+    int error;
     clear_kernel_pagepte_low();
-    kprintf("-----Kernel Initialization Begins-----\n");
+    uart_kprintf("-----Kernel Initialization Begins-----\n");
     kernel_initial = 1; // kernel is in initial state. added by xw, 18/5/31
 
     init(); // 内存管理模块的初始化  add by liang

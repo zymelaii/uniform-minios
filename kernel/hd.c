@@ -76,7 +76,7 @@ void init_hd() {
 }
 
 void hd_open(int drive) {
-    kprintf("Read hd information...  ");
+    uart_kprintf("-----read hd information-----\n");
 
     /* Get the number of drives from the BIOS data area */
     // u8 * pNrDrives = (u8*)(0x475);
@@ -125,8 +125,9 @@ void hd_rdwt(MESSAGE *p) {
             insw(REG_DATA, hdbuf, SECTOR_SIZE);
             memcpy(la, hdbuf, bytes);
         } else {
-            if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT))
-                ("hd writing error.");
+            if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT)) {
+                assert(false && "hd writing error.");
+            }
 
             memcpy(hdbuf, la, bytes);
             outsw(REG_DATA, hdbuf, SECTOR_SIZE);
@@ -434,11 +435,11 @@ static void print_hdinfo(struct hd_info *hdi) {
     int i;
     for (i = 0; i < NR_PART_PER_DRIVE + 1; i++) {
         if (i == 0) {
-            kprintf(" ");
+            uart_kprintf("");
         } else {
-            kprintf("     ");
+            uart_kprintf("  ");
         }
-        kprintf(
+        uart_kprintf(
             "PART_%d: base %d, size: %d (in sector)\n",
             i,
             hdi->primary[i].base,
@@ -446,8 +447,8 @@ static void print_hdinfo(struct hd_info *hdi) {
     }
     for (i = 0; i < NR_SUB_PER_DRIVE; i++) {
         if (hdi->logical[i].size == 0) continue;
-        kprintf(
-            "         %d: base %d, size %d (in sector)\n",
+        uart_kprintf(
+            "    %d: base %d, size %d (in sector)\n",
             i,
             hdi->logical[i].base,
             hdi->logical[i].size);
@@ -500,6 +501,8 @@ static void print_identify_info(u16 *hdinfo) {
         {27, 40, "HD Model"}  /* Model number in ASCII */
     };
 
+    uart_kprintf("HD Identity {\n");
+
     for (k = 0; k < sizeof(iinfo) / sizeof(iinfo[0]); k++) {
         char *p = (char *)&hdinfo[iinfo[k].idx];
         for (i = 0; i < iinfo[k].len / 2; i++) {
@@ -507,17 +510,21 @@ static void print_identify_info(u16 *hdinfo) {
             s[i * 2]     = *p++;
         }
         s[i * 2] = 0;
-        kprintf("%s: %s\n", iinfo[k].desc, s);
+        uart_kprintf("  %s: %s\n", iinfo[k].desc, s);
     }
 
-    int capabilities = hdinfo[49];
-    kprintf("LBA supported:%s  ", capabilities & 0x0200 ? "YES" : "NO");
-
+    int capabilities      = hdinfo[49];
     int cmd_set_supported = hdinfo[83];
-    kprintf("LBA48 supported:%s  ", cmd_set_supported & 0x0400 ? "YES" : "NO");
+    int sectors           = ((int)hdinfo[61] << 16) + hdinfo[60];
 
-    int sectors = ((int)hdinfo[61] << 16) + hdinfo[60];
-    kprintf("HD size:%dMB\n", sectors * 512 / 1000000);
+    uart_kprintf(
+        "  LBA supported: %s\n"
+        "  LBA48 supported: %s\n"
+        "  HD size: %d MB\n"
+        "}\n",
+        capabilities & 0x0200 ? "YES" : "NO",
+        cmd_set_supported & 0x0400 ? "YES" : "NO",
+        sectors * 512 / 1000000);
 }
 
 /*****************************************************************************
