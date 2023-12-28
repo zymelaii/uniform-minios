@@ -4,6 +4,7 @@
  ********************************************************/
 
 #include <x86.h>
+#include <memman.h>
 #include <type.h>
 #include <const.h>
 #include <proc.h>
@@ -295,6 +296,25 @@ static int fork_pcb_cpy(PROCESS* p_child) {
         ((char*)(p_child + 1) - P_STACKTOP),
         ((char*)(p_proc_current + 1) - P_STACKTOP),
         18 * 4);
+    PH_INFO* ph_ptr              = p_proc_current->task.memmap.ph_info;
+    p_child->task.memmap.ph_info = NULL;
+    while (ph_ptr != NULL) {
+        PH_INFO* new_ph_info        = (PH_INFO*)sys_kmalloc(sizeof(PH_INFO));
+        new_ph_info->lin_addr_base  = ph_ptr->lin_addr_base;
+        new_ph_info->lin_addr_limit = ph_ptr->lin_addr_limit;
+        if (p_child->task.memmap.ph_info == NULL) {
+            new_ph_info->next            = NULL;
+            new_ph_info->before          = NULL;
+            p_child->task.memmap.ph_info = new_ph_info;
+        } else {
+            p_child->task.memmap.ph_info->before = new_ph_info;
+            new_ph_info->next                    = p_child->task.memmap.ph_info;
+            new_ph_info->before                  = NULL;
+            p_child->task.memmap.ph_info         = new_ph_info;
+        }
+        ph_ptr = ph_ptr->next;
+    }
+
     // modified end
 
     // 恢复标识信息
