@@ -377,14 +377,7 @@ static int initialize_processes() {
         // p_proc->task.cr3 在页表初始化中处理
 
         /**************线性地址布局初始化**********************************/ // edit by visual 2016.5.25
-        p_proc->task.memmap.text_lin_base =
-            0; // initial这些段的数据并不清楚，在变身init的时候才在中赋新值
-        p_proc->task.memmap.text_lin_limit =
-            0; // initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值
-        p_proc->task.memmap.data_lin_base =
-            0; // initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值
-        p_proc->task.memmap.data_lin_limit =
-            0; // initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值
+        p_proc->task.memmap.ph_info        = NULL;
         p_proc->task.memmap.vpage_lin_base = VpageLinBase; // 保留内存基址
         p_proc->task.memmap.vpage_lin_limit = VpageLinBase; // 保留内存界限
         p_proc->task.memmap.heap_lin_base  = HeapLinBase;   // 堆基址

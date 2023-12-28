@@ -11,6 +11,7 @@
 #include <elf.h>
 #include <fs.h> //added by mingxuan 2019-5-19
 #include <unios/vfs.h>
+#include <memman.h>
 
 static u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute);
 static u32 exec_load(
@@ -26,10 +27,8 @@ u32 sys_exec(char* path) {
     Elf32_Phdr* Echo_Phdr = NULL;
     u32         addr_lin;
     u32         err_temp;
-
     char* p_reg; // point to a register in the new kernel stack, added by xw,
                  // 17/12/11
-
     if (0 == path) {
         vga_write_str_color("exec: path ERROR!", 0x74);
         return -1;
@@ -38,7 +37,6 @@ u32 sys_exec(char* path) {
     /*******************打开文件************************/
     // u32 fd = open(path,"r");	//deleted by mingxuan 2019-5-19
     u32 fd = do_vopen(path, O_RDWR); // deleted by mingxuan 2019-5-19
-
     if (fd == -1) {
         // printf("sys_exec open error!\n");	//deleted by mingxuan 2019-5-23
         return -1;
@@ -49,6 +47,7 @@ u32 sys_exec(char* path) {
     Echo_Ehdr = sys_kmalloc(sizeof(Elf32_Ehdr));
     read_Ehdr(fd, Echo_Ehdr, 0);
     Echo_Phdr = sys_kmalloc(sizeof(Elf32_Phdr) * Echo_Ehdr->e_phnum);
+
     for (int i = 0; i < Echo_Ehdr->e_phnum; i++)
         read_Phdr(
             fd, Echo_Phdr + i, Echo_Ehdr->e_phoff + i * sizeof(Elf32_Phdr));
@@ -97,12 +96,14 @@ u32 sys_exec(char* path) {
     // 堆    用户还没有申请，所以没有分配，只在PCB表里标示了线性起始位置
 
     real_close(fd); // added by mingxuan 2019-5-23
+
     if (Echo_Ehdr != NULL) sys_free(Echo_Ehdr);
     if (Echo_Phdr != NULL) sys_free(Echo_Phdr);
 
     // vga_write_str_color("\n[exec success:",0x72);//灰底绿字
     // vga_write_str_color(path,0x72);//灰底绿字
     // vga_write_str_color("]",0x72);//灰底绿字
+
     return 0;
 }
 
@@ -112,7 +113,7 @@ u32 sys_exec(char* path) {
  *======================================================================*/
 static u32 exec_elfcpy(
     u32        fd,
-    Elf32_Phdr Echo_Phdr,
+    Elf32_Phdr Echo_Phdr, // program header
     u32 attribute) // 这部分代码将来要移动到exec.c文件中，包括下面exec()中的一部分
 {
     u32  lin_addr    = Echo_Phdr.p_vaddr;
@@ -173,6 +174,7 @@ static u32 exec_load(
     // (This is
     // bullshit)我们还不能确定elf中一共能有几个program，但就目前我们查看过的elf文件中，只出现过两中program，一种.text（R-E）和一种.data（RW-）
     // 上面一句话导致了去年出现了诡异的错误，暂时只能说简单修复了一下，但是这个系统的权限就很混乱
+    // BULL SHIT!
     for (ph_num = 0; ph_num < Echo_Ehdr->e_phnum; ph_num++) {
         if (0 == Echo_Phdr[ph_num].p_memsz) { // 最后一个program
             break;
@@ -182,10 +184,21 @@ static u32 exec_load(
         {          //.text
             exec_elfcpy(
                 fd, Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWR); // 进程代码段
-            p_proc_current->task.memmap.text_lin_base =
-                Echo_Phdr[ph_num].p_vaddr;
-            p_proc_current->task.memmap.text_lin_limit =
+            PH_INFO* new_ph_info       = (PH_INFO*)do_kmalloc(sizeof(PH_INFO));
+            new_ph_info->lin_addr_base = Echo_Phdr[ph_num].p_vaddr;
+            new_ph_info->lin_addr_limit =
                 Echo_Phdr[ph_num].p_vaddr + Echo_Phdr[ph_num].p_memsz;
+            if (p_proc_current->task.memmap.ph_info == NULL) {
+                new_ph_info->next                   = NULL;
+                new_ph_info->before                 = NULL;
+                p_proc_current->task.memmap.ph_info = new_ph_info;
+            } else {
+                p_proc_current->task.memmap.ph_info->before = new_ph_info;
+                new_ph_info->next   = p_proc_current->task.memmap.ph_info;
+                new_ph_info->before = NULL;
+                p_proc_current->task.memmap.ph_info = new_ph_info;
+            }
+
         } else if (Echo_Phdr[ph_num].p_flags & 0x4) // 1xx，R__, treat all
                                                     // readable but not
                                                     // executable segs as data
@@ -194,10 +207,20 @@ static u32 exec_load(
         {                                           //.data
             exec_elfcpy(
                 fd, Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWW); // 进程数据段
-            p_proc_current->task.memmap.data_lin_base =
-                Echo_Phdr[ph_num].p_vaddr;
-            p_proc_current->task.memmap.data_lin_limit =
+            PH_INFO* new_ph_info       = (PH_INFO*)do_kmalloc(sizeof(PH_INFO));
+            new_ph_info->lin_addr_base = Echo_Phdr[ph_num].p_vaddr;
+            new_ph_info->lin_addr_limit =
                 Echo_Phdr[ph_num].p_vaddr + Echo_Phdr[ph_num].p_memsz;
+            if (p_proc_current->task.memmap.ph_info == NULL) {
+                new_ph_info->next                   = NULL;
+                new_ph_info->before                 = NULL;
+                p_proc_current->task.memmap.ph_info = new_ph_info;
+            } else {
+                p_proc_current->task.memmap.ph_info->before = new_ph_info;
+                new_ph_info->next   = p_proc_current->task.memmap.ph_info;
+                new_ph_info->before = NULL;
+                p_proc_current->task.memmap.ph_info = new_ph_info;
+            }
         } else {
             vga_write_str_color("exec_load: unKnown elf'program!", 0x74);
             return -1;

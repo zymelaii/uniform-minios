@@ -116,12 +116,21 @@ typedef struct s_tree_info { // 进程树记录，包括父进程，子进程，
     int data_hold;                   // 是否拥有数据
 } TREE_INFO;
 
-typedef struct s_lin_memmap { // 线性地址分布结构体	edit by visual 2016.5.25
-    u32 text_lin_base;        // 代码段基址
-    u32 text_lin_limit;       // 代码段界限
+typedef struct s_ph_info {
+    u32               lin_addr_base;
+    u32               lin_addr_limit;
+    struct s_ph_info* next;
+    struct s_ph_info* before;
+} PH_INFO;
 
-    u32 data_lin_base;  // 数据段基址
-    u32 data_lin_limit; // 数据段界限
+typedef struct s_lin_memmap { // 线性地址分布结构体	edit by visual 2016.5.25
+    // u32 text_lin_base;        // 代码段基址// BULL SHIT!!!!!
+    // u32 text_lin_limit;       // 代码段界限
+
+    // u32 data_lin_base;  // 数据段基址// BULL SHIT!!!!!
+    // u32 data_lin_limit; // 数据段界限
+
+    PH_INFO* ph_info;
 
     u32 vpage_lin_base;  // 保留内存基址
     u32 vpage_lin_limit; // 保留内存界限
@@ -163,10 +172,11 @@ typedef struct s_proc {
                    'ticks'.
                    */
 
-    LIN_MEMMAP memmap; // 线性内存分部信息 		add by visual 2016.5.4
-    TREE_INFO  info;   // 记录进程树关系	add by visual 2016.5.25
-    int        ticks;  /* remained ticks */
-    int        priority;
+    LIN_MEMMAP memmap; // 线性内存分部信息 		add by visual 2016.5.4 //
+                       // BULLSHIT FUCK IDIOT
+    TREE_INFO info;    // 记录进程树关系	add by visual 2016.5.25
+    int       ticks;   /* remained ticks */
+    int       priority;
 
     u32  pid;        /* process id passed in from MM */
     char p_name[16]; /* name of the process */

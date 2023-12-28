@@ -10,5 +10,5 @@ _start:
 	push 	eax
 	push	ecx
 	call	main
-	push 	eax 
+	push 	eax
 	call 	exit

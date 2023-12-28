@@ -3,12 +3,14 @@
  *系统调用fork()功能实现部分sys_fork()
  ********************************************************/
 
+#include <x86.h>
 #include <type.h>
 #include <const.h>
 #include <proc.h>
 #include <global.h>
 #include <proto.h>
 #include <string.h>
+#include <stdio.h>
 
 static int fork_mem_cpy(u32 ppid, u32 pid);
 static int fork_pcb_cpy(PROCESS* p_child);
@@ -19,6 +21,7 @@ static int fork_update_info(PROCESS* p_child);
  *系统调用sys_fork的具体实现部分
  *************************************************************/
 int sys_fork() {
+    disable_int();
     PROCESS* p_child;
     char*    p_reg; // point to a register in the new kernel stack, added by xw,
                     // 17/12/11
@@ -60,8 +63,11 @@ int sys_fork() {
 
         // anything child need is prepared now, set its state to ready. added by
         // xw, 17/12/11
+
         p_child->task.stat = READY;
     }
+
+    enable_int();
     return p_child->task.pid;
 }
 
@@ -72,47 +78,53 @@ int sys_fork() {
 static int fork_mem_cpy(u32 ppid, u32 pid) {
     u32 addr_lin;
     // 复制代码，代码是共享的，直接将物理地址挂载在子进程的页表上
-    for (addr_lin = p_proc_current->task.memmap.text_lin_base;
-         addr_lin < p_proc_current->task.memmap.text_lin_limit;
-         addr_lin += num_4K) {
-        lin_mapping_phy(
-            addr_lin, // 线性地址
-            get_page_phy_addr(
-                ppid,
-                addr_lin), // 物理地址，为MAX_UNSIGNED_INT时，由该函数自动分配物理内存
-            pid, // 要挂载的进程的pid，子进程的pid
-            PG_P | PG_USU | PG_RWW,  // 页目录属性，一般都为可读写
-            PG_P | PG_USU | PG_RWR); // 页表属性，代码是只读的
-    }
+    // for (addr_lin = p_proc_current->task.memmap.text_lin_base;
+    //      addr_lin < p_proc_current->task.memmap.text_lin_limit;
+    //      addr_lin += num_4K) {
+    //     lin_mapping_phy(
+    //         addr_lin, // 线性地址
+    //         get_page_phy_addr(
+    //             ppid,
+    //             addr_lin), //
+    //             物理地址，为MAX_UNSIGNED_INT时，由该函数自动分配物理内存
+    //         pid, // 要挂载的进程的pid，子进程的pid
+    //         PG_P | PG_USU | PG_RWW,  // 页目录属性，一般都为可读写
+    //         PG_P | PG_USU | PG_RWW); // 页表属性，代码是只读的
+    // }
     // 复制数据，数据不共享，子进程需要申请物理地址，并复制过来
-    for (addr_lin = p_proc_current->task.memmap.data_lin_base;
-         addr_lin < p_proc_current->task.memmap.data_lin_limit;
-         addr_lin += num_4K) {
-        lin_mapping_phy(
-            SharePageBase,
-            0,
-            ppid,
-            PG_P | PG_USU | PG_RWW,
-            0); // 使用前必须清除这个物理页映射
-        lin_mapping_phy(
-            SharePageBase,
-            MAX_UNSIGNED_INT,
-            ppid,
-            PG_P | PG_USU | PG_RWW,
-            PG_P | PG_USU | PG_RWW); // 利用父进程的共享页申请物理页
-        memcpy(
-            (void*)SharePageBase,
-            (void*)(addr_lin & 0xFFFFF000),
-            num_4K); // 将数据复制到物理页上,注意这个地方是强制一页一页复制的
-        lin_mapping_phy(
-            addr_lin, // 线性地址
-            get_page_phy_addr(
+    PH_INFO* ph_ptr = p_proc_current->task.memmap.ph_info;
+    while (ph_ptr != NULL) {
+        for (addr_lin = ph_ptr->lin_addr_base;
+             addr_lin < ph_ptr->lin_addr_limit;
+             addr_lin += num_4K) {
+            lin_mapping_phy(
+                SharePageBase,
+                0,
                 ppid,
-                SharePageBase), // 物理地址，获取共享页的物理地址，填进子进程页表
-            pid, // 要挂载的进程的pid，子进程的pid
-            PG_P | PG_USU | PG_RWW,  // 页目录属性，一般都为可读写
-            PG_P | PG_USU | PG_RWW); // 页表属性，数据是可读写的
+                PG_P | PG_USU | PG_RWW,
+                0); // 使用前必须清除这个物理页映射
+            lin_mapping_phy(
+                SharePageBase,
+                MAX_UNSIGNED_INT,
+                ppid,
+                PG_P | PG_USU | PG_RWW,
+                PG_P | PG_USU | PG_RWW); // 利用父进程的共享页申请物理页
+            memcpy(
+                (void*)SharePageBase,
+                (void*)(addr_lin & 0xFFFFF000),
+                num_4K); // 将数据复制到物理页上,注意这个地方是强制一页一页复制的
+            lin_mapping_phy(
+                addr_lin, // 线性地址
+                get_page_phy_addr(
+                    ppid,
+                    SharePageBase), // 物理地址，获取共享页的物理地址，填进子进程页表
+                pid, // 要挂载的进程的pid，子进程的pid
+                PG_P | PG_USU | PG_RWW, // 页目录属性，一般都为可读写
+                PG_P | PG_USU | PG_RWW); // 页表属性，数据是可读写的
+        }
+        ph_ptr = ph_ptr->next;
     }
+
     // 复制保留内存，保留内存不共享，子进程需要申请物理地址，并复制过来
     for (addr_lin = p_proc_current->task.memmap.vpage_lin_base;
          addr_lin < p_proc_current->task.memmap.vpage_lin_limit;
