@@ -69,6 +69,7 @@ int printf(const char *fmt, ...);
 
 int vkprintf(const char *fmt, va_list ap);
 int kprintf(const char *fmt, ...);
+int trace_logging(const char *fmt, ...);
 
 // int scanf(char *str, ...);
 char  getchar();       // added by mingxuan 2019-5-23

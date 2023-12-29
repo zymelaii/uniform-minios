@@ -45,3 +45,15 @@ int uart_kprintf(const char *fmt, ...) {
 
     return rc;
 }
+
+int trace_logging(const char *fmt, ...) {
+    va_list ap;
+    int     rc;
+
+    uart_kprintf("[tick %d] ", sys_get_ticks());
+    va_start(ap, fmt);
+    rc = v_uart_kprintf(fmt, ap);
+    va_end(ap);
+
+    return rc;
+}

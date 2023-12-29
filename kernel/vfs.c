@@ -222,7 +222,7 @@ int do_vopen(const char *path, int flags) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
 
@@ -235,7 +235,7 @@ int do_vopen(const char *path, int flags) {
     if (fd != -1) {
         p_proc_current->task.filp[fd]->dev_index = index;
     } else {
-        kprintf("filesystem error: invalid path: %s\n", path);
+        trace_logging("filesystem error: invalid path: %s\n", path);
     }
 
     return fd;
@@ -285,7 +285,7 @@ int do_vunlink(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
     return vfs_table[index].ops->unlink(relpath);
@@ -302,7 +302,7 @@ int do_vcreate(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
 
@@ -315,7 +315,7 @@ int do_vdelete(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
     return vfs_table[index].ops->delete (relpath);
@@ -325,7 +325,7 @@ int do_vopendir(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
 
@@ -338,7 +338,7 @@ int do_vcreatedir(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
 
@@ -351,7 +351,7 @@ int do_vdeletedir(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        kprintf("filesystem error: invalid vfs path: %s\n", path);
+        trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
 
