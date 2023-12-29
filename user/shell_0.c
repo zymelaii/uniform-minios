@@ -19,6 +19,29 @@
 
 #define CHECK_PTR(p) assert((p) != NULL)
 
+//! NOTE: override ill-implemented memman malloc & free
+#define malloc(size) mman_calloc(size)
+#define free(ptr)  mman_free(ptr)
+
+int __calloc_freep;
+
+void mman_init() {
+    __calloc_freep = 0;
+}
+
+void *mman_calloc(int size) {
+    assert(size > 0);
+    static char memblk[4096];
+    if (__calloc_freep + size > 4096) { return NULL; }
+    void *ptr      = &memblk[__calloc_freep];
+    __calloc_freep += size;
+    return ptr;
+}
+
+void mman_free(void *p) {
+    //! NOTE: just ignore
+}
+
 void setup_for_all_tty() {
     int nr_tty = 0;
     while (nr_tty + 1 < NR_CONSOLES) {
@@ -143,20 +166,22 @@ void print_exec_info(int argc, char **argv) {
     assert(argc > 0);
     CHECK_PTR(argv);
     printf("exec {\n");
-    printf("  command: \"%s\",", argv[0]);
+    printf("  command: \"%s\",\n", argv[0]);
     do {
         if (argc == 1) {
             printf("  arguments: [],\n");
             break;
         }
-        printf("  arguments: [");
+        printf("  arguments: [\n");
         for (int i = 1; i < argc; ++i) { printf("    \"%s\",\n", argv[i]); }
-        printf("  ]");
+        printf("  ],\n");
     } while (0);
     printf("}\n");
 }
 
 int main(int arg, char *argv[]) {
+    mman_init();
+
     setup_for_all_tty();
 
     char buf[MAX_PATH] = {};

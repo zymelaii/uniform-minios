@@ -7,9 +7,10 @@ USERLIB_OBJS	:= $(patsubst %.asm, $(OBJDIR)/%.o, $(USERLIB_OBJS))
 
 # 这里给我整不会了，文件名只能长度为16位，否则会寄，原因还挺难找
 USER_SRCS := \
-        user/ptTest.c   \
-		user/shell_0.c  \
-		user/forktest.c \
+        user/ptTest.c    \
+		user/shell_0.c   \
+		user/forktest.c  \
+		user/dead-exec.c \
 
 USER_BINS	:= $(patsubst %.c, $(OBJDIR)/%.bin, $(USER_SRCS))
 USER_BASENAMES	:= $(patsubst $(OBJDIR)/user/%, %, $(USER_BINS))
