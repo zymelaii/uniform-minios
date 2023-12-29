@@ -21,7 +21,7 @@
 
 //! NOTE: override ill-implemented memman malloc & free
 #define malloc(size) mman_calloc(size)
-#define free(ptr)  mman_free(ptr)
+#define free(ptr)    mman_free(ptr)
 
 int __calloc_freep;
 
@@ -179,6 +179,18 @@ void print_exec_info(int argc, char **argv) {
     printf("}\n");
 }
 
+bool route(int argc, char *argv[]) {
+    assert(argc > 0 && argv != NULL);
+    if (argc == 1 && strcmp(argv[0], "exit") == 0) {
+        exit(0);
+        assert(false && "unreachable");
+    } else if (strcmp(argv[0], "parse-cmd") == 0) {
+        print_exec_info(argc - 1, argv + 1);
+        return true;
+    }
+    return false;
+}
+
 int main(int arg, char *argv[]) {
     mman_init();
 
@@ -189,19 +201,15 @@ int main(int arg, char *argv[]) {
         printf("miniOS:/ $ ");
         gets(buf);
 
-        int    argc = 0;
-        char **argv = NULL;
-        bool   ok   = arg_from_cmdline(buf, &argc, &argv);
+        int    cmd_argc = 0;
+        char **cmd_argv = NULL;
+        bool   ok       = arg_from_cmdline(buf, &cmd_argc, &cmd_argv);
         if (!ok) { continue; }
 
-        print_exec_info(argc, argv);
+        ok = route(cmd_argc, cmd_argv);
+        if (!ok && exec(buf) != 0) { printf("unknown command: `%s`\n", buf); }
 
-        if (exec(buf) != 0) {
-            printf("exec failed: file not found!\n");
-            continue;
-        }
-
-        int n = arg_free(argv);
-        assert(n == argc);
+        int n = arg_free(cmd_argv);
+        assert(n == cmd_argc);
     }
 }
