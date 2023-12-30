@@ -1,30 +1,16 @@
-/**********************************************************
- *	spinlock.h       //added by mingxuan 2018-12-26
- ***********************************************************/
+#pragma once
 
-#ifndef MINIOS_SPINLOCK_H
-#define MINIOS_SPINLOCK_H
-
-// Mutual exclusion lock.
-#define uint unsigned
+#include <type.h>
 
 struct spinlock {
-    uint locked; // Is the lock held?
+    u32 locked;
 
-    // For debugging:
-    char *name;    // Name of lock.
-    int   cpu;     // The number of the cpu holding the lock.
-    uint  pcs[10]; // The call stack (an array of program counters)
-                   // that locked the lock.
+    //! for debug use
+    char *name;
+    int   cpu;     //<! number of the cpu holding the lock
+    u32   pcs[10]; //<! call stack that locked the lock
 };
 
 void initlock(struct spinlock *lock, char *name);
-// Acquire the lock.
-// Loops (spins) until the lock is acquired.
-// (Because contention is handled by spinning, must not
-// go to sleep holding any locks.)
 void acquire(struct spinlock *lock);
-// Release the lock.
 void release(struct spinlock *lock);
-
-#endif

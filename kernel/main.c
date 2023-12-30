@@ -15,7 +15,7 @@
 #include <fs_const.h>
 #include <hd.h>
 #include <fs.h>
-#include <memman.h>
+#include <unios/malloc.h>
 #include <fat32.h>
 #include <x86.h>
 #include <assert.h>
@@ -40,7 +40,7 @@ int kernel_main() {
     uart_kprintf("-----Kernel Initialization Begins-----\n");
     kernel_initial = 1; // kernel is in initial state. added by xw, 18/5/31
 
-    init(); // 内存管理模块的初始化  add by liang
+    init_mem(); // 内存管理模块的初始化  add by liang
     uart_kprintf("-----mem module init done-----\n");
 
     // initialize PCBs, added by xw, 18/5/26

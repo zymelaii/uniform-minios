@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <const.h>
+#include <stdarg.h>
 
 static void printfputch(int ch, int *cnt) {
     char buf = (char)ch;

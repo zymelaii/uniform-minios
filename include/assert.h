@@ -1,5 +1,4 @@
-#ifndef MINIOS_ASSERT_H
-#define MINIOS_ASSERT_H
+#pragma once
 
 void _warn(const char*, int, const char*, ...);
 void _panic(const char*, int, const char*, ...) __attribute__((noreturn));
@@ -11,11 +10,3 @@ void _panic(const char*, int, const char*, ...) __attribute__((noreturn));
  do {                                          \
   if (!(x)) panic("assertion failed: %s", #x); \
  } while (0)
-
-// 静态assert，如果不符合条件就会直接在编译期报错
-#define static_assert(x) \
- switch (x)              \
- case 0:                 \
- case (x):;
-
-#endif /* MINIOS_ASSERT_H */

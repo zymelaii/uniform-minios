@@ -157,18 +157,10 @@ int do_vdelete(char *path) {
 
 # 猴子掰苞谷
 
-一个 elf 执行的时候加载三四个 LOAD 段，你记录加载段的地址上下界限的时候加载一个 LOAD 改一次，等所有 LOAD 加载完了发现第一个 LOAD 段的地址上下限已经被最后一个 LOAD 段给改完了，好家伙好家伙，怪不得每次 fork 都会丢 data 段，原来父进程只保证了自己是对的，自己的 pcb 压根都没有记录全部的 LOAD 段信息，这让释放的时候怎么释放？子进程如何 fork，我的评价是 fork 不了一点。
-
-贴上原汁原味的源代码
+> from kernel/exec.c:sys_exec
 
 ```c
-// in exec.c
 for (ph_num = 0; ph_num < Echo_Ehdr->e_phnum; ph_num++) {
-    // 假设我们的 ph 段只有两个 LOAD，好，很完美，都加载了，fork
-    // 也正常但如果有三个，第三次循环的时候要么把 text_lin_base 覆盖掉，要么把
-    // data_lin_base 和 data_lin_limit 覆盖掉
-    // 这不就猴子掰苞谷，改一点丢一点。。。。。。十三点
-
     if (0 == Echo_Phdr[ph_num].p_memsz) { break; }
     if (Echo_Phdr[ph_num].p_flags
         & 0x1) // xx1，__E, executable seg must be code seg
@@ -188,3 +180,83 @@ for (ph_num = 0; ph_num < Echo_Ehdr->e_phnum; ph_num++) {
     }
 }
 ```
+
+一个 elf 执行的时候加载三四个 LOAD 段，你记录加载段的地址上下界限的时候加载一个 LOAD 改一次，等所有 LOAD 加载完了发现第一个 LOAD 段的地址上下限已经被最后一个 LOAD 段给改完了，好家伙好家伙，怪不得每次 fork 都会丢 data 段，原来父进程只保证了自己是对的，自己的 pcb 压根都没有记录全部的 LOAD 段信息，这让释放的时候怎么释放？子进程如何 fork，我的评价是 fork 不了一点。
+
+假设我们的 ph 段只有两个 LOAD，好，很完美，都加载了，fork 也正常但如果有三个，第三次循环的时候要么把 text_lin_base 覆盖掉，要么把 data_lin_base 和 data_lin_limit 覆盖掉。
+
+这不就猴子掰苞谷，改一点丢一点。。。。。。十三点。
+
+# 这段要反转一下！你说的对，但是
+
+> from kernel/fork.c:fork_mem_copy
+
+```c
+// 复制栈，栈不共享，子进程需要申请物理地址，并复制过来(注意栈的复制方向)
+for (addr_lin = p_proc_current->task.memmap.stack_lin_base;
+        addr_lin > p_proc_current->task.memmap.stack_lin_limit;
+        addr_lin -= num_4K) {
+    lin_mapping_phy(
+        SharePageBase,
+        0,
+        ppid,
+        PG_P | PG_USU | PG_RWW,
+        0); // 使用前必须清除这个物理页映射
+    lin_mapping_phy(
+        SharePageBase,
+        MAX_UNSIGNED_INT,
+        ppid,
+        PG_P | PG_USU | PG_RWW,
+        PG_P | PG_USU | PG_RWW); // 利用父进程的共享页申请物理页
+    memcpy(
+        (void*)SharePageBase,
+        (void*)(addr_lin & 0xFFFFF000),
+        num_4K); // 将数据复制到物理页上,注意这个地方是强制一页一页复制的
+    lin_mapping_phy(
+        addr_lin, // 线性地址
+        get_page_phy_addr(
+            ppid,
+            SharePageBase), // 物理地址，获取共享页的物理地址，填进子进程页表
+        pid, // 要挂载的进程的pid，子进程的pid
+        PG_P | PG_USU | PG_RWW,  // 页目录属性，一般都为可读写
+        PG_P | PG_USU | PG_RWW); // 页表属性，栈是可读写的
+}
+```
+
+行行行我知道栈是向低地址生长的也看到你的 `addr_lin -= num_4K` 了。
+
+但是，就是说，你知不道知道 memcpy 是从低地址向高地址拷贝的？
+
+你这是 clone 栈区 \[stack_lin_limit, stack_lin_base) 吗？你这不分明在 clone (stack_lin_limit+4K, stack_lin_base+4K] 吗？！又缺斤少两又酒里掺水了啊喂！
+
+# 你不懂，糊弄同事有助于涨业绩！
+
+> from kernel/pagetbl.c:vmalloc
+
+```c
+u32 vmalloc(u32 size) {
+    u32 temp;
+    if (p_proc_current->task.info.type == TYPE_PROCESS) { // 进程直接就是标识
+        temp = p_proc_current->task.memmap.heap_lin_limit;
+        p_proc_current->task.memmap.heap_lin_limit += size;
+    } else { // 线程需要取父进程的标识
+        temp = *((u32 *)p_proc_current->task.memmap.heap_lin_limit);
+        (*((u32 *)p_proc_current->task.memmap.heap_lin_limit)) += size;
+    }
+    return temp;
+}
+```
+
+已知 heap_lin_limit 的类型是 u32，并且 thread 的 head 是指向父进程/主线程的 head ptr。
+
+> 子线程与主线程共用堆，但是变量独立。为了维护堆，在此实现中子线程通过指向主线程 heap limit 的指针完成同步。
+
+你自己瞅瞅，你写的是人话吗？
+
+加这么点破烂添头你有工资拿吗？
+
+除了恶心自己恶心别人还有什么屁用吗？
+
+我不苛求你把结构改良，你直接把注释删了不行吗？还`需要获取父进程的标识`……
+
+你这获取的是父进程的标识吗？难道你自己都不清楚自己是怎么实现父子线程的堆共享的吗？你需要注释的是`这个 limit 其实是指向主线程 heap limit 的指针`而不是`获取父进程的标识`啊！

@@ -38,7 +38,7 @@ FAT_START_SECTOR 	DD 	0 ;FAT表的起始扇区号 ;added by mingxuan 2020-9-17
 DATA_START_SECTOR 	DD  0 ;数据区起始扇区号 ;added by mingxuan 2020-9-17
 
 LABEL_START:			; <--- 从这里开始 *************
-	
+
 	;for test
 	;added by mingxuan 2020-9-11
 	; 清屏
@@ -47,7 +47,7 @@ LABEL_START:			; <--- 从这里开始 *************
 	;mov		cx, 0			; 左上角: (0, 0)
 	;mov		dx, 0184fh		; 右下角: (80, 50)
 	;int		10h				; int 10h
-	
+
 	;for test
 	;added by mingxuan 2020-9-11
 	;mov		dh, 1
@@ -68,7 +68,7 @@ LABEL_START:			; <--- 从这里开始 *************
 	mov		eax, [ fs:OffsetOfActiPartStartSec]
 	add		ax, [ fs:BPB_RsvdSecCnt ]
 	mov 	[FAT_START_SECTOR], eax
-	
+
 	; 计算数据区起始扇区号 ; added by mingxuan 2020-9-17
 	add		eax, [ fs:BS_SecPerFAT ]
 	add		eax, [ fs:BS_SecPerFAT ]
@@ -145,7 +145,7 @@ _NEXT_ROOT_CLUSTER:
 	dec 	eax
 	dec 	eax
 	xor		ebx, ebx
-	
+
 	;mov	bl, byte [BPB_SecPerClu]	;deleted by mingxuan 2020-9-16
 	mov		bl, byte [fs:BPB_SecPerClu] ;modified by mingxuan 2020-9-16
 
@@ -153,7 +153,7 @@ _NEXT_ROOT_CLUSTER:
 	;add		eax, DATA_START_SECTOR
 	add		eax, [DATA_START_SECTOR] ;modified by mingxuan 2020-9-17
 	mov		dword [BP - DAP_SECTOR_LOW], eax
-	
+
 	;mov	dl, [BPB_SecPerClu] ;deleted by mingxuan 2020-9-16
 	mov		dl, [fs:BPB_SecPerClu] ;modified by mingxuan 2020-9-16
 
@@ -182,7 +182,7 @@ _NEXT_ROOT_ENTRY:
 	;mov		ax, BaseOfBoot ;added by mingxuan 2020-9-16
 	;mov 	es, ax		   ;added by mingxuan 2020-9-16
 
-	;jcxz	_FOUND_LOADER 
+	;jcxz	_FOUND_LOADER
 	jcxz	_FOUND_KERNEL ;modified by mingxuan 2020-9-16
 
 	pop		di
@@ -197,7 +197,7 @@ _NEXT_ROOT_ENTRY:
 
 _CHECK_NEXT_ROOT_CLUSTER:
 
-	 ; 计算FAT所在的簇号和偏移 
+	 ; 计算FAT所在的簇号和偏移
 	 ; FatOffset = ClusterNum*4
 	 XOR  EDX,EDX
 	 MOV  EAX,DWORD[BP - CURRENT_CLUSTER]
@@ -206,14 +206,14 @@ _CHECK_NEXT_ROOT_CLUSTER:
 
 	 ;MOV  CX,WORD [ BPB_BytesPerSec ]	;deleted by mingxuan 2020-9-16
 	 MOV  CX,WORD [ fs:BPB_BytesPerSec ];modified by mingxuan 2020-9-16
-	 
+
 	 DIV  ECX  ; EAX = Sector EDX = OFFSET
 	 ;ADD  EAX, FAT_START_SECTOR
 	 ADD  EAX, [FAT_START_SECTOR] ;modified by mingxuan 2020-9-17
-	 MOV  DWORD [ BP - DAP_SECTOR_LOW ], EAX 
-	   
+	 MOV  DWORD [ BP - DAP_SECTOR_LOW ], EAX
+
 	 call  ReadSector
-	  
+
 	 ; 检查下一个簇
 	 MOV  DI,DX
 	 ADD  DI,DATA_BUF_OFF
@@ -222,7 +222,7 @@ _CHECK_NEXT_ROOT_CLUSTER:
 	 MOV  DWORD[ BP - CURRENT_CLUSTER ],EAX
 	 CMP  EAX,CLUSTER_LAST  ; CX >= 0FFFFFF8H，则意味着没有更多的簇了
 	 JB  _NEXT_ROOT_CLUSTER
-	 
+
 	 ;JMP  _MISSING_LOADER	;deleted by mingxuan 2020-9-16
 	 JMP  _MISSING_KERNEL	;modified by mingxuan 2020-9-16
 
@@ -235,18 +235,18 @@ _FOUND_KERNEL: ;modified by mingxuan 2020-9-16
 	 shl  ax, 16
 	 mov  ax, [di + OFF_START_CLUSTER_LOW]  ; 起始簇号低32位
 	 mov  dword [ bp - CURRENT_CLUSTER ], eax
-	 mov  cx, BaseOfKernelFile      ; CX  = 缓冲区段地址 
+	 mov  cx, BaseOfKernelFile      ; CX  = 缓冲区段地址
 
 _NEXT_DATA_CLUSTER:
 	 ; 根据簇号计算扇区号
 	 DEC  EAX
-	 DEC  EAX  
+	 DEC  EAX
 	 XOR  EBX,EBX
 
 	 ;MOV  BL, BYTE [ BPB_SecPerClu ] ;deleted by mingxuan 2020-9-16
 	 MOV  BL, BYTE [ fs:BPB_SecPerClu ];modified by mingxuan 2020-9-16
 
-	 MUL  EBX 
+	 MUL  EBX
 	 ;ADD  EAX, DATA_START_SECTOR
 	 ADD  EAX, [DATA_START_SECTOR] ;modified by mingxuan 2020-9-17
 	 MOV  DWORD[ BP - DAP_SECTOR_LOW  ], EAX
@@ -262,28 +262,28 @@ _NEXT_DATA_SECTOR:
 	 ; 读取簇中的每个扇区(内层循环)
 	 ; 注意 : 通过检查文件大小，可以避免读取最后一个不满簇的所有大小
 	 call  ReadSector
-	 
+
 	 ; 更新地址，继续读取
 	 ;MOV  AX, WORD [BPB_BytesPerSec] ;deleted by mingxuan 2020-9-16
 	 MOV  AX, WORD [fs:BPB_BytesPerSec] ;modified by mingxuan 2020-9-16
 
-	 ADD  WORD  [BP - DAP_BUFFER_OFF], ax 
+	 ADD  WORD  [BP - DAP_BUFFER_OFF], ax
 	 INC  DWORD [BP - DAP_SECTOR_LOW]  ; 递增扇区号
 	 DEC  BL        ; 内层循环计数
 	 JNZ  _NEXT_DATA_SECTOR
-	  
+
 	 ; 更新读取下一个簇的缓冲区地址
 	 ;MOV  CL, BYTE [ BPB_SecPerClu ]	;deleted by mingxuan 2020-9-16
 	 MOV  CL, BYTE [ fs:BPB_SecPerClu ] ;modified by mingxuan 2020-9-16
-	 
+
 	 ;MOV  AX, WORD [BPB_BytesPerSec]	;deleted by mingxuan 2020-9-16
 	 MOV  AX, WORD [fs:BPB_BytesPerSec] ;modified by mingxuan 2020-9-16
 
 	 SHR  AX, 4
 	 MUL  CL
-	 ADD  AX, WORD [ BP - DAP_BUFFER_SEG ] 
+	 ADD  AX, WORD [ BP - DAP_BUFFER_SEG ]
 	 MOV  CX, AX ; 保存下一个簇的缓冲区段地址
-	 
+
 	 ;====================================================================
 	 ; 检查是否还有下一个簇(读取FAT表的相关信息)
 	 ;  LET   N = 数据簇号
@@ -291,28 +291,28 @@ _NEXT_DATA_SECTOR:
 	 ;  FAT_SECTOR = FAT_BYTES / BPB_BytesPerSec
 	 ;  FAT_OFFSET = FAT_BYTES % BPB_BytesPerSec
 	 ;====================================================================
-	 
-	 ; 计算FAT所在的簇号和偏移 
+
+	 ; 计算FAT所在的簇号和偏移
 	 MOV  EAX,DWORD [BP - CURRENT_CLUSTER]
 	 XOR  EDX,EDX
 	 SHL  EAX,2
 	 XOR  EBX,EBX
-	 
+
 	 ;MOV  BX,WORD [ BPB_BytesPerSec ]	;deleted by mingxuan 2020-9-16
 	 MOV  BX,WORD [ fs:BPB_BytesPerSec ];modified by mingxuan 2020-9-16
-	 
+
 	 DIV  EBX   ; EAX = Sector  EDX = Offset
-	 
+
 	 ; 设置缓冲区地址
 	 ;ADD  EAX, FAT_START_SECTOR
 	 ADD  EAX, [FAT_START_SECTOR] ;modified by mingxuan 2020-9-17
-	 MOV  DWORD [ BP - DAP_SECTOR_LOW ], EAX 
-	 MOV  WORD [BP - DAP_BUFFER_SEG  ], 0x09000 
+	 MOV  DWORD [ BP - DAP_SECTOR_LOW ], EAX
+	 MOV  WORD [BP - DAP_BUFFER_SEG  ], 0x09000
 	 MOV  WORD [BP - DAP_BUFFER_OFF  ], DATA_BUF_OFF
 
 	 ; 读取扇区
 	 CALL  ReadSector
-	  
+
 	 ; 检查下一个簇
 	 MOV  DI,DX
 	 ADD  DI,DATA_BUF_OFF
@@ -323,9 +323,9 @@ _NEXT_DATA_SECTOR:
 	 JB  _NEXT_DATA_CLUSTER
 
 
-;;add end add by liang 2016.04.20	
+;;add end add by liang 2016.04.20
 ; 下面准备跳入保护模式 -------------------------------------------
-	
+
 	;for test
 	;added by mingxuan 2020-9-11
 	;mov		dh, 1
@@ -696,7 +696,7 @@ MemCpy:
 memtest:
 	push	edi
 	push	esi
-	
+
 	mov	esi,0xaa55aa55
 	mov	edi,0x55aa55aa
 	mov	eax,[esp+8+4]		;start
@@ -718,23 +718,23 @@ memtest:
 	pop	esi
 	pop	edi
 	ret
-	
+
 .mt_fin:
 	mov	[ebx],ecx		;恢复为修改前的值
 	pop	esi
 	pop	edi
 	ret
-	
+
 getFreeMemInfo:
 	push	eax
 	push	ebx
 	push	ecx
 	push	edx
-	
+
 	mov	eax,cr0
 	or	eax,0x60000000	;禁止缓存
 	mov	cr0,eax
-	
+
 	mov	ebx,0x00000000	;检查0到32M
 	mov	ecx,0x02000000
 	mov	edx,FMIBuff	;存于0x007ff000处
@@ -752,34 +752,34 @@ getFreeMemInfo:
 	inc	dword [dwFMINumber]	;循环次数，即返回值个数
 	cmp	ebx,ecx
 	jb	.fmi_loop
-	
+
 	mov	ebx,[dwFMINumber]
 	mov	edx,FMIBuff
 	mov	[edx],ebx		;前4B存放返回值个数
-	mov	ebx,[FMIBuff]		
+	mov	ebx,[FMIBuff]
 	push	ebx
 	call	DispInt			;打印返回值个数
 	add	esp,4
-	
+
 	mov	eax,cr0
 	and	eax,0x9fffffff	;恢复缓存
 	mov	cr0,eax
-	
+
 	pop	edx
 	pop	ecx
 	pop	ebx
 	pop	eax
 	ret
-	
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;add end add by liang 2016.04.13;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;add begin add by liang 2016.04.21	
+;;add begin add by liang 2016.04.21
 DispEchoSize:
 	push	eax
 	mov	eax,[dwEchoSize]
 	push	eax
-	call	DispInt			
+	call	DispInt
 	add	esp,4
 	pop	eax
 	ret
@@ -845,7 +845,7 @@ SetupPaging:
 .no_remainder:
 	push	ecx		; 暂存页表个数
 	mov dword[PageTblNumAddr],ecx ;将页表数写进这个物理地址
-	
+
 	; 为简化处理, 所有线性地址对应相等的物理地址. 并且不考虑内存空洞.
 
 	; 首先初始化页目录
@@ -858,27 +858,27 @@ SetupPaging:
 	stosd
 	add	eax, 4096		; 为了简化, 所有页表在内存中是连续的.
 	loop	.1
-	
+
 ;;;;初始化3G处的页目录;;;;;;;;;;;;;;;;	//add by visual 2016.5.10
 	pop eax			;页表个数
 	mov ecx,eax 	;重新放到ecx里
 	push ecx		;暂存页表个数
 	mov	ax, SelectorFlatRW
-	mov	es, ax	
+	mov	es, ax
 	mov eax, 3072				;768*4
 	add eax, PageDirBase		;
 	mov	edi, eax				; 应该往页目录这个位置写： PageDirBase+768*4，即线性地址3G处
-	
+
 	xor	eax, eax				; 清0
 	mov eax, ecx				;
 	mov ebx, 4096				;
 	mul ebx						;跳过前ecx个页表，即PageTblBase+页表数*4096
-	add eax, PageTblBase | PG_P  | PG_USU | PG_RWW;		 
+	add eax, PageTblBase | PG_P  | PG_USU | PG_RWW;
 .1k:
 	stosd
 	add	eax, 4096		; 为了简化, 所有页表在内存中是连续的.
 	loop	.1k
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	; 再初始化所有页表（最开始处，一一映射的）
 	pop	eax			; 页表个数
@@ -893,20 +893,20 @@ SetupPaging:
 	stosd
 	add	eax, 4096		; 每一页指向 4K 的空间
 	loop	.2
-	
+
 ;;;;初始化3G处的页表;;;;;;;;;;;;;;;;	//add by visual 2016.5.10
 	; 再初始化3G后的页表
 	pop	eax			; 页表个数
 	mov	ebx, 1024		; 每个页表 1024 个 PTE
 	mul	ebx
 	mov	ecx, eax		; PTE个数 = 页表个数 * 1024
-	
+
 	xor	eax, eax				; 清0
 	mov eax, ecx				;
 	mov ebx, 4
 	mul ebx				;跳过前ecx个页表，即PageTblBase+页表数*4096
 	add eax, PageTblBase		; 后面3G对应页表的起始位置为 PageTblBase+页表数*4096
-	mov	edi, eax		
+	mov	edi, eax
 	xor	eax, eax
 	mov	eax, PG_P  | PG_USU | PG_RWW		;从0开始
 .2k:
@@ -914,11 +914,11 @@ SetupPaging:
 	add	eax, 4096		; 每一页指向 4K 的空间
 	loop	.2k
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	
+
 	;mov	ah, 0Fh				; 0000: 黑底    1111: 白字
 	;mov	al, 'P'
 	;mov	[gs:((80 * 0 + 39) * 2)], ax	; 屏幕第 0 行, 第 39 列。
-	
+
 	;启动页表机制
 	mov	eax, PageDirBase
 	mov	cr3, eax
@@ -1010,4 +1010,3 @@ dwEchoSize		equ	BaseOfLoaderPhyAddr + _dwEchoSize		;add by liang 2016.04.21
 StackSpace:	times	1000h	db	0
 TopOfStack	equ	BaseOfLoaderPhyAddr + $	; 栈顶
 ; SECTION .data1 之结束 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-

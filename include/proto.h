@@ -1,12 +1,4 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                            proto.h
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                                                    Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-
-#ifndef MINIOS_PROTO_H
-#define MINIOS_PROTO_H
+#pragma once
 
 #include "unios/tty.h"
 #include "type.h"
@@ -74,60 +66,12 @@ void spurious_irq(int irq);
 /* clock.c */
 void clock_handler(int irq);
 
-/***************************************************************
- * 以下是系统调用相关函数的声明
- ****************************************************************/
-/* syscall.asm */
-void  sys_call(); /* int_handler */
-int   get_ticks();
-int   get_pid();               // add by visual 2016.4.6
-void* kmalloc(int size);       // edit by visual 2016.5.9
-void* kmalloc_4k();            // edit by visual 2016.5.9
-void* malloc(int size);        // edit by visual 2016.5.9
-void* malloc_4k();             // edit by visual 2016.5.9
-int   free(void* arg);         // edit by visual 2016.5.9
-int   free_4k(void* AdddrLin); // edit by visual 2016.5.9
-int   fork();                  // add by visual 2016.4.8
-int   pthread(void* arg);      // add by visual 2016.4.11
-void  udisp_int(int arg);      // add by visual 2016.5.16
-void  udisp_str(char* arg);    // add by visual 2016.5.16
-u32   exec(char* path);        // add by visual 2016.5.16
-void  yield();                 // added by xw, 18/4/19
-void  sleep(int n);            // added by xw, 18/4/19
-void  print_E();
-void  print_F();
-void  exit(int exitcode);
-/* syscallc.c */                   // edit by visual 2016.4.6
-int   sys_get_ticks();             /* sys_call */
-int   sys_get_pid();               // add by visual 2016.4.6
-void* sys_kmalloc(int size);       // edit by visual 2016.5.9
-void* sys_kmalloc_4k();            // edit by visual 2016.5.9
-void* sys_malloc(int size);        // edit by visual 2016.5.9
-void* sys_malloc_4k();             // edit by visual 2016.5.9
-int   sys_free(void* arg);         // edit by visual 2016.5.9
-int   sys_free_4k(void* AdddrLin); // edit by visual 2016.5.9
-int   sys_pthread(void* arg);      // add by visual 2016.4.11
-void  sys_udisp_int(int arg);      // add by visual 2016.5.16
-void  sys_udisp_str(char* arg);    // add by visual 2016.5.16
-
 /* proc.c */
-PROCESS* alloc_PCB();
-void     free_PCB(PROCESS* p);
-void     sys_yield();
-void     sys_sleep(int n);
-void     sys_wakeup(void* channel);
+PROCESS* alloc_pcb();
+void     free_pcb(PROCESS* p);
 int      ldt_seg_linear(PROCESS* p, int idx);
 void*    va2la(int pid, void* va);
 
-/* testfunc.c */
-void sys_print_E();
-void sys_print_F();
-
-/*exec.c*/
-u32 sys_exec(char* path); // add by visual 2016.5.23
-/*fork.c*/
-int sys_fork(); // add by visual 2016.5.25
-void sys_exit(int exitcodep);
 /***************************************************************
  * 以上是系统调用相关函数的声明
  ****************************************************************/
@@ -150,7 +94,6 @@ u32  phy_exist(u32 PageTblPhyAddr, u32 AddrLin);
 void write_page_pde(
     u32 PageDirPhyAddr, u32 AddrLin, u32 TblPhyAddr, u32 Attribute);
 void write_page_pte(u32 TblPhyAddr, u32 AddrLin, u32 PhyAddr, u32 Attribute);
-u32  vmalloc(u32 size);
 int  lin_mapping_phy(
      u32 AddrLin,
      u32 phy_addr,
@@ -158,5 +101,3 @@ int  lin_mapping_phy(
      u32 pde_Attribute,
      u32 pte_Attribute);         // edit by visual 2016.5.19
 void clear_kernel_pagepte_low(); // add by visual 2016.5.12
-
-#endif

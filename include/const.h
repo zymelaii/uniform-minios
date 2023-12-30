@@ -81,10 +81,6 @@
 #define AT_WINI_IRQ   14 /* at winchester */
 #define MOUSE_IRQ     12 // added by mingxuan 2019-5-19
 
-/* system call */
-// #define NR_SYS_CALL     23	//last modified by xw, 18/6/19
-#define NR_SYS_CALL 29 // modified by mingxuan 2019-5-17
-
 /* TTY */
 // added by mingxuan 2019-5-19
 #define NR_CONSOLES 3 /* consoles */

@@ -10,7 +10,7 @@
 #include <proc.h>
 #include <global.h>
 #include <proto.h>
-
+#include <stdarg.h>
 #include <assert.h>
 #include <string.h>
 
@@ -29,7 +29,8 @@ void _panic(const char* file, int line, const char* fmt, ...) {
     vkprintf(fmt, ap);
     kprintf("\n");
     va_end(ap);
-    // 休眠CPU核，直接罢工
+
+    // 休眠 CPU 核，直接罢工
     while (1) __asm__ volatile("hlt");
 }
 

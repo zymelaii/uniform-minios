@@ -5,7 +5,7 @@
 #include <type.h>
 #include <assert.h>
 #include <stdio.h>
-#include <memman.h>
+#include <unios/malloc.h>
 
 
 void put_irq_handler(int irq, irq_handler handler);

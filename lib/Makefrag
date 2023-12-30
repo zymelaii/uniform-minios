@@ -1,16 +1,17 @@
 OBJDIRS		+= lib
 
-LIB_OBJS :=	lib/string.o		\
-		kernel/syscall.o	\
-		lib/printf.o		\
-		lib/kprintf.o		\
-		lib/scanf.o		\
-		lib/printfmt.o		\
-		lib/vga_display.o		\
+LIB_OBJS :=	\
+		lib/string.o      \
+		lib/printf.o      \
+		lib/kprintf.o     \
+		lib/scanf.o       \
+		lib/printfmt.o    \
+		lib/vga_display.o \
+		lib/syscall.o     \
 
 LIB_OBJS := $(patsubst %, $(OBJDIR)/%, $(LIB_OBJS))
 
-LIB_A =	$(OBJDIR)/lib/ulib.a	
+LIB_A =	$(OBJDIR)/lib/ulib.a
 
 $(OBJDIR)/lib/%.o: lib/%.c $(OBJDIR)/.vars.CFLAGS
 	@echo + cc $<

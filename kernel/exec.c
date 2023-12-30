@@ -7,22 +7,19 @@
 #include <string.h>
 #include <proc.h>
 #include <global.h>
-#include <proto.h>
 #include <elf.h>
-#include <fs.h> //added by mingxuan 2019-5-19
+#include <fs.h>
+#include <unios/syscall.h>
+#include <proto.h>
 #include <unios/vfs.h>
-#include <memman.h>
+#include <unios/malloc.h>
 
 static u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute);
 static u32 exec_load(
     u32 fd, const Elf32_Ehdr* Echo_Ehdr, const Elf32_Phdr Echo_Phdr[]);
 static int exec_pcb_init(char* path);
 
-/*======================================================================*
- *                          sys_exec		add by visual 2016.5.23
- *exec系统调用功能实现部分
- *======================================================================*/
-u32 sys_exec(char* path) {
+int do_exec(char* path) {
     Elf32_Ehdr* Echo_Ehdr = NULL;
     Elf32_Phdr* Echo_Phdr = NULL;
     u32         addr_lin;
@@ -36,17 +33,17 @@ u32 sys_exec(char* path) {
 
     /*******************打开文件************************/
     // u32 fd = open(path,"r");	//deleted by mingxuan 2019-5-19
-    u32 fd = do_vopen(path, O_RDWR); // deleted by mingxuan 2019-5-19
+    u32 fd = do_open(path, O_RDWR); // deleted by mingxuan 2019-5-19
     if (fd == -1) {
-        // printf("sys_exec open error!\n");	//deleted by mingxuan 2019-5-23
+        // printf("do_exec open error!\n");	//deleted by mingxuan 2019-5-23
         return -1;
     }
     // u32 fd = fake_open(path,"r");	//modified by xw, 18/5/30
 
     /*************获取elf信息**************/
-    Echo_Ehdr = sys_kmalloc(sizeof(Elf32_Ehdr));
+    Echo_Ehdr = do_kmalloc(sizeof(Elf32_Ehdr));
     read_Ehdr(fd, Echo_Ehdr, 0);
-    Echo_Phdr = sys_kmalloc(sizeof(Elf32_Phdr) * Echo_Ehdr->e_phnum);
+    Echo_Phdr = do_kmalloc(sizeof(Elf32_Phdr) * Echo_Ehdr->e_phnum);
 
     for (int i = 0; i < Echo_Ehdr->e_phnum; i++)
         read_Phdr(
@@ -58,9 +55,9 @@ u32 sys_exec(char* path) {
 
     /*************根据elf的program复制文件信息**************/
     if (-1 == exec_load(fd, Echo_Ehdr, Echo_Phdr)) {
-        do_vclose(fd); // added by mingxuan 2019-5-23
-        if (Echo_Ehdr != NULL) sys_free(Echo_Ehdr);
-        if (Echo_Phdr != NULL) sys_free(Echo_Phdr);
+        do_close(fd); // added by mingxuan 2019-5-23
+        if (Echo_Ehdr != NULL) do_free(Echo_Ehdr);
+        if (Echo_Phdr != NULL) do_free(Echo_Phdr);
         return -1; // 使用了const指针传递
     }
 
@@ -101,8 +98,8 @@ u32 sys_exec(char* path) {
 
     real_close(fd); // added by mingxuan 2019-5-23
 
-    if (Echo_Ehdr != NULL) sys_free(Echo_Ehdr);
-    if (Echo_Phdr != NULL) sys_free(Echo_Phdr);
+    if (Echo_Ehdr != NULL) do_free(Echo_Ehdr);
+    if (Echo_Phdr != NULL) do_free(Echo_Phdr);
 
     // vga_write_str_color("\n[exec success:",0x72);//灰底绿字
     // vga_write_str_color(path,0x72);//灰底绿字
@@ -125,10 +122,7 @@ static u32 exec_elfcpy(
     u32  file_offset = Echo_Phdr.p_offset;
     u32  file_limit  = Echo_Phdr.p_offset + Echo_Phdr.p_filesz;
     char ch;
-    // u32 pde_addr_phy = get_pde_phy_addr(p_proc_current->task.pid);
-    // //页目录物理地址			//delete by visual 2016.5.19 u32 addr_phy =
-    // do_malloc(Echo_Phdr.p_memsz);//申请物理内存					//delete by
-    // visual 2016.5.19
+
     for (; lin_addr < lin_limit; lin_addr++, file_offset++) {
         lin_mapping_phy(
             lin_addr,
@@ -138,22 +132,9 @@ static u32 exec_elfcpy(
             attribute); // 说明：PDE属性尽量为读写，因为它要映射1024个物理页，可能既有数据，又有代码
                         // //edit by visual 2016.5.19
         if (file_offset < file_limit) { // 文件中还有数据，正常拷贝
-            // modified by xw, 18/5/30
-            //  seek(file_offset);
-            //  read(fd,&ch,1);
-
-            // fake_seek(file_offset); //deleted by mingxuan 2019-5-22
-            // real_lseek(fd, file_offset, SEEK_SET); //modified by mingxuan
-            // 2019-5-22
-            do_vlseek(
-                fd, file_offset, SEEK_SET); // modified by mingxuan 2019-5-24
-
-            // fake_read(fd,&ch,1); //deleted by mingxuan 2019-5-22
-            // real_read(fd, &ch, 1); //modified by mingxuan 2019-5-22
-            do_vread(fd, &ch, 1); // modified by mingxuan 2019-5-24
-            //~xw
-
-            *((u8*)lin_addr) = ch; // memcpy((void*)lin_addr,&ch,1);
+            do_lseek(fd, file_offset, SEEK_SET);
+            do_read(fd, &ch, 1);
+            *((u8*)lin_addr) = ch;
         } else {
             // 已初始化数据段拷贝完毕，剩下的是未初始化的数据段，在内存中填0
             *((u8*)lin_addr) = 0; // memset((void*)lin_addr,0,1);
@@ -183,7 +164,7 @@ static u32 exec_load(
     PH_INFO* to_delete_ph_info = NULL;
     while (old_ph_info != NULL) {
         to_delete_ph_info = old_ph_info;
-        sys_free(to_delete_ph_info);
+        do_free(to_delete_ph_info);
         old_ph_info = old_ph_info->next;
     }
     p_proc_current->task.memmap.ph_info = NULL;
@@ -196,7 +177,7 @@ static u32 exec_load(
         {          //.text
             exec_elfcpy(
                 fd, Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWR); // 进程代码段
-            PH_INFO* new_ph_info       = sys_kmalloc(sizeof(PH_INFO));
+            PH_INFO* new_ph_info       = do_kmalloc(sizeof(PH_INFO));
             new_ph_info->lin_addr_base = Echo_Phdr[ph_num].p_vaddr;
             new_ph_info->lin_addr_limit =
                 Echo_Phdr[ph_num].p_vaddr + Echo_Phdr[ph_num].p_memsz;
@@ -219,7 +200,7 @@ static u32 exec_load(
         {                                           //.data
             exec_elfcpy(
                 fd, Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWW); // 进程数据段
-            PH_INFO* new_ph_info       = (PH_INFO*)sys_kmalloc(sizeof(PH_INFO));
+            PH_INFO* new_ph_info       = (PH_INFO*)do_kmalloc(sizeof(PH_INFO));
             new_ph_info->lin_addr_base = Echo_Phdr[ph_num].p_vaddr;
             new_ph_info->lin_addr_limit =
                 Echo_Phdr[ph_num].p_vaddr + Echo_Phdr[ph_num].p_memsz;

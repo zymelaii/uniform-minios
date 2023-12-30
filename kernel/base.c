@@ -13,6 +13,7 @@
 #include <hd.h>
 #include <fs.h>
 #include <fs_misc.h>
+#include <unios/syscall.h>
 
 DWORD FAT_END = 268435455; // 文件簇号结束标记
 DWORD TotalSectors = 0; // 总扇区数，当载入磁盘时，才从DBR中读取。
@@ -66,7 +67,7 @@ void DeleteAllRecord(DWORD startCluster) {
             + (startCluster - 2) * Sectors_Per_Cluster * Bytes_Per_Sector
             + 2 * sizeof(Record);
     }
-    buf  = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    buf  = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     last = Reserved_Sector + 2 * Sectors_Per_FAT
          + (startCluster - 2) * Sectors_Per_Cluster + Sectors_Per_Cluster;
     do {
@@ -110,7 +111,7 @@ void DeleteAllRecord(DWORD startCluster) {
             off += sizeof(Record);
         }
     } while (1);
-    sys_free(buf);
+    do_free(buf);
     ClearFATs(startCluster);
 }
 
@@ -119,7 +120,7 @@ STATE FindClusterForDir(PDWORD pcluster) {
     DWORD clusterIndex = 2, nextClusterIndex = 0;
     DWORD curSectorIndex = 0, last = 0, offset = 0;
 
-    buf = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    buf = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     if (buf == NULL) { return SYSERROR; }
     curSectorIndex = Reserved_Sector;
     last           = curSectorIndex + Sectors_Per_FAT;
@@ -130,7 +131,7 @@ STATE FindClusterForDir(PDWORD pcluster) {
              offset += sizeof(DWORD), clusterIndex++) {
             memcpy(&nextClusterIndex, buf + offset, sizeof(DWORD));
             if (nextClusterIndex == 0) {
-                sys_free(buf);
+                do_free(buf);
                 *pcluster = clusterIndex;
                 ClearClusters(clusterIndex);
                 return OK;
@@ -138,7 +139,7 @@ STATE FindClusterForDir(PDWORD pcluster) {
         }
         offset = 0;
     }
-    sys_free(buf);
+    do_free(buf);
     return INSUFFICIENTSPACE;
 }
 
@@ -277,7 +278,7 @@ STATE ReadRecord(
     UINT  last = 0;
 
     size_of_Record = sizeof(Record);
-    buf = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    buf = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     do {
         curSectorIndex = Reserved_Sector + 2 * Sectors_Per_FAT
                        + (curClusterIndex - 2) * Sectors_Per_Cluster;
@@ -291,7 +292,7 @@ STATE ReadRecord(
                 memcpy(record, buf + off, size_of_Record);
                 if (record->filename[0] == 0) // 没有此目录项
                 {
-                    sys_free(buf);
+                    do_free(buf);
                     return WRONGPATH;
                 }
                 memset(temp, 0, sizeof(temp));
@@ -321,7 +322,7 @@ STATE ReadRecord(
                 if (strcmp(temp, name) == 0) {
                     if (sectorIndex != NULL) { *sectorIndex = curSectorIndex; }
                     if (off_in_sector != NULL) { *off_in_sector = off; }
-                    sys_free(buf);
+                    do_free(buf);
                     return OK;
                 }
             }
@@ -329,7 +330,7 @@ STATE ReadRecord(
         // GetNextCluster(curClusterIndex,&nextClusterIndex);
         // if(nextClusterIndex==FAT_END)
         // {
-        // 	sys_free(buf);
+        // 	do_free(buf);
         // 	return WRONGPATH;
         // }else{
         // 	curClusterIndex=nextClusterIndex;
@@ -344,7 +345,7 @@ void ClearFATs(DWORD startClusterIndex) {
     DWORD clear = 0;
 
     if (startClusterIndex == 0) { return; }
-    buf = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    buf = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     do {
         temp           = (curClusterIndex - 2) * sizeof(DWORD) + 8;
         curSectorIndex = Reserved_Sector + temp / Bytes_Per_Sector;
@@ -363,7 +364,7 @@ void ClearFATs(DWORD startClusterIndex) {
         preSectorIndex = curSectorIndex;
     } while (curClusterIndex != FAT_END);
     WriteSector(buf, curSectorIndex);
-    sys_free(buf);
+    do_free(buf);
 }
 
 STATE ClearRecord(DWORD parentCluster, PCHAR name, PDWORD startCluster) {
@@ -433,7 +434,7 @@ STATE FindSpaceInDir(
     DWORD  curSectorIndex = 0, offset = 0, last = 0;
     UINT   recordsnum = 1, curnum = 0;
 
-    buf = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    buf = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     if (strlen(name) % 29 == 0) {
         recordsnum = strlen(name) / 29;
     } else {
@@ -458,7 +459,7 @@ STATE FindSpaceInDir(
                         if (curnum == recordsnum) {
                             *sectorIndex   = curSectorIndex;
                             *off_in_sector = offset;
-                            sys_free(buf);
+                            do_free(buf);
                             return OK; // 为目录项找到位置了
                         }
                         memcpy(&record, buf + offset, sizeof(Record));
@@ -479,7 +480,7 @@ STATE FindSpaceInDir(
                         GetNameFromRecord(record, fullname);
                         if (strcmp(name, fullname) == 0) // 有重名的文件或目录
                         {
-                            sys_free(buf);
+                            do_free(buf);
                             return NAMEEXIST;
                         }
                     }
@@ -552,11 +553,11 @@ void CreateRecord(
 STATE WriteRecord(Record record, DWORD sectorIndex, DWORD off_in_sector) {
     BYTE *buf = NULL;
 
-    buf = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    buf = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     ReadSector(buf, sectorIndex);
     memcpy(buf + off_in_sector, &record, sizeof(Record));
     WriteSector(buf, sectorIndex);
-    sys_free(buf);
+    do_free(buf);
     return OK;
 }
 
@@ -565,7 +566,7 @@ STATE WriteFAT(DWORD totalclusters, PDWORD clusters) {
     DWORD i = 0, curSectorIndex = 0, preSectorIndex = 0, offset = 0,
           off_in_sector = 0;
 
-    buf = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    buf = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     if (buf == NULL) { return SYSERROR; }
     for (i = 0; i < totalclusters; i++) {
         offset         = 8 + (clusters[i] - 2) * sizeof(DWORD);
@@ -589,7 +590,7 @@ STATE WriteFAT(DWORD totalclusters, PDWORD clusters) {
     }
     WriteSector(buf, curSectorIndex);
     // 暂时用不上FAT2所以不写FAT2
-    sys_free(buf);
+    do_free(buf);
     return OK;
 }
 
@@ -603,7 +604,7 @@ STATE AllotClustersForEmptyFile(PFile pfile, DWORD size) {
     } else {
         n = size / bytes_per_cluster + 1;
     }
-    clusters = (PDWORD)K_PHY2LIN(sys_kmalloc(n * sizeof(DWORD)));
+    clusters = (PDWORD)K_PHY2LIN(do_kmalloc(n * sizeof(DWORD)));
     if (clusters == NULL) { return SYSERROR; }
     if (!FindClusterForFile(n, clusters)) // 空间不足
     {
@@ -611,7 +612,7 @@ STATE AllotClustersForEmptyFile(PFile pfile, DWORD size) {
     }
     pfile->start = clusters[0];
     WriteFAT(n, clusters);
-    sys_free(clusters);
+    do_free(clusters);
     return OK;
 }
 
@@ -623,7 +624,7 @@ STATE AddCluster(
     DWORD  curClusterIndex = startClusterIndex, nextClusterIndex = 0;
     // DWORD bytes_per_sector=Sectors_Per_FAT*Bytes_Per_Sector;
     STATE state;
-    clusters = (PDWORD)K_PHY2LIN(sys_kmalloc((num + 1) * sizeof(DWORD)));
+    clusters = (PDWORD)K_PHY2LIN(do_kmalloc((num + 1) * sizeof(DWORD)));
     if (clusters == NULL) { return SYSERROR; }
     state = FindClusterForFile(num, clusters + 1);
     if (state != OK) { return state; }
@@ -637,7 +638,7 @@ STATE AddCluster(
         }
     } while (1);
     WriteFAT(num + 1, clusters);
-    sys_free(clusters);
+    do_free(clusters);
     return OK;
 }
 
@@ -677,7 +678,7 @@ STATE FindClusterForFile(DWORD totalClusters, PDWORD clusters) {
     UINT  index = 0, i = 0, j = 0;
     DWORD curSectorIndex = 0, off_in_sector = 0;
 
-    buf = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    buf = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     if (buf == NULL) { return SYSERROR; }
     curSectorIndex = Reserved_Sector;
     off_in_sector  = 8;
@@ -690,7 +691,7 @@ STATE FindClusterForFile(DWORD totalClusters, PDWORD clusters) {
                 clusters[index++] = clusterIndex;
                 if (index >= totalClusters) // 找够了
                 {
-                    sys_free(buf);
+                    do_free(buf);
                     for (j = 0; j < totalClusters; j++) {
                         ClearClusters(clusters[j]); // 清空这些簇
                     }
@@ -699,7 +700,7 @@ STATE FindClusterForFile(DWORD totalClusters, PDWORD clusters) {
             }
         }
         if (curSectorIndex * Bytes_Per_Sector >= Position_Of_FAT2) {
-            sys_free(buf);
+            do_free(buf);
             return INSUFFICIENTSPACE;
         } else {
             curSectorIndex++;

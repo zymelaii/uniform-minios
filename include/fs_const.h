@@ -7,10 +7,6 @@
 /* TTY */
 #define NR_CONSOLES 3 /* consoles */
 
-/* max() & min() */
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#define min(a, b) ((a) < (b) ? (a) : (b))
-
 /* macros for messages */
 #define FD       u.m3.m3i1
 #define PATHNAME u.m3.m3p1

@@ -9,7 +9,7 @@
 #include <proc.h>
 #include <global.h>
 #include <proto.h>
-#include <memman.h>
+#include <unios/syscall.h>
 #include <stdio.h>
 
 // to determine if a page fault is reparable. added by xw, 18/6/11
@@ -32,7 +32,7 @@ u32 init_page_pte(u32 pid) { // 页表初始化函数
 
     u32 AddrLin, pde_addr_phy_temp, err_temp;
 
-    pde_addr_phy_temp = do_kmalloc_4k(); // 为页目录申请一页
+    pde_addr_phy_temp = (u32)do_kmalloc_4k(); // 为页目录申请一页
     memset(
         (void *)K_PHY2LIN(pde_addr_phy_temp),
         0,
@@ -263,111 +263,48 @@ void write_page_pte(
     // 页表起始地址+一项的大小*所属的项
 }
 
-/*======================================================================*
- *                         vmalloc		add by visual 2016.5.4
- *从堆中分配size大小的内存，返回线性地址
- *======================================================================*/
-u32 vmalloc(u32 size) {
-    u32 temp;
-    if (p_proc_current->task.info.type == TYPE_PROCESS) { // 进程直接就是标识
-        temp = p_proc_current->task.memmap.heap_lin_limit;
-        p_proc_current->task.memmap.heap_lin_limit += size;
-    } else { // 线程需要取父进程的标识
-        temp = *((u32 *)p_proc_current->task.memmap.heap_lin_limit);
-        (*((u32 *)p_proc_current->task.memmap.heap_lin_limit)) += size;
-    }
-
-    return temp;
-}
-
-/*======================================================================*
- *                          lin_mapping_phy		add by visual 2016.5.9
- *将线性地址映射到物理地址上去,函数内部会分配物理地址
- *======================================================================*/
+//! NOTE: try alloc phy addr if phy_addr is MAX_UNSIGNED_INT, otherwise directly
+//! mapping it
 int lin_mapping_phy(
-    u32 AddrLin,  // 线性地址
-    u32 phy_addr, // 物理地址,若为MAX_UNSIGNED_INT(0xFFFFFFFF)，则表示需要由该函数判断是否分配物理地址，否则将phy_addr直接和AddrLin建立映射
-    u32 pid,      // 进程pid						//edit by visual 2016.5.19
-    u32 pde_Attribute, // 页目录中的属性位
-    u32 pte_Attribute) // 页表中的属性位
-{
-    u32 pte_addr_phy;
-    u32 pde_addr_phy = get_pde_phy_addr(pid); // add by visual 2016.5.19
+    u32 laddr, u32 phy_addr, u32 pid, u32 pde_attr, u32 pte_addr) {
+    u32 pte_addr_phy = 0;
+    u32 pde_addr_phy = get_pde_phy_addr(pid);
 
-    if (0
-        == pte_exist(
-            pde_addr_phy, AddrLin)) { // 页表不存在，创建一个，并填进页目录中
-        pte_addr_phy = (u32)do_kmalloc_4k(); // 为页表申请一页
-        memset(
-            (void *)K_PHY2LIN(pte_addr_phy),
-            0,
-            num_4K); // add by visual 2016.5.26
-
-        if (pte_addr_phy < 0
-            || (pte_addr_phy & 0x3FF) != 0) // add by visual 2016.5.9
-        {
-            vga_write_str_color("lin_mapping_phy Error:pte_addr_phy", 0x74);
+    if (!pte_exist(pde_addr_phy, laddr)) {
+        pte_addr_phy = (u32)do_kmalloc_4k();
+        memset((void *)K_PHY2LIN(pte_addr_phy), 0, num_4K);
+        if (pte_addr_phy < 0 || (pte_addr_phy & 0x3ff) != 0) {
+            trace_logging("lin_mapping_phy error: pte_addr_phy");
             return -1;
         }
-
-        write_page_pde(
-            pde_addr_phy,   // 页目录物理地址
-            AddrLin,        // 线性地址
-            pte_addr_phy,   // 页表物理地址
-            pde_Attribute); // 属性
-    } else {                // 页表存在，获取该页表物理地址
-        pte_addr_phy = get_pte_phy_addr(
-            pid,      // 进程pid			//edit by visual 2016.5.19
-            AddrLin); // 线性地址
+        write_page_pde(pde_addr_phy, laddr, pte_addr_phy, pde_attr);
+    } else {
+        pte_addr_phy = get_pte_phy_addr(pid, laddr);
     }
 
-    if (MAX_UNSIGNED_INT == phy_addr) // add by visual 2016.5.19
-    {                                 // 由函数申请内存
-        if (0
-            == phy_exist(
-                pte_addr_phy, AddrLin)) { // 无物理页，申请物理页并修改phy_addr
-            if (AddrLin >= K_PHY2LIN(0))
-                phy_addr = do_kmalloc_4k(); // 从内核物理地址申请一页
-            else {
-                // kprintf("%");
-                phy_addr = do_malloc_4k(); // 从用户物理地址空间申请一页
-            }
-        } else {
-            // 有物理页，什么也不做,直接返回，必须返回
-            return 0;
-        }
-    } else { // 指定填写phy_addr
-             // 不用修改phy_addr
+    if (phy_addr == MAX_UNSIGNED_INT) {
+        if (phy_exist(pte_addr_phy, laddr)) { return 0; }
+        phy_addr =
+            (u32)(laddr >= KernelLinBase ? do_kmalloc_4k() : do_malloc_4k());
     }
 
-    if (phy_addr < 0 || (phy_addr & 0x3FF) != 0) {
-        vga_write_str_color("lin_mapping_phy:phy_addr ERROR", 0x74);
+    if (phy_addr < 0 || (phy_addr & 0x3ff) != 0) {
+        trace_logging("lin_mapping_phy error: phy_addr");
         return -1;
     }
 
-    write_page_pte(
-        pte_addr_phy,   // 页表物理地址
-        AddrLin,        // 线性地址
-        phy_addr,       // 物理页物理地址
-        pte_Attribute); // 属性
+    write_page_pte(pte_addr_phy, laddr, phy_addr, pte_addr);
     refresh_page_cache();
 
     return 0;
 }
 
-/*======================================================================*
- *                          clear_kernel_pagepte_low		add by visual
- *2016.5.12 将内核低端页表清除
- *======================================================================*/
+//! 将内核低端页表清除
 void clear_kernel_pagepte_low() {
     u32 page_num = *(u32 *)PageTblNumAddr;
-    memset(
-        (void *)(K_PHY2LIN(KernelPageTblAddr)),
-        0,
-        4 * page_num); // 从内核页目录中清除内核页目录项前8项
-    memset(
-        (void *)(K_PHY2LIN(KernelPageTblAddr + 0x1000)),
-        0,
-        4096 * page_num); // 从内核页表中清除线性地址的低端映射关系
+    // 从内核页目录中清除内核页目录项前 8 项
+    memset((void *)(K_PHY2LIN(KernelPageTblAddr)), 0, 4 * page_num);
+    // 从内核页表中清除线性地址的低端映射关系
+    memset((void *)(K_PHY2LIN(KernelPageTblAddr + 0x1000)), 0, 4096 * page_num);
     refresh_page_cache();
 }

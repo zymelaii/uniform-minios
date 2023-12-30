@@ -10,6 +10,8 @@
  *****************************************************************************
  *****************************************************************************/
 
+#include <unios/syscall.h>
+#include <unios/malloc.h>
 #include <type.h>
 #include <const.h>
 #include <proc.h>
@@ -148,7 +150,7 @@ void hd_service() {
             hd_rdwt_real(rwinfo);
             rwinfo->proc->task.stat = READY;
         }
-        yield();
+        do_yield();
     }
 }
 
@@ -203,7 +205,7 @@ void hd_rdwt_sched(MESSAGE *p) {
     int            size = p->CNT;
     void          *buffer;
 
-    buffer      = (void *)K_PHY2LIN(sys_kmalloc(size));
+    buffer      = (void *)K_PHY2LIN(do_kmalloc(size));
     rwinfo.msg  = p;
     rwinfo.kbuf = buffer;
     rwinfo.proc = p_proc_current;
@@ -224,7 +226,7 @@ void hd_rdwt_sched(MESSAGE *p) {
 
     hdque_buf.addr = K_LIN2PHY((u32)buffer);
     hdque_buf.size = size;
-    sys_free(&hdque_buf);
+    do_free(&hdque_buf);
 }
 
 void init_hd_queue(HDQueue *hdq) {
@@ -580,9 +582,9 @@ static void interrupt_wait() {
  * @return One if sucess, zero if timeout.
  *****************************************************************************/
 static int waitfor(int mask, int val, int timeout) {
-    int t = sys_get_ticks();
+    int t = do_get_ticks();
 
-    while (((sys_get_ticks() - t) * 1000 / HZ) < timeout) {
+    while (((do_get_ticks() - t) * 1000 / HZ) < timeout) {
         if ((inb(REG_STATUS) & mask) == val) return 1;
     }
 

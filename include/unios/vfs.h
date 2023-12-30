@@ -42,27 +42,3 @@ typedef struct vfs {
 } vfs_t;
 
 void vfs_setup_and_init();
-
-int do_vopen(const char *path, int flags);
-int do_vclose(int fd);
-int do_vread(int fd, char *buf, int count);
-int do_vwrite(int fd, const char *buf, int count);
-int do_vunlink(const char *path);
-int do_vlseek(int fd, int offset, int whence);
-int do_vcreate(const char *path);
-int do_vdelete(const char *path);
-int do_vopendir(const char *path);
-int do_vcreatedir(const char *path);
-int do_vdeletedir(const char *path);
-
-int sys_open(void *uesp);
-int sys_close(void *uesp);
-int sys_read(void *uesp);
-int sys_write(void *uesp);
-int sys_lseek(void *uesp);
-int sys_unlink(void *uesp);
-int sys_create(void *uesp);
-int sys_delete(void *uesp);
-int sys_opendir(void *uesp);
-int sys_createdir(void *uesp);
-int sys_deletedir(void *uesp);

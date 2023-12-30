@@ -5,6 +5,7 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
+#include <unios/syscall.h>
 #include <type.h>
 #include <const.h>
 #include <protect.h>
@@ -24,22 +25,22 @@ static void
     init_descriptor(DESCRIPTOR* p_desc, u32 base, u32 limit, u16 attribute);
 
 /* 中断处理函数 */
-void divide_error();
-void single_step_exception();
+void division_error();
+void debug_exception();
 void nmi();
 void breakpoint_exception();
-void overflow();
-void bounds_check();
-void inval_opcode();
-void copr_not_available();
+void overflow_exception();
+void bound_range_exceeded();
+void invalid_opcode();
+void device_not_available();
 void double_fault();
 void copr_seg_overrun();
-void inval_tss();
+void invalid_tss();
 void segment_not_present();
-void stack_exception();
+void stack_seg_exception();
 void general_protection();
 void page_fault();
-void copr_error();
+void floating_point_exception();
 void hwint00();
 void hwint01();
 void hwint02();
@@ -66,10 +67,11 @@ void init_prot() {
     init_8259A();
 
     // 全部初始化成中断门(没有陷阱门)
-    init_idt_desc(INT_VECTOR_DIVIDE, DA_386IGate, divide_error, PRIVILEGE_KRNL);
+    init_idt_desc(
+        INT_VECTOR_DIVIDE, DA_386IGate, division_error, PRIVILEGE_KRNL);
 
     init_idt_desc(
-        INT_VECTOR_DEBUG, DA_386IGate, single_step_exception, PRIVILEGE_KRNL);
+        INT_VECTOR_DEBUG, DA_386IGate, debug_exception, PRIVILEGE_KRNL);
 
     init_idt_desc(INT_VECTOR_NMI, DA_386IGate, nmi, PRIVILEGE_KRNL);
 
@@ -79,15 +81,20 @@ void init_prot() {
         breakpoint_exception,
         PRIVILEGE_USER);
 
-    init_idt_desc(INT_VECTOR_OVERFLOW, DA_386IGate, overflow, PRIVILEGE_USER);
-
-    init_idt_desc(INT_VECTOR_BOUNDS, DA_386IGate, bounds_check, PRIVILEGE_KRNL);
+    init_idt_desc(
+        INT_VECTOR_OVERFLOW, DA_386IGate, overflow_exception, PRIVILEGE_USER);
 
     init_idt_desc(
-        INT_VECTOR_INVAL_OP, DA_386IGate, inval_opcode, PRIVILEGE_KRNL);
+        INT_VECTOR_BOUNDS, DA_386IGate, bound_range_exceeded, PRIVILEGE_KRNL);
 
     init_idt_desc(
-        INT_VECTOR_COPROC_NOT, DA_386IGate, copr_not_available, PRIVILEGE_KRNL);
+        INT_VECTOR_INVAL_OP, DA_386IGate, invalid_opcode, PRIVILEGE_KRNL);
+
+    init_idt_desc(
+        INT_VECTOR_DEVICE_NOT,
+        DA_386IGate,
+        device_not_available,
+        PRIVILEGE_KRNL);
 
     init_idt_desc(
         INT_VECTOR_DOUBLE_FAULT, DA_386IGate, double_fault, PRIVILEGE_KRNL);
@@ -95,13 +102,17 @@ void init_prot() {
     init_idt_desc(
         INT_VECTOR_COPROC_SEG, DA_386IGate, copr_seg_overrun, PRIVILEGE_KRNL);
 
-    init_idt_desc(INT_VECTOR_INVAL_TSS, DA_386IGate, inval_tss, PRIVILEGE_KRNL);
+    init_idt_desc(
+        INT_VECTOR_INVAL_TSS, DA_386IGate, invalid_tss, PRIVILEGE_KRNL);
 
     init_idt_desc(
         INT_VECTOR_SEG_NOT, DA_386IGate, segment_not_present, PRIVILEGE_KRNL);
 
     init_idt_desc(
-        INT_VECTOR_STACK_FAULT, DA_386IGate, stack_exception, PRIVILEGE_KRNL);
+        INT_VECTOR_STACK_FAULT,
+        DA_386IGate,
+        stack_seg_exception,
+        PRIVILEGE_KRNL);
 
     init_idt_desc(
         INT_VECTOR_PROTECTION, DA_386IGate, general_protection, PRIVILEGE_KRNL);
@@ -110,7 +121,10 @@ void init_prot() {
         INT_VECTOR_PAGE_FAULT, DA_386IGate, page_fault, PRIVILEGE_KRNL);
 
     init_idt_desc(
-        INT_VECTOR_COPROC_ERR, DA_386IGate, copr_error, PRIVILEGE_KRNL);
+        INV_VECTOR_FP_EXCEPTION,
+        DA_386IGate,
+        floating_point_exception,
+        PRIVILEGE_KRNL);
 
     init_idt_desc(INT_VECTOR_IRQ0 + 0, DA_386IGate, hwint00, PRIVILEGE_KRNL);
 
@@ -144,7 +158,8 @@ void init_prot() {
 
     init_idt_desc(INT_VECTOR_IRQ8 + 7, DA_386IGate, hwint15, PRIVILEGE_KRNL);
 
-    init_idt_desc(INT_VECTOR_SYS_CALL, DA_386IGate, sys_call, PRIVILEGE_USER);
+    init_idt_desc(
+        INT_VECTOR_SYS_CALL, DA_386IGate, syscall_handler, PRIVILEGE_USER);
 
     /*修改显存描述符*/ // add by visual 2016.5.12
     init_descriptor(
@@ -280,8 +295,8 @@ void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags) {
                             divide error handler
  *======================================================================*/
 // used for testing if a exception handler can be interrupted rightly, so it's
-// not a real divide_error handler now. added by xw, 18/12/22
-void divide_error_handler() {
+// not a real division_error handler now. added by xw, 18/12/22
+void division_error_handler() {
     int vec_no, err_code, eip, cs, eflags;
     int i, j;
 

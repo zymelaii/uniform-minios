@@ -2,7 +2,7 @@
 #include <proto.h>
 #include <global.h>
 
-void sys_exit(int exitcode) {
+void do_exit(int exit_code) {
     p_proc_current->task.stat = IDLE;
     sched();
 }

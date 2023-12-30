@@ -1,8 +1,6 @@
 #include <unios/utils/tar.h>
-#include <unios/vfs.h>
 #include <stdio.h>
 #include <assert.h>
-#include <type.h>
 
 int untar(const char *tar_path, const char *extract_dir) {
     //! NOTE: untar may only support 1-depth extraction
@@ -10,13 +8,13 @@ int untar(const char *tar_path, const char *extract_dir) {
     char buf[512 * 16]     = {};
     char pathbuf[MAX_PATH] = {};
 
-    int fd = do_vopen(tar_path, O_RDWR);
+    int fd = open(tar_path, O_RDWR);
     assert(fd != -1 && "tar file not exists");
 
     int  nr_file = 0;
     bool err     = false;
     while (true) {
-        do_vread(fd, buf, 512);
+        read(fd, buf, 512);
 
         //! FIXME: fs io maybe out of range?
         if (buf[0] == 0) { break; }
@@ -28,22 +26,22 @@ int untar(const char *tar_path, const char *extract_dir) {
         int left = szfile;
 
         snprintf(pathbuf, sizeof(pathbuf), "%s/%s", extract_dir, phdr->name);
-        int fdout = do_vopen(pathbuf, O_CREAT | O_RDWR);
+        int fdout = open(pathbuf, O_CREAT | O_RDWR);
         //! TODO: enable custome handler for existed file
         bool skip = fdout == -1;
 
         while (left > 0) {
             int iobytes = min(sizeof(buf), left);
-            do_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512);
-            if (!skip) { do_vwrite(fdout, buf, iobytes); }
+            read(fd, buf, ((iobytes - 1) / 512 + 1) * 512);
+            if (!skip) { write(fdout, buf, iobytes); }
             left -= iobytes;
         }
 
-        if (!skip) { do_vclose(fdout); }
+        if (!skip) { close(fdout); }
         ++nr_file;
     }
 
-    do_vclose(fd);
+    close(fd);
 
     return err ? -1 : nr_file;
 }

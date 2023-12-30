@@ -305,10 +305,7 @@ int do_vcreate(const char *path) {
         trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
-
-    int state = vfs_table[index].ops->create(relpath);
-    if (state != OK) { DisErrorInfo(state); }
-    return state;
+    return vfs_table[index].ops->create(relpath);
 }
 
 int do_vdelete(const char *path) {
@@ -328,10 +325,7 @@ int do_vopendir(const char *path) {
         trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
-
-    int state = vfs_table[index].ops->opendir(relpath);
-    if (state != OK) { DisErrorInfo(state); }
-    return state;
+    return vfs_table[index].ops->opendir(relpath);
 }
 
 int do_vcreatedir(const char *path) {
@@ -341,10 +335,7 @@ int do_vcreatedir(const char *path) {
         trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
-
-    int state = vfs_table[index].ops->createdir(relpath);
-    if (state != OK) { DisErrorInfo(state); }
-    return state;
+    return vfs_table[index].ops->createdir(relpath);
 }
 
 int do_vdeletedir(const char *path) {
@@ -354,70 +345,49 @@ int do_vdeletedir(const char *path) {
         trace_logging("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
-
-    int state = vfs_table[index].ops->deletedir(relpath);
-    if (state != OK) { DisErrorInfo(state); }
-    return state;
+    return vfs_table[index].ops->deletedir(relpath);
 }
 
-int sys_open(void *uesp) {
-    const char *path  = (const char *)get_arg(uesp, 1);
-    int         flags = get_arg(uesp, 2);
+int do_open(const char *path, int flags) {
     return do_vopen(path, flags);
 }
 
-int sys_close(void *uesp) {
-    int fd = get_arg(uesp, 1);
+int do_close(int fd) {
     return do_vclose(fd);
 }
 
-int sys_read(void *uesp) {
-    int   fd    = get_arg(uesp, 1);
-    char *buf   = (char *)get_arg(uesp, 2);
-    int   count = get_arg(uesp, 3);
+int do_read(int fd, char *buf, int count) {
     return do_vread(fd, buf, count);
 }
 
-int sys_write(void *uesp) {
-    int         fd    = get_arg(uesp, 1);
-    const char *buf   = (const char *)get_arg(uesp, 2);
-    int         count = get_arg(uesp, 3);
+int do_write(int fd, const char *buf, int count) {
     return do_vwrite(fd, buf, count);
 }
 
-int sys_lseek(void *uesp) {
-    int fd     = get_arg(uesp, 1);
-    int offset = get_arg(uesp, 2);
-    int whence = get_arg(uesp, 3);
+int do_lseek(int fd, int offset, int whence) {
     return do_vlseek(fd, offset, whence);
 }
 
-int sys_unlink(void *uesp) {
-    const char *path = (const char *)get_arg(uesp, 1);
+int do_unlink(const char *path) {
     return do_vunlink(path);
 }
 
-int sys_create(void *uesp) {
-    const char *path = (const char *)get_arg(uesp, 1);
+int do_create(const char *path) {
     return do_vcreate(path);
 }
 
-int sys_delete(void *uesp) {
-    const char *path = (const char *)get_arg(uesp, 1);
+int do_delete(const char *path) {
     return do_vdelete(path);
 }
 
-int sys_opendir(void *uesp) {
-    const char *path = (const char *)get_arg(uesp, 1);
+int do_opendir(const char *path) {
     return do_vopendir(path);
 }
 
-int sys_createdir(void *uesp) {
-    const char *path = (const char *)get_arg(uesp, 1);
+int do_createdir(const char *path) {
     return do_vcreatedir(path);
 }
 
-int sys_deletedir(void *uesp) {
-    const char *path = (const char *)get_arg(uesp, 1);
+int do_deletedir(const char *path) {
     return do_vdeletedir(path);
 }

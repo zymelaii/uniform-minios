@@ -2,6 +2,7 @@
  *	fat32.c       //added by mingxuan 2019-5-17
  ***********************************************************/
 
+#include <unios/syscall.h>
 #include <fat32.h>
 #include <type.h>
 #include <const.h>
@@ -152,7 +153,7 @@ STATE ReadFile(int fd, void *buf, int length) {
 
     kprintf("read:");
     if (pfile->off >= pfile->size) { return 0; }
-    sector = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    sector = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     if (sector == NULL) { return SYSERROR; }
     GetFileOffset(pfile, &curSectorIndex, &off_in_sector, &isLastSector);
     do {
@@ -189,7 +190,7 @@ STATE ReadFile(int fd, void *buf, int length) {
             off_in_sector  = 0;
         }
     } while (1);
-    sys_free(sector);
+    do_free(sector);
     // pfile->off = 0;
     return size;
 }
@@ -211,20 +212,20 @@ STATE WriteFile(int fd, const void *buf, int length) {
         return ACCESSDENIED;
     }
 
-    sector = (PBYTE)K_PHY2LIN(sys_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    sector = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
     if (sector == NULL) { return SYSERROR; }
     if (pfile->start == 0) // 此文件是个空文件原来没有分配簇
     {
         state = AllotClustersForEmptyFile(pfile, length); // 空间不足无法分配
         if (state != OK) {
-            sys_free(sector);
+            do_free(sector);
             return state; // 虚拟磁盘空间不足
         }
     } else {
         if (NeedMoreCluster(pfile, length, &clusterNum)) {
             state = AddCluster(pfile->start, clusterNum); // 空间不足
             if (state != OK) {
-                sys_free(sector);
+                do_free(sector);
                 return state; // 虚拟磁盘空间不足
             }
         }
@@ -250,7 +251,7 @@ STATE WriteFile(int fd, const void *buf, int length) {
         sector + off_in_sector, (void *)buf + off_in_buf, length - off_in_buf);
     WriteSector(sector, curSectorIndex);
     pfile->off += length - off_in_buf;
-    sys_free(sector);
+    do_free(sector);
     // fflush(fp);
     return OK;
 }
@@ -497,7 +498,7 @@ STATE IsFile(PCHAR path, PUINT tag) {
 void init_fs_fat() {
     uart_kprintf("-----initialize fat32 filesystem-----\n");
 
-    buf = (u8 *)K_PHY2LIN(sys_kmalloc(FSBUF_SIZE));
+    buf = (u8 *)K_PHY2LIN(do_kmalloc(FSBUF_SIZE));
 
     int fat32_dev =
         get_fs_dev(PRIMARY_MASTER, FAT32_TYPE); // added by mingxuan 2020-10-27
@@ -674,7 +675,7 @@ int rw_sector_sched_fat(
     return 0;
 }
 
-int sys_CreateFile(void *uesp) {
+int do_CreateFile(void *uesp) {
     state = CreateFile((PCHAR)(void *)get_arg(uesp, 1));
     if (state == OK) {
         kprintf("           create file success");
@@ -685,7 +686,7 @@ int sys_CreateFile(void *uesp) {
     return state;
 }
 
-int sys_DeleteFile(void *uesp) {
+int do_DeleteFile(void *uesp) {
     state = DeleteFile((PCHAR)(void *)get_arg(uesp, 1));
     if (state == OK) {
         kprintf("           delete file success");
@@ -695,7 +696,7 @@ int sys_DeleteFile(void *uesp) {
     return state;
 }
 
-int sys_OpenFile(void *uesp) {
+int do_OpenFile(void *uesp) {
     /*	// state=OpenFile(get_arg(uesp, 1),
         // 				get_arg(uesp, 2));
         // if(state==OK)
@@ -713,7 +714,7 @@ int sys_OpenFile(void *uesp) {
     return 0;
 }
 
-int sys_CloseFile(void *uesp) {
+int do_CloseFile(void *uesp) {
     state = CloseFile(get_arg(uesp, 1));
     if (state == OK) {
         kprintf("           close file success");
@@ -723,7 +724,7 @@ int sys_CloseFile(void *uesp) {
     return state;
 }
 
-int sys_WriteFile(void *uesp) {
+int do_WriteFile(void *uesp) {
     state = WriteFile(
         get_arg(uesp, 1), (BYTE *)(void *)get_arg(uesp, 2), get_arg(uesp, 3));
     if (state == OK) {
@@ -734,7 +735,7 @@ int sys_WriteFile(void *uesp) {
     return state;
 }
 
-int sys_ReadFile(void *uesp) {
+int do_ReadFile(void *uesp) {
     // state=ReadFile(get_arg(uesp, 1),
     // 				get_arg(uesp, 2),
     // 				get_arg(uesp, 3),
@@ -751,7 +752,7 @@ int sys_ReadFile(void *uesp) {
     return 0;
 }
 
-int sys_OpenDir(void *uesp) {
+int do_OpenDir(void *uesp) {
     // state=OpenDir(get_arg(uesp, 1));
     // if(state==OK)
     // {
@@ -765,7 +766,7 @@ int sys_OpenDir(void *uesp) {
     return 0;
 }
 
-int sys_CreateDir(void *uesp) {
+int do_CreateDir(void *uesp) {
     // state=CreateDir(get_arg(uesp, 1));
     // if(state==OK)
     // {
@@ -779,7 +780,7 @@ int sys_CreateDir(void *uesp) {
     return 0;
 }
 
-int sys_DeleteDir(void *uesp) {
+int do_DeleteDir(void *uesp) {
     // state=DeleteDir(get_arg(uesp, 1));
     // if(state==OK)
     // {
@@ -793,7 +794,7 @@ int sys_DeleteDir(void *uesp) {
     return 0;
 }
 
-int sys_ListDir(void *uesp) {
+int do_ListDir(void *uesp) {
     // DArray *array=NULL;
     // char *s = get_arg(uesp, 1);
     // CHAR temp[256]={0};
@@ -829,18 +830,18 @@ int sys_ListDir(void *uesp) {
 
 void DisErrorInfo(STATE state) {
     if (state == SYSERROR) {
-        kprintf("          system error\n");
+        trace_logging("          system error\n");
     } else if (state == VDISKERROR) {
-        kprintf("          disk error\n");
+        trace_logging("          disk error\n");
     } else if (state == INSUFFICIENTSPACE) {
-        kprintf("          no much space\n");
+        trace_logging("          no much space\n");
     } else if (state == WRONGPATH) {
-        kprintf("          path error\n");
+        trace_logging("          path error\n");
     } else if (state == NAMEEXIST) {
-        kprintf("          name exists\n");
+        trace_logging("          name exists\n");
     } else if (state == ACCESSDENIED) {
-        kprintf("          deny access\n");
+        trace_logging("          deny access\n");
     } else {
-        kprintf("          unknown error\n");
+        trace_logging("          unknown error\n");
     }
 }

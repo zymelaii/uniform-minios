@@ -134,7 +134,7 @@ typedef struct s_tss {
 #define INT_VECTOR_OVERFLOW     0x4
 #define INT_VECTOR_BOUNDS       0x5
 #define INT_VECTOR_INVAL_OP     0x6
-#define INT_VECTOR_COPROC_NOT   0x7
+#define INT_VECTOR_DEVICE_NOT   0x7
 #define INT_VECTOR_DOUBLE_FAULT 0x8
 #define INT_VECTOR_COPROC_SEG   0x9
 #define INT_VECTOR_INVAL_TSS    0xA
@@ -142,7 +142,7 @@ typedef struct s_tss {
 #define INT_VECTOR_STACK_FAULT  0xC
 #define INT_VECTOR_PROTECTION   0xD
 #define INT_VECTOR_PAGE_FAULT   0xE
-#define INT_VECTOR_COPROC_ERR   0x10
+#define INV_VECTOR_FP_EXCEPTION   0x10
 
 /* 中断向量 */
 #define INT_VECTOR_IRQ0 0x20
