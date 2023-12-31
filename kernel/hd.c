@@ -12,6 +12,7 @@
 
 #include <unios/syscall.h>
 #include <unios/malloc.h>
+#include <stdlib.h>
 #include <type.h>
 #include <const.h>
 #include <proc.h>
@@ -150,7 +151,7 @@ void hd_service() {
             hd_rdwt_real(rwinfo);
             rwinfo->proc->task.stat = READY;
         }
-        do_yield();
+        yield();
     }
 }
 

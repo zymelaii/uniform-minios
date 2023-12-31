@@ -197,14 +197,15 @@ int main(int arg, char *argv[]) {
     while (1) {
         printf("miniOS:/ $ ");
         gets(buf);
-
         int    cmd_argc = 0;
         char **cmd_argv = NULL;
         bool   ok       = arg_from_cmdline(buf, &cmd_argc, &cmd_argv);
         if (!ok) { continue; }
 
         ok = route(cmd_argc, cmd_argv);
-        if (!ok && exec(buf) != 0) { printf("unknown command: `%s`\n", buf); }
+        if (!ok && exec(buf) != 0) {
+            printf("unknown command: `%s`\n", cmd_argv[0]);
+        }
 
         int n = arg_free(cmd_argv);
         assert(n == cmd_argc);

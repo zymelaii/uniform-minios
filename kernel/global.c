@@ -42,7 +42,7 @@ PROCESS proc_table[NR_PCBS]; // edit by visual 2016.4.5
 
 TASK task_table[NR_TASKS] = {
     {hd_service, STACK_SIZE_TASK, "hd_service"},
-    {task_tty,   STACK_SIZE_TASK, "task_tty"  }
+    {task_tty,   STACK_SIZE_TASK, "task_tty"  },
 }; // added by xw, 18/8/27
 
 irq_handler irq_table[NR_IRQ];
