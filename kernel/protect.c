@@ -267,27 +267,16 @@ void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags) {
         "#MC Machine Check",
         "#XF SIMD Floating-Point Exception"};
 
-    /* 通过打印空格的方式清空屏幕的前五行，并把 disp_pos 清零 */
-    vga_set_disppos(0);
-    for (i = 0; i < 80 * 5; i++) { kprintf(" "); }
-    vga_set_disppos(0);
-
-    kprintf(
-        "\n[Exception %s] eip=%08x eflags=0x%x cs=0x%x",
+    trace_logging(
+        "\n[Exception %s] eip=%08x eflags=0x%x cs=0x%x err_code=%d from "
+        "pid=%d\n",
         err_description[vec_no],
         eip,
         eflags,
-        cs);
+        cs,
+        err_code,
+        p_proc_current->task.pid);
 
-    if (err_code != 0xffffffff) {
-        vga_write_str_color("Error code:", text_color);
-        kprintf("%d", err_code);
-    }
-
-    // added by xw, 18/12/19
-    kprintf("\n");
-
-    // added by xw, 18/12/19
     p_proc_current->task.stat = KILLED;
 }
 

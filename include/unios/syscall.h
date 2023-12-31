@@ -3,8 +3,6 @@
 enum {
     NR_get_ticks = 0,
     NR_get_pid,
-    NR_kmalloc,
-    NR_kmalloc_4k,
     NR_malloc,
     NR_malloc_4k,
     NR_free,

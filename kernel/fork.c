@@ -86,7 +86,7 @@ static int fork_pcb_clone(PROCESS* p_child) {
 
     //! save status
     int   pid              = p_child->task.pid;
-    u32   eflags           = frame[EFLAGSREG];
+    u32   eflags           = frame[NR_EFLAGSREG];
     u32   selector_ldt     = p_child->task.ldt_sel;
     u32   cr3_child        = p_child->task.cr3;
     char* esp_save_int     = p_child->task.esp_save_int;
@@ -120,7 +120,7 @@ static int fork_pcb_clone(PROCESS* p_child) {
 
     // restore status
     p_child->task.pid              = pid;
-    frame[EFLAGSREG]               = eflags;
+    frame[NR_EFLAGSREG]            = eflags;
     p_child->task.ldt_sel          = selector_ldt;
     p_child->task.cr3              = cr3_child;
     p_child->task.esp_save_int     = esp_save_int;
@@ -131,7 +131,7 @@ static int fork_pcb_clone(PROCESS* p_child) {
 
 int do_fork() {
     //! FIXME: use lock instead
-    enable_int();
+    disable_int();
 
     PROCESS* p_child = alloc_pcb();
     if (p_child == NULL) {
@@ -153,7 +153,7 @@ int do_fork() {
     u32* frame             = (u32*)((void*)(p_child + 1) - P_STACKTOP);
     p_child->task.regs.eax = 0;
     //! update retval address in stack to be safe
-    frame[EAXREG] = p_child->task.regs.eax;
+    frame[NR_EAXREG] = p_child->task.regs.eax;
 
     //! fork done
     ++u_proc_sum;

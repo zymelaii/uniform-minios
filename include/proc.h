@@ -23,26 +23,46 @@
 #include "protect.h"
 
 #define INIT_STACK_SIZE 1024 * 8 // new kernel stack is 8kB
-#define P_STACKBASE     0
-#define GSREG           0
-#define FSREG           1 * 4
-#define ESREG           2 * 4
-#define DSREG           3 * 4
-#define EDIREG          4 * 4
-#define ESIREG          5 * 4
-#define EBPREG          6 * 4
-#define KERNELESPREG    7 * 4
-#define EBXREG          8 * 4
-#define EDXREG          9 * 4
-#define ECXREG          10 * 4
-#define EAXREG          11 * 4
-#define RETADR          12 * 4
-#define EIPREG          13 * 4
-#define CSREG           14 * 4
-#define EFLAGSREG       15 * 4
-#define ESPREG          16 * 4
-#define SSREG           17 * 4
-#define P_STACKTOP      18 * 4
+
+#define NR_GSREG        0
+#define NR_FSREG        (NR_GSREG + 1)
+#define NR_ESREG        (NR_FSREG + 1)
+#define NR_DSREG        (NR_ESREG + 1)
+#define NR_EDIREG       (NR_DSREG + 1)
+#define NR_ESIREG       (NR_EDIREG + 1)
+#define NR_EBPREG       (NR_ESIREG + 1)
+#define NR_KERNELESPREG (NR_EBPREG + 1)
+#define NR_EBXREG       (NR_KERNELESPREG + 1)
+#define NR_EDXREG       (NR_EBXREG + 1)
+#define NR_ECXREG       (NR_EDXREG + 1)
+#define NR_EAXREG       (NR_ECXREG + 1)
+#define NR_RETADR       (NR_EAXREG + 1)
+#define NR_EIPREG       (NR_RETADR + 1)
+#define NR_CSREG        (NR_EIPREG + 1)
+#define NR_EFLAGSREG    (NR_CSREG + 1)
+#define NR_ESPREG       (NR_EFLAGSREG + 1)
+#define NR_SSREG        (NR_ESPREG + 1)
+
+#define P_STACKBASE  0
+#define GSREG        (NR_GSREG * 4)
+#define FSREG        (NR_FSREG * 4)
+#define ESREG        (NR_ESREG * 4)
+#define DSREG        (NR_DSREG * 4)
+#define EDIREG       (NR_EDIREG * 4)
+#define ESIREG       (NR_ESIREG * 4)
+#define EBPREG       (NR_EBPREG * 4)
+#define KERNELESPREG (NR_KERNELESPREG * 4)
+#define EBXREG       (NR_EBXREG * 4)
+#define EDXREG       (NR_EDXREG * 4)
+#define ECXREG       (NR_ECXREG * 4)
+#define EAXREG       (NR_EAXREG * 4)
+#define RETADR       (NR_RETADR * 4)
+#define EIPREG       (NR_EIPREG * 4)
+#define CSREG        (NR_CSREG * 4)
+#define EFLAGSREG    (NR_EFLAGSREG * 4)
+#define ESPREG       (NR_ESPREG * 4)
+#define SSREG        (NR_SSREG * 4)
+#define P_STACKTOP   (SSREG + 4)
 
 /*总PCB表数和taskPCB表数*/
 // modified by xw, 18/8/27

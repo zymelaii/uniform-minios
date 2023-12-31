@@ -60,14 +60,6 @@ int get_ticks() {
     return syscall0(NR_get_ticks);
 }
 
-void *kmalloc(int size) {
-    return (void *)syscall1(NR_kmalloc, size);
-}
-
-void *kmalloc_4k() {
-    return (void *)syscall0(NR_kmalloc_4k);
-}
-
 void *malloc(int size) {
     return (void *)syscall1(NR_malloc, size);
 }

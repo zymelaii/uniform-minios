@@ -2,6 +2,7 @@
 #include <type.h>
 #include <global.h>
 #include <assert.h>
+#include <x86.h>
 
 #define SYSCALL_ENTRY(name) [NR_##name] = sys_##name
 
@@ -26,26 +27,26 @@
 typedef u32 (*syscall_t)();
 
 static u32 get_syscall_argument(int index) {
-    //! FIXME: syscall maybe from kernel space
     //! FIXME: p_proc_current may not from the caller proc?
+    u32 *frame = (u32 *)p_proc_current->task.esp_save_syscall;
     switch (index) {
         case 0: {
-            return p_proc_current->task.regs.ebx;
+            return frame[NR_EBXREG];
         } break;
         case 1: {
-            return p_proc_current->task.regs.ecx;
+            return frame[NR_ECXREG];
         } break;
         case 2: {
-            return p_proc_current->task.regs.edx;
+            return frame[NR_EDXREG];
         } break;
         case 3: {
-            return p_proc_current->task.regs.esi;
+            return frame[NR_ESIREG];
         } break;
         case 4: {
-            return p_proc_current->task.regs.edi;
+            return frame[NR_EDIREG];
         } break;
         case 5: {
-            return p_proc_current->task.regs.ebp;
+            return frame[NR_EBPREG];
         } break;
     }
     panic("syscall argument out of range");
@@ -53,14 +54,6 @@ static u32 get_syscall_argument(int index) {
 
 static u32 sys_get_ticks() {
     return do_get_ticks();
-}
-
-static u32 sys_kmalloc() {
-    return (u32)do_kmalloc(SYSCALL_ARGS1(int));
-}
-
-static u32 sys_kmalloc_4k() {
-    return (u32)do_kmalloc_4k();
 }
 
 static u32 sys_malloc() {
@@ -156,17 +149,12 @@ static u32 sys_deletedir() {
 }
 
 syscall_t syscall_table[NR_SYSCALLS] = {
-    SYSCALL_ENTRY(get_ticks), SYSCALL_ENTRY(get_pid),
-    SYSCALL_ENTRY(kmalloc),   SYSCALL_ENTRY(kmalloc_4k),
-    SYSCALL_ENTRY(malloc),    SYSCALL_ENTRY(malloc_4k),
-    SYSCALL_ENTRY(free),      SYSCALL_ENTRY(fork),
-    SYSCALL_ENTRY(pthread),   SYSCALL_ENTRY(exec),
-    SYSCALL_ENTRY(yield),     SYSCALL_ENTRY(sleep),
-    SYSCALL_ENTRY(wakeup),    SYSCALL_ENTRY(open),
-    SYSCALL_ENTRY(close),     SYSCALL_ENTRY(read),
-    SYSCALL_ENTRY(write),     SYSCALL_ENTRY(lseek),
-    SYSCALL_ENTRY(unlink),    SYSCALL_ENTRY(create),
-    SYSCALL_ENTRY(delete),    SYSCALL_ENTRY(opendir),
-    SYSCALL_ENTRY(createdir), SYSCALL_ENTRY(deletedir),
-    SYSCALL_ENTRY(exit),
+    SYSCALL_ENTRY(get_ticks), SYSCALL_ENTRY(get_pid), SYSCALL_ENTRY(malloc),
+    SYSCALL_ENTRY(malloc_4k), SYSCALL_ENTRY(free),    SYSCALL_ENTRY(fork),
+    SYSCALL_ENTRY(pthread),   SYSCALL_ENTRY(exec),    SYSCALL_ENTRY(yield),
+    SYSCALL_ENTRY(sleep),     SYSCALL_ENTRY(wakeup),  SYSCALL_ENTRY(open),
+    SYSCALL_ENTRY(close),     SYSCALL_ENTRY(read),    SYSCALL_ENTRY(write),
+    SYSCALL_ENTRY(lseek),     SYSCALL_ENTRY(unlink),  SYSCALL_ENTRY(create),
+    SYSCALL_ENTRY(delete),    SYSCALL_ENTRY(opendir), SYSCALL_ENTRY(createdir),
+    SYSCALL_ENTRY(deletedir), SYSCALL_ENTRY(exit),
 };
