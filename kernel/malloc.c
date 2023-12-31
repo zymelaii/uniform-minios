@@ -33,7 +33,7 @@ static u32
     u32 addr = -1;
 
     //! NOTE: reserve u32 to save size of non-4k memblk
-    bool has_size_info = memm_is_alloc4k_memblk(base);
+    bool has_size_info = !memm_is_alloc4k_memblk(base);
     u32  real_size     = has_size_info ? size + 4 : size;
 
     for (int i = 0; i < man->frees; i++) {
@@ -41,7 +41,7 @@ static u32
             continue;
         }
         if (man->free[i].size < real_size) { continue; }
-        u32 addr          = man->free[i].addr;
+        addr              = man->free[i].addr;
         man->free[i].addr += real_size;
         man->free[i].size -= real_size;
         if (man->free[i].size == 0) {
@@ -55,8 +55,9 @@ static u32
     }
 
     if (has_size_info) {
-        *(u32 *)addr = size;
-        addr         += 4;
+        //! FIXME: awful code, expect better solution
+        *(u32 *)K_PHY2LIN(addr) = size;
+        addr                    += 4;
     }
 
     return addr;
@@ -125,7 +126,7 @@ static u32 memm_sized_free(memman_t *man, u32 addr, u32 size) {
 
 static u32 memm_free(memman_t *man, u32 addr) {
     u32 size = 0;
-    if (memm_is_alloc4k_memblk(addr)) {
+    if (!memm_is_alloc4k_memblk(addr)) {
         size = 0x1000;
     } else {
         size = *(u32 *)(addr - 4);
