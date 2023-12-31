@@ -71,7 +71,10 @@ static int fork_memory_clone(u32 ppid, u32 pid) {
     //! clone stack
     //! NOTE: inverse grow
     fork_clone_part_rww(
-        ppid, pid, memmap->stack_lin_limit, memmap->stack_lin_base);
+        ppid,
+        pid,
+        memmap->stack_lin_limit + 0x1000,
+        memmap->stack_lin_base + 0x1000);
 
     //! clone args
     fork_clone_part_rww(ppid, pid, memmap->arg_lin_limit, memmap->arg_lin_base);
