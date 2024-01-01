@@ -2,6 +2,8 @@
 #include <string.h>
 #include <const.h>
 #include <stdio.h>
+#include <assert.h>
+#include <spinlock.h>
 
 // memman 存档地址
 #define MEMMAN_ADDR 0x01ff0000
@@ -19,8 +21,9 @@
 // 存放 FMIBuff 后 1 KB 内容
 u32 MemInfo[256] = {0};
 
-memman_t  s_memman;
-memman_t *memman = &s_memman;
+memman_t        s_memman;
+memman_t       *memman = &s_memman;
+struct spinlock memmlock;
 
 static bool memm_is_alloc4k_memblk(u32 addr) {
     bool is_alloc_4k_mem  = addr >= UWALL && addr < MEMEND;
@@ -28,8 +31,19 @@ static bool memm_is_alloc4k_memblk(u32 addr) {
     return is_alloc_4k_mem || is_kalloc_4k_mem;
 }
 
+static bool memm_is_free_in_order(memman_t *man) {
+    assert(man != NULL);
+    for (int i = 1; i < man->frees; ++i) {
+        if (man->free[i - 1].addr + man->free[i - 1].size > man->free[i].addr) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static u32
     memm_range_based_alloc(memman_t *man, u32 size, u32 base, u32 limit) {
+    acquire(&memmlock);
     u32 addr = -1;
 
     //! NOTE: reserve u32 to save size of non-4k memblk
@@ -60,6 +74,8 @@ static u32
         addr                    += 4;
     }
 
+    assert(memm_is_free_in_order(man));
+    release(&memmlock);
     return addr;
 }
 
@@ -72,45 +88,65 @@ static void memm_init(memman_t *man) {
 }
 
 static u32 memm_sized_free(memman_t *man, u32 addr, u32 size) {
-    if (size == 0) { return 0; }
+    acquire(&memmlock);
+    if (size == 0) {
+        release(&memmlock);
+        return 0;
+    }
 
     int index = 0;
     //! NOTE: free addr is sorted in asc
+    //! ... | free[index - 1] | memblk | free[index] | ...
     for (index = 0; index < man->frees; ++index) {
         if (man->free[index].addr > addr) { break; }
     }
+    assert(index == man->frees || man->free[index].addr >= addr + size);
 
     int merged = 0;
 
+    mman_free_info_t *before = (mman_free_info_t *)man->free + index - 1;
+    mman_free_info_t *after  = (mman_free_info_t *)man->free + index;
+
     //! merge backward
-    if (index > 0
-        && man->free[index - 1].addr + man->free[index - 1].size == addr) {
-        man->free[index - 1].size += size;
-        ++merged;
-    }
-
-    //! merge forward
-    if (index < man->frees && addr + size == man->free[index].addr) {
-        man->free[index].addr = addr;
-        man->free[index].size += size;
-        ++merged;
-    }
-
-    if (merged == 2) {
-        //! NOTE: addr size is added twice
-        man->free[index - 1].size += man->free[index].size - size;
-        --man->frees;
-        while (++index < man->frees) {
-            man->free[index] = man->free[index + 1];
+    if (index > 0) {
+        assert(before->addr + before->size <= addr);
+        if (before->addr + before->size == addr) {
+            before->size += size;
+            ++merged;
         }
     }
 
-    if (merged > 0) { return 0; }
+    //! merge forward
+    if (index < man->frees) {
+        assert(addr + size <= after->addr);
+        if (addr + size == after->addr) {
+            after->addr = addr;
+            after->size += size;
+            ++merged;
+        }
+    }
+
+    if (merged == 2) {
+        before->size += after->addr + after->size - before->addr;
+        --man->frees;
+        while (index < man->frees) {
+            man->free[index] = man->free[index + 1];
+            ++index;
+        }
+    }
+
+    if (merged > 0) {
+        assert(memm_is_free_in_order(man));
+        release(&memmlock);
+        return 0;
+    }
 
     //! no enough space to insert new free blk, failed to free
     if (man->frees >= MEMMAN_FREES) {
         ++man->losts;
         man->lostsize += size;
+        assert(memm_is_free_in_order(man));
+        release(&memmlock);
         return -1;
     }
 
@@ -121,16 +157,19 @@ static u32 memm_sized_free(memman_t *man, u32 addr, u32 size) {
     man->maxfrees         = max(man->maxfrees, man->frees);
     man->free[index].addr = addr;
     man->free[index].size = size;
+    assert(memm_is_free_in_order(man));
+    release(&memmlock);
     return 0;
 }
 
 static u32 memm_free(memman_t *man, u32 addr) {
     u32 size = 0;
-    if (!memm_is_alloc4k_memblk(addr)) {
+    if (memm_is_alloc4k_memblk(addr)) {
         size = 0x1000;
     } else {
-        size = *(u32 *)(addr - 4);
+        //! FIXME: awful impl, see memm_range_based_alloc also
         addr -= 4;
+        size = *(u32 *)K_PHY2LIN(addr);
     }
     return memm_sized_free(man, addr, size);
 }
@@ -173,7 +212,24 @@ int do_free(void *addr) {
 
 //! FIXME: awful impl
 void init_mem() {
+    initlock(&memmlock, "memmlock");
+
     memm_init(memman);
+
+    memman->frees        = 4;
+    memman->maxfrees     = 4;
+    memman->free[0].addr = MEMSTART;
+    memman->free[0].size = KWALL - MEMSTART;
+    memman->free[1].addr = KWALL;
+    memman->free[1].size = WALL - KWALL;
+    memman->free[2].addr = WALL;
+    memman->free[2].size = UWALL - WALL;
+    memman->free[3].addr = UWALL;
+    memman->free[3].size = MEMEND - UWALL;
+
+    assert(memm_is_free_in_order(memman));
+
+    return;
 
     // 4M 开始初始化
     u32 memstart = MEMSTART;
