@@ -274,7 +274,7 @@ int lin_mapping_phy(
         pte_addr_phy = (u32)do_kmalloc_4k();
         memset((void *)K_PHY2LIN(pte_addr_phy), 0, num_4K);
         if (pte_addr_phy < 0 || (pte_addr_phy & 0x3ff) != 0) {
-            trace_logging("lin_mapping_phy error: pte_addr_phy");
+            trace_logging("lin_mapping_phy error: pte_addr_phy\n");
             return -1;
         }
         write_page_pde(pde_addr_phy, laddr, pte_addr_phy, pde_attr);
@@ -289,7 +289,7 @@ int lin_mapping_phy(
     }
 
     if (phy_addr < 0 || (phy_addr & 0x3ff) != 0) {
-        trace_logging("lin_mapping_phy error: phy_addr");
+        trace_logging("lin_mapping_phy error: phy_addr\n");
         return -1;
     }
 

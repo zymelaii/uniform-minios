@@ -16,8 +16,8 @@ static u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) {
     u32 flimit  = Echo_Phdr.p_offset + Echo_Phdr.p_filesz;
 
     u32 pg_addr  = laddr & 0xfffff000;
-    u32 pg_bount = (llimit + 0x1000 - 1) & 0xfffff000;
-    while (pg_addr <= pg_bount) {
+    u32 pg_bound = (llimit + 0xfff) & 0xfffff000;
+    while (pg_addr < pg_bound) {
         lin_mapping_phy(
             pg_addr,
             MAX_UNSIGNED_INT,
@@ -49,29 +49,38 @@ static u32 exec_load(
     LIN_MEMMAP* memmap = &p_proc_current->task.memmap;
 
     //! cleanup old ph info
-    PH_INFO* old_ph_info       = memmap->ph_info;
-    PH_INFO* to_delete_ph_info = NULL;
-    while (old_ph_info != NULL) {
-        to_delete_ph_info = old_ph_info;
-        do_free(to_delete_ph_info);
-        old_ph_info = old_ph_info->next;
+    PH_INFO* ph_info = memmap->ph_info;
+    while (ph_info != NULL) {
+        PH_INFO* next = ph_info->next;
+        do_free(ph_info);
+        ph_info = next;
     }
     memmap->ph_info = NULL;
 
     for (int ph_num = 0; ph_num < elf_header->e_phnum; ++ph_num) {
-        if (0 == elf_proghs[ph_num].p_memsz) { break; }
+        //! accept PT_LOAD section only now
+        if (elf_proghs[ph_num].p_type != 0x1) { continue; }
+        assert(elf_proghs[ph_num].p_memsz > 0);
 
-        u32 pte_attr = PG_P | PG_USU;
-        if (elf_proghs[ph_num].p_flags & 0x1) {
-            pte_attr |= PG_RWR;
-        } else if (elf_proghs[ph_num].p_flags & 0x4) {
-            pte_attr |= PG_RWW;
-        } else {
+        bool flag_exec  = elf_proghs[ph_num].p_flags & 0b001;
+        bool flag_read  = elf_proghs[ph_num].p_flags & 0b100;
+        bool flag_write = elf_proghs[ph_num].p_flags & 0b010;
+        if (!flag_exec && !flag_read && !flag_write) {
             trace_logging(
                 "exec: exec_load: unknown elf program header flags=0x%x",
                 elf_proghs[ph_num].p_flags);
             return -1;
         }
+        //! TODO: more detailed page privilege
+        u32 pte_attr = PG_P | PG_USU;
+        if (flag_write) {
+            pte_attr |= PG_RWW;
+        } else {
+            pte_attr |= PG_RWR;
+        }
+        //! FIXME: well, here if i do not set PG_RWW i can't pass something with
+        //! bss segments
+        pte_attr |= PG_RWW;
 
         exec_elfcpy(fd, elf_proghs[ph_num], pte_attr);
 
@@ -158,10 +167,10 @@ int do_exec(char* path) {
         read_Phdr(fd, elf_proghs + i, offset);
     }
 
+    //! FIXME: elf_header->e_phnum becomes 0 after some more exec calls
+
     if (exec_load(fd, elf_header, elf_proghs) == -1) {
         do_close(fd);
-        assert(elf_header != NULL);
-        assert(elf_proghs != NULL);
         do_free(elf_header);
         do_free(elf_proghs);
         return -1;
@@ -194,9 +203,6 @@ int do_exec(char* path) {
     //! FIXME: head not allocated yet
 
     do_close(fd);
-
-    assert(elf_header != NULL);
-    assert(elf_proghs != NULL);
     do_free(elf_header);
     do_free(elf_proghs);
 
