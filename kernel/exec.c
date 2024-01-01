@@ -27,17 +27,11 @@ static u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) {
         pg_addr += 0x1000;
     }
 
-    const u32 RD_SIZE = SECTOR_SIZE;
-    char      ch;
+    u32 size = min(llimit - laddr, flimit - foffset);
     do_lseek(fd, foffset, SEEK_SET);
-    while (laddr < llimit) {
-        if (foffset >= flimit) { break; }
-        u32 size = min(RD_SIZE, llimit - laddr);
-        do_read(fd, (void*)laddr, size);
-        laddr   += size;
-        foffset += size;
-    }
-    if (laddr < llimit) { memset((void*)laddr, 0, llimit - laddr); }
+    do_read(fd, (void*)laddr, size);
+    laddr += size;
+    memset((void*)laddr, 0, llimit - laddr);
 
     return 0;
 }
