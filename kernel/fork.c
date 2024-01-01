@@ -84,8 +84,8 @@ static int fork_memory_clone(u32 ppid, u32 pid) {
 
 static int fork_pcb_clone(PROCESS* p_child) {
     //! first frame point in stack
-    u32* frame        = (u32*)((void*)(p_child + 1) - P_STACKTOP);
-    u32* parent_frame = (u32*)((void*)(p_proc_current + 1) - P_STACKTOP);
+    u32* frame        = (void*)(p_child + 1) - P_STACKTOP;
+    u32* parent_frame = (void*)(p_proc_current + 1) - P_STACKTOP;
 
     //! save status
     int   pid              = p_child->task.pid;
@@ -120,6 +120,15 @@ static int fork_pcb_clone(PROCESS* p_child) {
         }
         ph_ptr = ph_ptr->next;
     }
+
+    memmap->vpage_lin_base  = p_proc_current->task.memmap.vpage_lin_base;
+    memmap->vpage_lin_limit = p_proc_current->task.memmap.vpage_lin_limit;
+    memmap->heap_lin_base   = p_proc_current->task.memmap.heap_lin_base;
+    memmap->heap_lin_limit  = p_proc_current->task.memmap.heap_lin_limit;
+    memmap->stack_lin_limit = p_proc_current->task.memmap.stack_lin_limit;
+    memmap->stack_lin_base  = p_proc_current->task.memmap.stack_lin_base;
+    memmap->arg_lin_limit   = p_proc_current->task.memmap.arg_lin_limit;
+    memmap->arg_lin_base    = p_proc_current->task.memmap.arg_lin_base;
 
     // restore status
     p_child->task.pid              = pid;

@@ -266,7 +266,7 @@ void write_page_pte(
 //! NOTE: try alloc phy addr if phy_addr is MAX_UNSIGNED_INT, otherwise directly
 //! mapping it
 int lin_mapping_phy(
-    u32 laddr, u32 phy_addr, u32 pid, u32 pde_attr, u32 pte_addr) {
+    u32 laddr, u32 phy_addr, u32 pid, u32 pde_attr, u32 pte_attr) {
     u32 pte_addr_phy = 0;
     u32 pde_addr_phy = get_pde_phy_addr(pid);
 
@@ -293,7 +293,7 @@ int lin_mapping_phy(
         return -1;
     }
 
-    write_page_pte(pte_addr_phy, laddr, phy_addr, pte_addr);
+    write_page_pte(pte_addr_phy, laddr, phy_addr, pte_attr);
     refresh_page_cache();
 
     return 0;
