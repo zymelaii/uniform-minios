@@ -18,4 +18,4 @@ typedef struct memman_s {
     mman_free_info_t free[MEMMAN_FREES];
 } memman_t;
 
-void  init_mem();
+void init_mem();

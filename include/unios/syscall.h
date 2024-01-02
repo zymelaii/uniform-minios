@@ -37,7 +37,7 @@ void *do_kmalloc(int size);                         //<! from malloc.c -->
 void *do_kmalloc_4k();                              //<!
 void *do_malloc(int size);                          //<!
 void *do_malloc_4k();                               //<!
-int   do_free(void *ptr);                           //<! <-- END
+void  do_free(void *ptr);                           //<! <-- END
 int   do_pthread(void *arg);                        //<! from pthread.c
 int   do_exec(char *path);                          //<! from exec.c
 int   do_fork();                                    //<! from fork.c

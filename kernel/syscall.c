@@ -65,7 +65,8 @@ static u32 sys_malloc_4k() {
 }
 
 static u32 sys_free() {
-    return do_free(SYSCALL_ARGS1(void *));
+    do_free(SYSCALL_ARGS1(void *));
+    return 0;
 }
 
 static u32 sys_pthread() {

@@ -32,7 +32,7 @@ static bool memm_is_free_in_order(memman_t *man) {
 
 static u32
     memm_range_based_alloc(memman_t *man, u32 size, u32 base, u32 limit) {
-    u32 addr = -1;
+    u32 addr = 0;
 
     //! NOTE: reserve u32 to save size of non-4k memblk
     bool has_size_info = !memm_is_alloc4k_memblk(base);
@@ -137,6 +137,7 @@ static u32 memm_sized_free(memman_t *man, u32 addr, u32 size) {
 }
 
 static u32 memm_free(memman_t *man, u32 addr) {
+    if (addr < MEMSTART && addr >= MEMEND) { return 0; }
     u32 size = 0;
     if (memm_is_alloc4k_memblk(addr)) {
         size = 0x1000;
@@ -180,8 +181,8 @@ void *do_kmalloc_4k() {
     return (void *)memm_kalloc_4k(&memman);
 }
 
-int do_free(void *addr) {
-    return memm_free(&memman, (u32)addr);
+void do_free(void *addr) {
+    memm_free(&memman, (u32)addr);
 }
 
 //! TODO: better solution
