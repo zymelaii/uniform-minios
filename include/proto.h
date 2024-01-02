@@ -26,14 +26,9 @@ u32  seg2phys(u16 seg);
 /* klib.c */
 
 /* kernel.asm */
-u32  read_cr2();           // add by visual 2016.5.9
-void refresh_page_cache(); // add by visual 2016.5.12
-// void restart_int();
-// void save_context();
 void restart_initial();              // added by xw, 18/4/18
 void restart_restore();              // added by xw, 18/4/20
 void sched();                        // added by xw, 18/4/18
-void halt();                         // added by xw, 18/6/11
 u32  get_arg(void* uesp, int order); // added by xw, 18/6/18
 
 /* ktest.c */
@@ -76,21 +71,7 @@ void*    va2la(int pid, void* va);
  * 以上是系统调用相关函数的声明
  ****************************************************************/
 
-/*pagepte.c*/
-u32  init_page_pte(u32 pid);
 void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);
-u32  get_pde_index(u32 AddrLin);
-u32  get_pte_index(u32 AddrLin);
-u32  get_pde_phy_addr(u32 pid);
-u32  get_pte_phy_addr(u32 pid, u32 AddrLin);
-u32  get_page_phy_addr(u32 pid, u32 AddrLin); // 线性地址
-u32  pte_exist(u32 PageTblAddrPhy, u32 AddrLin);
-u32  phy_exist(u32 PageTblPhyAddr, u32 AddrLin);
-void write_page_pde(
-    u32 PageDirPhyAddr, u32 AddrLin, u32 TblPhyAddr, u32 Attribute);
-void write_page_pte(u32 TblPhyAddr, u32 AddrLin, u32 PhyAddr, u32 Attribute);
-int  lin_mapping_phy(
-     u32 AddrLin, u32 phy_addr, u32 pid, u32 pde_Attribute, u32 pte_Attribute);
-void     clear_kernel_pagepte_low();
-void     recycle_phy_page(int pid, u32 base, u32 limit);
+void clear_kernel_pagepte_low();
+
 PROCESS* pid2proc(int pid);

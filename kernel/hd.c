@@ -201,10 +201,9 @@ static void hd_rdwt_real(RWInfo *p) {
 }
 
 void hd_rdwt_sched(MESSAGE *p) {
-    RWInfo         rwinfo;
-    struct memfree hdque_buf;
-    int            size = p->CNT;
-    void          *buffer;
+    RWInfo rwinfo;
+    int    size = p->CNT;
+    void  *buffer;
 
     buffer      = (void *)K_PHY2LIN(do_kmalloc(size));
     rwinfo.msg  = p;
@@ -225,9 +224,7 @@ void hd_rdwt_sched(MESSAGE *p) {
         sched();
     }
 
-    hdque_buf.addr = K_LIN2PHY((u32)buffer);
-    hdque_buf.size = size;
-    do_free(&hdque_buf);
+    do_free((void *)K_PHY2LIN((u32)buffer));
 }
 
 void init_hd_queue(HDQueue *hdq) {

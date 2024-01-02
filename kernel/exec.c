@@ -1,6 +1,7 @@
 ﻿#include <type.h>
 #include <elf.h>
 #include <unios/syscall.h>
+#include <unios/page.h>
 #include <assert.h>
 #include <stdio.h>
 #include <proc.h>
@@ -9,23 +10,16 @@
 #include <proto.h>
 #include <string.h>
 
-static u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) {
-    u32 laddr   = Echo_Phdr.p_vaddr;
-    u32 llimit  = Echo_Phdr.p_vaddr + Echo_Phdr.p_memsz;
-    u32 foffset = Echo_Phdr.p_offset;
-    u32 flimit  = Echo_Phdr.p_offset + Echo_Phdr.p_filesz;
+static u32 exec_elfcpy(u32 fd, Elf32_Phdr elf_progh, u32 pte_attr) {
+    u32 laddr   = elf_progh.p_vaddr;
+    u32 llimit  = elf_progh.p_vaddr + elf_progh.p_memsz;
+    u32 foffset = elf_progh.p_offset;
+    u32 flimit  = elf_progh.p_offset + elf_progh.p_filesz;
 
-    u32 pg_addr  = laddr & 0xfffff000;
-    u32 pg_bound = (llimit + 0xfff) & 0xfffff000;
-    while (pg_addr < pg_bound) {
-        lin_mapping_phy(
-            pg_addr,
-            MAX_UNSIGNED_INT,
-            p_proc_current->pcb.pid,
-            PG_P | PG_USU | PG_RWW,
-            attribute);
-        pg_addr += 0x1000;
-    }
+    bool ok = pg_map_laddr_range(
+        p_proc_current->pcb.cr3, laddr, llimit, PG_P | PG_U | PG_RWX, pte_attr);
+    assert(ok);
+    pg_refresh();
 
     u32 size = min(llimit - laddr, flimit - foffset);
     do_lseek(fd, foffset, SEEK_SET);
@@ -46,7 +40,7 @@ static u32 exec_load(
     PH_INFO* ph_info = memmap->ph_info;
     while (ph_info != NULL) {
         PH_INFO* next = ph_info->next;
-        do_free(ph_info);
+        do_free((void*)K_LIN2PHY((u32)ph_info));
         ph_info = next;
     }
     memmap->ph_info = NULL;
@@ -66,21 +60,18 @@ static u32 exec_load(
             return -1;
         }
         //! TODO: more detailed page privilege
-        u32 pte_attr = PG_P | PG_USU;
+        u32 pte_attr = PG_P | PG_U;
         if (flag_write) {
-            pte_attr |= PG_RWW;
+            pte_attr |= PG_RWX;
         } else {
-            pte_attr |= PG_RWR;
+            pte_attr |= PG_RX;
         }
-        //! FIXME: well, here if i do not set PG_RWW i can't pass something with
-        //! bss segments
-        pte_attr |= PG_RWW;
 
         exec_elfcpy(fd, elf_proghs[ph_num], pte_attr);
 
         //! maintenance ph info list
         //! TODO: integrate linked-list ops
-        PH_INFO* new_ph_info       = do_kmalloc(sizeof(PH_INFO));
+        PH_INFO* new_ph_info       = K_PHY2LIN(do_kmalloc(sizeof(PH_INFO)));
         new_ph_info->lin_addr_base = elf_proghs[ph_num].p_vaddr;
         new_ph_info->lin_addr_limit =
             elf_proghs[ph_num].p_vaddr + elf_proghs[ph_num].p_memsz;
@@ -151,10 +142,11 @@ int do_exec(char* path) {
 
     Elf32_Ehdr* elf_header = NULL;
     Elf32_Phdr* elf_proghs = NULL;
-    elf_header             = do_kmalloc(sizeof(Elf32_Ehdr));
+    elf_header             = K_PHY2LIN(do_kmalloc(sizeof(Elf32_Ehdr)));
     assert(elf_header != NULL);
     read_Ehdr(fd, elf_header, 0);
-    elf_proghs = do_kmalloc(sizeof(Elf32_Phdr) * elf_header->e_phnum);
+    elf_proghs =
+        K_PHY2LIN(do_kmalloc(sizeof(Elf32_Phdr) * elf_header->e_phnum));
     assert(elf_proghs != NULL);
     for (int i = 0; i < elf_header->e_phnum; i++) {
         u32 offset = elf_header->e_phoff + i * sizeof(Elf32_Phdr);
@@ -165,8 +157,8 @@ int do_exec(char* path) {
 
     if (exec_load(fd, elf_header, elf_proghs) == -1) {
         do_close(fd);
-        do_free(elf_header);
-        do_free(elf_proghs);
+        do_free((void*)K_LIN2PHY((u32)elf_header));
+        do_free((void*)K_LIN2PHY((u32)elf_proghs));
         return -1;
     }
 
@@ -179,26 +171,20 @@ int do_exec(char* path) {
     frame[NR_EIPREG]             = p_proc_current->pcb.regs.eip;
     frame[NR_ESPREG]             = p_proc_current->pcb.regs.esp;
 
-    //! FIXME: exceeded stack mapping, see kernel main
-    for (u32 laddr = memmap->stack_lin_base; laddr > memmap->stack_lin_limit;
-         laddr     -= num_4K) {
-        int ok = lin_mapping_phy(
-            laddr,
-            MAX_UNSIGNED_INT,
-            p_proc_current->pcb.pid,
-            PG_P | PG_USU | PG_RWW,
-            PG_P | PG_USU | PG_RWW);
-        if (ok != 0) {
-            trace_logging("exec: pagetbl mapping failed");
-            return -1;
-        }
-    }
+    bool ok = pg_map_laddr_range(
+        p_proc_current->pcb.cr3,
+        memmap->stack_lin_limit,
+        memmap->stack_lin_base,
+        PG_P | PG_U | PG_RWX,
+        PG_P | PG_U | PG_RWX);
+    assert(ok);
+    pg_refresh();
 
     //! FIXME: head not allocated yet
 
     do_close(fd);
-    do_free(elf_header);
-    do_free(elf_proghs);
+    do_free((void*)K_LIN2PHY((u32)elf_header));
+    do_free((void*)K_LIN2PHY((u32)elf_proghs));
 
     return 0;
 }

@@ -39,6 +39,7 @@ extern clock_handler
 extern disp_str
 extern irq_table
 extern schedule
+extern halt
 extern switch_pde
 
 extern gdt_ptr
@@ -229,21 +230,6 @@ restart_initial:
     mov  eax, [p_proc_current]
     mov  esp, [eax + ESP_SAVE_INT]
     jmp  restart_restore
-
-    global read_cr2
-read_cr2:
-    mov eax,cr2
-    ret
-
-    global refresh_page_cache
-refresh_page_cache:
-    mov eax,cr3
-    mov cr3,eax
-    ret
-
-    global halt
-halt:
-    hlt
 
 ; u32 get_arg(void *uesp, int order)
 ; used to get the specified argument of the syscall from user space stack

@@ -1,167 +1,185 @@
-#ifndef MINIOS_X86_H
-#define MINIOS_X86_H
+#pragma once
+
+#define ASMCALL __attribute__((optimize("O0"))) static inline
 
 #include "type.h"
 
-static inline u8 inb(int port) {
+ASMCALL u8 inb(int port) {
     u8 data;
-    __asm__ volatile("inb %w1,%0" : "=a"(data) : "d"(port));
+    __asm__ volatile("inb %w1, %0" : "=a"(data) : "d"(port));
     return data;
 }
 
-static inline void insb(int port, void *addr, int cnt) {
-    __asm__ volatile("cld\n\trepne\n\tinsb"
+ASMCALL void insb(int port, void *addr, int cnt) {
+    __asm__ volatile("cld\n"
+                     "repne\n"
+                     "insb\n"
                      : "=D"(addr), "=c"(cnt)
                      : "d"(port), "0"(addr), "1"(cnt)
                      : "memory", "cc");
 }
 
-static inline u16 inw(int port) {
+ASMCALL u16 inw(int port) {
     u16 data;
-    __asm__ volatile("inw %w1,%0" : "=a"(data) : "d"(port));
+    __asm__ volatile("inw %w1, %0" : "=a"(data) : "d"(port));
     return data;
 }
 
-static inline void insw(int port, void *addr, int cnt) {
-    __asm__ volatile("cld\n\trepne\n\tinsw"
+ASMCALL void insw(int port, void *addr, int cnt) {
+    __asm__ volatile("cld\n"
+                     "repne\n"
+                     "insw\n"
                      : "=D"(addr), "=c"(cnt)
                      : "d"(port), "0"(addr), "1"(cnt)
                      : "memory", "cc");
 }
 
-static inline u32 inl(int port) {
+ASMCALL u32 inl(int port) {
     u32 data;
-    __asm__ volatile("inl %w1,%0" : "=a"(data) : "d"(port));
+    __asm__ volatile("inl %w1, %0" : "=a"(data) : "d"(port));
     return data;
 }
 
-static inline void insl(int port, void *addr, int cnt) {
-    __asm__ volatile("cld\n\trepne\n\tinsl"
+ASMCALL void insl(int port, void *addr, int cnt) {
+    __asm__ volatile("cld\n"
+                     "repne\n"
+                     "insl\n"
                      : "=D"(addr), "=c"(cnt)
                      : "d"(port), "0"(addr), "1"(cnt)
                      : "memory", "cc");
 }
 
-static inline void outb(int port, u8 data) {
-    __asm__ volatile("outb %0,%w1" : : "a"(data), "d"(port));
+ASMCALL void outb(int port, u8 data) {
+    __asm__ volatile("outb %0, %w1" : : "a"(data), "d"(port));
 }
 
-static inline void outsb(int port, const void *addr, int cnt) {
-    __asm__ volatile("cld\n\trepne\n\toutsb"
+ASMCALL void outsb(int port, const void *addr, int cnt) {
+    __asm__ volatile("cld\n"
+                     "repne\n"
+                     "outsb\n"
                      : "=S"(addr), "=c"(cnt)
                      : "d"(port), "0"(addr), "1"(cnt)
                      : "cc");
 }
 
-static inline void outw(int port, u16 data) {
-    __asm__ volatile("outw %0,%w1" : : "a"(data), "d"(port));
+ASMCALL void outw(int port, u16 data) {
+    __asm__ volatile("outw %0, %w1" : : "a"(data), "d"(port));
 }
 
-static inline void outsw(int port, const void *addr, int cnt) {
-    __asm__ volatile("cld\n\trepne\n\toutsw"
+ASMCALL void outsw(int port, const void *addr, int cnt) {
+    __asm__ volatile("cld\n"
+                     "repne\n"
+                     "outsw\n"
                      : "=S"(addr), "=c"(cnt)
                      : "d"(port), "0"(addr), "1"(cnt)
                      : "cc");
 }
 
-static inline void outsl(int port, const void *addr, int cnt) {
-    __asm__ volatile("cld\n\trepne\n\toutsl"
+ASMCALL void outsl(int port, const void *addr, int cnt) {
+    __asm__ volatile("cld\n"
+                     "repne\n"
+                     "outsl\n"
                      : "=S"(addr), "=c"(cnt)
                      : "d"(port), "0"(addr), "1"(cnt)
                      : "cc");
 }
 
-static inline void outl(int port, u32 data) {
-    __asm__ volatile("outl %0,%w1" : : "a"(data), "d"(port));
+ASMCALL void outl(int port, u32 data) {
+    __asm__ volatile("outl %0, %w1" : : "a"(data), "d"(port));
 }
 
-static inline void lcr0(u32 val) {
-    __asm__ volatile("movl %0,%%cr0" : : "r"(val));
+ASMCALL void lcr0(u32 val) {
+    __asm__ volatile("movl %0, %%cr0" : : "r"(val));
 }
 
-static inline u32 rcr0(void) {
+ASMCALL u32 rcr0() {
     u32 val;
-    __asm__ volatile("movl %%cr0,%0" : "=r"(val));
+    __asm__ volatile("movl %%cr0, %0" : "=r"(val));
     return val;
 }
 
-static inline u32 rcr2(void) {
+ASMCALL u32 rcr2() {
     u32 val;
-    __asm__ volatile("movl %%cr2,%0" : "=r"(val));
+    __asm__ volatile("movl %%cr2, %0" : "=r"(val));
     return val;
 }
 
-static inline void lcr3(u32 val) {
-    __asm__ volatile("movl %0,%%cr3" : : "r"(val));
+ASMCALL void lcr3(u32 val) {
+    __asm__ volatile("movl %0, %%cr3" : : "r"(val));
 }
 
-static inline u32 rcr3(void) {
+ASMCALL u32 rcr3() {
     u32 val;
-    __asm__ volatile("movl %%cr3,%0" : "=r"(val));
+    __asm__ volatile("movl %%cr3, %0" : "=r"(val));
     return val;
 }
 
-static inline void lcr4(u32 val) {
-    __asm__ volatile("movl %0,%%cr4" : : "r"(val));
+ASMCALL void lcr4(u32 val) {
+    __asm__ volatile("movl %0, %%cr4" : : "r"(val));
 }
 
-static inline u32 rcr4(void) {
+ASMCALL u32 rcr4() {
     u32 cr4;
-    __asm__ volatile("movl %%cr4,%0" : "=r"(cr4));
+    __asm__ volatile("movl %%cr4, %0" : "=r"(cr4));
     return cr4;
 }
 
-static inline void tlbflush(void) {
-    u32 cr3;
-    __asm__ volatile("movl %%cr3,%0" : "=r"(cr3));
-    __asm__ volatile("movl %0,%%cr3" : : "r"(cr3));
+ASMCALL void tlbflush() {
+    __asm__ volatile("mov %cr3, %eax\n"
+                     "mov %eax, %cr3\n");
 }
 
-static inline u32 read_eflags(void) {
+ASMCALL u32 read_eflags() {
     u32 eflags;
-    __asm__ volatile("pushfl\n\t popl %0" : "=r"(eflags));
+    __asm__ volatile("pushfl\n"
+                     "popl %0\n"
+                     : "=r"(eflags));
     return eflags;
 }
 
-static inline void write_eflags(u32 eflags) {
-    __asm__ volatile("pushl %0\n\t popfl" : : "r"(eflags));
+ASMCALL void write_eflags(u32 eflags) {
+    __asm__ volatile("pushl %0\n"
+                     "popfl\n"
+                     :
+                     : "r"(eflags));
 }
 
-static inline u32 read_ebp(void) {
+ASMCALL u32 read_ebp() {
     u32 ebp;
-    __asm__ volatile("movl %%ebp,%0" : "=r"(ebp));
+    __asm__ volatile("movl %%ebp, %0" : "=r"(ebp));
     return ebp;
 }
 
-static inline u32 read_esp(void) {
+ASMCALL u32 read_esp() {
     u32 esp;
-    __asm__ volatile("movl %%esp,%0" : "=r"(esp));
+    __asm__ volatile("movl %%esp, %0" : "=r"(esp));
     return esp;
 }
 
-static inline u64 read_tsc(void) {
+ASMCALL u64 read_tsc() {
     u64 tsc;
     __asm__ volatile("rdtsc" : "=A"(tsc));
     return tsc;
 }
 
-static inline u32 xchg(volatile u32 *addr, u32 newval) {
+ASMCALL u32 xchg(volatile u32 *addr, u32 newval) {
     u32 result;
-
-    // The + in "+m" denotes a read-modify-write operand.
-    __asm__ volatile("lock\n\t xchgl %0, %1"
+    __asm__ volatile("lock\n"
+                     "xchgl %0, %1\n"
                      : "+m"(*addr), "=a"(result)
                      : "1"(newval)
                      : "cc");
     return result;
 }
 
-static inline void disable_int() {
+ASMCALL void disable_int() {
     __asm__ volatile("cli");
 }
 
-static inline void enable_int() {
+ASMCALL void enable_int() {
     __asm__ volatile("sti");
 }
 
-#endif /* MINIOS_X86_H */
+ASMCALL void halt() {
+    __asm__ volatile("hlt");
+}

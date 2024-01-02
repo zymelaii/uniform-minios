@@ -16,12 +16,11 @@ KERN_SRCFILES := \
 		kernel/keyboard.c \
 		kernel/assist.c   \
 		kernel/fork.c     \
-		kernel/file.c     \
 		kernel/console.c  \
 		kernel/syscall.c  \
 		kernel/vfs.c      \
 		kernel/proc.c     \
-		kernel/pagetbl.c  \
+		kernel/page.c     \
 		kernel/pthread.c  \
 		kernel/main.c     \
 		kernel/exec.c     \

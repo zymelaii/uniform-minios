@@ -1,6 +1,7 @@
 ﻿#include <unios/syscall.h>
-#include <x86.h>
 #include <unios/malloc.h>
+#include <unios/page.h>
+#include <x86.h>
 #include <type.h>
 #include <const.h>
 #include <proc.h>
@@ -8,25 +9,30 @@
 #include <proto.h>
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
-static void fork_clone_part_rww(u32 ppid, u32 pid, u32 base, u32 limit) {
-    for (u32 laddr = base; laddr < limit; laddr += num_4K) {
-        //! clear phy page mapping
-        lin_mapping_phy(SharePageBase, 0, ppid, PG_P | PG_USU | PG_RWW, 0);
-        //! alloc shared page for clone, also the phy page mapping from laddr
-        lin_mapping_phy(
-            SharePageBase,
-            MAX_UNSIGNED_INT,
-            ppid,
-            PG_P | PG_USU | PG_RWW,
-            PG_P | PG_USU | PG_RWW);
-        memcpy((void*)SharePageBase, (void*)(laddr & 0xfffff000), num_4K);
-        lin_mapping_phy(
-            laddr,
-            get_page_phy_addr(ppid, SharePageBase),
-            pid,
-            PG_P | PG_USU | PG_RWW,
-            PG_P | PG_USU | PG_RWW);
+static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
+    //! FIXME: risky action, this is relevant to current cr3, but ppid may be
+    //! not the expected one
+    //! FIXME: pid allocation method may changes
+    u32 cr3_ppid = proc_table[ppid].pcb.cr3;
+    u32 cr3_pid  = proc_table[pid].pcb.cr3;
+
+    u32 attr        = PG_P | PG_U | PG_RWX;
+    u32 laddr_share = SharePageBase;
+    assert(laddr_share == pg_frame_phyaddr(laddr_share));
+
+    u32 laddr = base;
+    while (laddr < limit) {
+        bool ok = pg_unmap_laddr(cr3_ppid, laddr_share, false);
+        assert(ok);
+        ok = pg_map_laddr(cr3_ppid, laddr_share, 0, attr, attr);
+        pg_refresh();
+        memcpy((void*)laddr_share, (void*)pg_frame_phyaddr(laddr), num_4K);
+        u32 phyaddr = pg_laddr_phyaddr(cr3_ppid, laddr_share);
+        ok          = pg_map_laddr(cr3_pid, laddr, phyaddr, attr, attr);
+        assert(ok);
+        laddr = pg_frame_phyaddr(laddr) + num_4K;
     }
 }
 
@@ -55,29 +61,26 @@ static int fork_memory_clone(u32 ppid, u32 pid) {
 
     //! clone elf part
     while (ph_ptr != NULL) {
-        fork_clone_part_rww(
+        fork_clone_part_rwx(
             ppid, pid, ph_ptr->lin_addr_base, ph_ptr->lin_addr_limit);
         ph_ptr = ph_ptr->next;
     }
 
     //! clone vpage
-    fork_clone_part_rww(
+    fork_clone_part_rwx(
         ppid, pid, memmap->vpage_lin_base, memmap->vpage_lin_limit);
 
     //! clone heap
-    fork_clone_part_rww(
+    fork_clone_part_rwx(
         ppid, pid, memmap->heap_lin_base, memmap->heap_lin_limit);
 
     //! clone stack
     //! NOTE: inverse grow
-    fork_clone_part_rww(
-        ppid,
-        pid,
-        memmap->stack_lin_limit + 0x1000,
-        memmap->stack_lin_base + 0x1000);
+    fork_clone_part_rwx(
+        ppid, pid, memmap->stack_lin_limit, memmap->stack_lin_base);
 
     //! clone args
-    fork_clone_part_rww(ppid, pid, memmap->arg_lin_limit, memmap->arg_lin_base);
+    fork_clone_part_rwx(ppid, pid, memmap->arg_lin_limit, memmap->arg_lin_base);
 
     return 0;
 }
@@ -105,7 +108,7 @@ static int fork_pcb_clone(PROCESS* p_child) {
     PH_INFO*    ph_ptr = p_proc_current->pcb.memmap.ph_info;
     memmap->ph_info    = NULL;
     while (ph_ptr != NULL) {
-        PH_INFO* new_ph_info        = (PH_INFO*)do_kmalloc(sizeof(PH_INFO));
+        PH_INFO* new_ph_info = (PH_INFO*)K_PHY2LIN(do_kmalloc(sizeof(PH_INFO)));
         new_ph_info->lin_addr_base  = ph_ptr->lin_addr_base;
         new_ph_info->lin_addr_limit = ph_ptr->lin_addr_limit;
         if (memmap->ph_info == NULL) {
@@ -143,8 +146,6 @@ static int fork_pcb_clone(PROCESS* p_child) {
 
 int do_fork() {
     //! FIXME: use lock instead
-    disable_int();
-
     PROCESS* p_child = alloc_pcb();
     if (p_child == NULL) {
         trace_logging(
@@ -153,7 +154,7 @@ int do_fork() {
         return -1;
     }
 
-    init_page_pte(p_child->pcb.pid);
+    p_child->pcb.cr3 = pg_create_and_init();
     fork_pcb_clone(p_child);
     fork_memory_clone(p_proc_current->pcb.pid, p_child->pcb.pid);
     fork_update_proc_info(p_child);
@@ -162,7 +163,7 @@ int do_fork() {
     strcpy(p_child->pcb.p_name, "fork");
 
     //! first frame point in child stack
-    u32* frame            = (u32*)((void*)(p_child + 1) - P_STACKTOP);
+    u32* frame             = (void*)(p_child + 1) - P_STACKTOP;
     p_child->pcb.regs.eax = 0;
     //! update retval address in stack to be safe
     frame[NR_EAXREG] = p_child->pcb.regs.eax;
@@ -172,7 +173,5 @@ int do_fork() {
     p_child->pcb.stat = READY;
 
     //! FIXME: use lock instead (see above)
-    enable_int();
-
     return p_child->pcb.pid;
 }

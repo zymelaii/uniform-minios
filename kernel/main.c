@@ -16,12 +16,14 @@
 #include <hd.h>
 #include <fs.h>
 #include <unios/malloc.h>
+#include <unios/page.h>
 #include <fat32.h>
 #include <x86.h>
 #include <assert.h>
 #include <stdio.h>
 #include <unios/vfs.h>
 #include <console.h>
+#include <unios/page.h>
 
 static int initialize_processes(); // added by xw, 18/5/26
 static int initialize_cpus();      // added by xw, 18/6/2
@@ -185,7 +187,7 @@ static int initialize_processes() {
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
         p_proc->pcb.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
-        // p_proc->task.cr3 在页表初始化中处理
+        // p_proc->pcb.cr3 在页表初始化中处理
 
         /**************线性地址布局初始化**********************************/ //	add by visual 2016.5.4
         /**************task的代码数据大小及位置暂时是不会用到的，所以没有初始化************************************/
@@ -206,10 +208,8 @@ static int initialize_processes() {
             + KernelSize; // 内核大小初始化为8M		//add  by visual 2016.5.10
 
         /***************初始化PID进程页表*****************************/
-        if (0 != init_page_pte(pid)) {
-            vga_write_str_color("kernel_main Error:init_page_pte", 0x74);
-            return -1;
-        }
+        p_proc->pcb.cr3 = pg_create_and_init();
+
         //	pde_addr_phy_temp = get_pde_phy_addr(pid);//获取该进程页目录物理地址
         ////delete by visual 2016.5.19
 
@@ -219,22 +219,15 @@ static int initialize_processes() {
                 ->initial_eip; // 进程入口线性地址		edit by visual 2016.5.4
 
         /****************栈（此时堆、栈已经区分，以后实验会重新规划堆的位置）*****************************/
-        //! FIXME: 杀杀杀杀杀杀杀杀杀杀杀！！！就你他们栈往高处拷贝是吧？！
         p_proc->pcb.regs.esp = (u32)StackLinBase;
-        for (u32 laddr = StackLinBase;
-             laddr > p_proc->pcb.memmap.stack_lin_limit;
-             laddr -= num_4K) { // 栈
-            err_temp = lin_mapping_phy(
-                laddr,
-                MAX_UNSIGNED_INT,
-                pid,
-                PG_P | PG_USU | PG_RWW,
-                PG_P | PG_USU | PG_RWW);
-            if (err_temp != 0) {
-                vga_write_str_color("kernel_main Error:lin_mapping_phy", 0x74);
-                return -1;
-            }
-        }
+
+        bool ok = pg_map_laddr_range(
+            p_proc->pcb.cr3,
+            p_proc->pcb.memmap.stack_lin_limit,
+            p_proc->pcb.memmap.stack_lin_base,
+            PG_P | PG_U | PG_RWX,
+            PG_P | PG_U | PG_RWX);
+        assert(ok);
 
         /***************copy registers data to kernel
          * stack****************************/
@@ -248,7 +241,7 @@ static int initialize_processes() {
          * switch****************************/
         p_proc->pcb.esp_save_int =
             p_regs; // initialize esp_save_int, added by xw, 17/12/11
-        // p_proc->task.save_type = 1;
+        // p_proc->pcb.save_type = 1;
         p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
@@ -316,7 +309,7 @@ static int initialize_processes() {
          * switch****************************/
         p_proc->pcb.esp_save_int =
             p_regs; // initialize esp_save_int, added by xw, 17/12/11
-        // p_proc->task.save_type = 1;
+        // p_proc->pcb.save_type = 1;
         p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
@@ -366,7 +359,7 @@ static int initialize_processes() {
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
         p_proc->pcb.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
-        // p_proc->task.cr3 在页表初始化中处理
+        // p_proc->pcb.cr3 在页表初始化中处理
 
         /**************线性地址布局初始化**********************************/ // edit by visual 2016.5.25
         p_proc->pcb.memmap.ph_info         = NULL;
@@ -388,17 +381,15 @@ static int initialize_processes() {
         p_proc->pcb.info.real_ppid = -1; // 亲父进程，创建它的那个进程
         p_proc->pcb.info.ppid        = -1; // 当前父进程
         p_proc->pcb.info.child_p_num = 0;  // 子进程数量
-        // p_proc->task.info.child_process[NR_CHILD_MAX];//子进程列表
+        // p_proc->pcb.info.child_process[NR_CHILD_MAX];//子进程列表
         p_proc->pcb.info.child_t_num = 0; // 子线程数量
-        // p_proc->task.info.child_thread[NR_CHILD_MAX];//子线程列表
+        // p_proc->pcb.info.child_thread[NR_CHILD_MAX];//子线程列表
         p_proc->pcb.info.text_hold = 1; // 是否拥有代码
         p_proc->pcb.info.data_hold = 1; // 是否拥有数据
 
         /***************初始化PID进程页表*****************************/
-        if (0 != init_page_pte(pid)) {
-            vga_write_str_color("kernel_main Error:init_page_pte", 0x74);
-            return -1;
-        }
+        p_proc->pcb.cr3 = pg_create_and_init();
+
         // pde_addr_phy_temp = get_pde_phy_addr(pid);//获取该进程页目录物理地址
         // //edit by visual 2016.5.19
 
@@ -408,28 +399,14 @@ static int initialize_processes() {
 
         /****************栈（此时堆、栈已经区分，以后实验会重新规划堆的位置）*****************************/
         p_proc->pcb.regs.esp = (u32)StackLinBase; // 栈地址最高处
-        for (AddrLin = StackLinBase;
-             AddrLin > p_proc->pcb.memmap.stack_lin_limit;
-             AddrLin -= num_4K) { // 栈
-            // addr_phy_temp =
-            // (u32)do_kmalloc_4k();//为栈申请一个物理页,Task的栈是在内核里面
-            // //delete by visual 2016.5.19 if( addr_phy_temp<0 ||
-            // (addr_phy_temp&0x3FF)!=0  )
-            //{
-            //	vga_write_str_color("kernel_main Error:addr_phy_temp",0x74);
-            //	return -1;
-            // }
-            err_temp = lin_mapping_phy(
-                AddrLin,          // 线性地址
-                MAX_UNSIGNED_INT, // 物理地址		//edit by visual 2016.5.19
-                pid,              // 进程pid	//edit by visual 2016.5.19
-                PG_P | PG_USU | PG_RWW,  // 页目录的属性位
-                PG_P | PG_USU | PG_RWW); // 页表的属性位
-            if (err_temp != 0) {
-                vga_write_str_color("kernel_main Error:lin_mapping_phy", 0x74);
-                return -1;
-            }
-        }
+
+        bool ok = pg_map_laddr_range(
+            p_proc->pcb.cr3,
+            p_proc->pcb.memmap.stack_lin_limit,
+            p_proc->pcb.memmap.stack_lin_base,
+            PG_P | PG_U | PG_RWX,
+            PG_P | PG_U | PG_RWX);
+        assert(ok);
 
         /***************copy registers data to kernel
          * stack****************************/
@@ -443,7 +420,7 @@ static int initialize_processes() {
          * switch****************************/
         p_proc->pcb.esp_save_int =
             p_regs; // initialize esp_save_int, added by xw, 17/12/11
-        // p_proc->task.save_type = 1;
+        // p_proc->pcb.save_type = 1;
         p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
@@ -510,7 +487,7 @@ static int initialize_processes() {
          * switch****************************/
         p_proc->pcb.esp_save_int =
             p_regs; // initialize esp_save_int, added by xw, 17/12/11
-        // p_proc->task.save_type = 1;
+        // p_proc->pcb.save_type = 1;
         p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
