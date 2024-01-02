@@ -21,7 +21,7 @@ u32 cr2_count = 0;
  *switch the page directory table after schedule() is called
  *======================================================================*/
 void switch_pde() {
-    cr3_ready = p_proc_current->task.cr3;
+    cr3_ready = p_proc_current->pcb.cr3;
 }
 
 /*======================================================================*
@@ -45,7 +45,7 @@ u32 init_page_pte(u32 pid) { // 页表初始化函数
         return -1;
     }
 
-    proc_table[pid].task.cr3 =
+    proc_table[pid].pcb.cr3 =
         pde_addr_phy_temp; // 初始化了进程表中cr3寄存器变量，属性位暂时不管
     /*********************页表初始化部分*********************************/
     u32 phy_addr = 0;
@@ -101,9 +101,9 @@ void page_fault_handler(
     }
 
     // 获取该进程页目录物理地址
-    pde_addr_phy_temp = get_pde_phy_addr(p_proc_current->task.pid);
+    pde_addr_phy_temp = get_pde_phy_addr(p_proc_current->pcb.pid);
     // 获取该线性地址对应的页表的物理地址
-    pte_addr_phy_temp = get_pte_phy_addr(p_proc_current->task.pid, cr2);
+    pte_addr_phy_temp = get_pte_phy_addr(p_proc_current->pcb.pid, cr2);
 
     if (cr2 == cr2_save) {
         cr2_count++;
@@ -117,7 +117,7 @@ void page_fault_handler(
                 cs,
                 err_code,
                 cr2,
-                p_proc_current->task.cr3,
+                p_proc_current->pcb.cr3,
                 *((u32 *)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2)),
                 *((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)));
             __asm__ volatile("cli");
@@ -169,11 +169,11 @@ inline u32 get_pte_index(u32 AddrLin) { // 由 线性地址 得到 页表项编�
 /*======================================================================*
              get_pde_phy_addr	add by visual 2016.4.28
 *======================================================================*/
-inline u32 get_pde_phy_addr(u32 pid) {   // 获取页目录物理地址
-    if (proc_table[pid].task.cr3 == 0) { // 还没有初始化页目录
+inline u32 get_pde_phy_addr(u32 pid) {  // 获取页目录物理地址
+    if (proc_table[pid].pcb.cr3 == 0) { // 还没有初始化页目录
         return -1;
     } else {
-        return ((proc_table[pid].task.cr3) & 0xFFFFF000);
+        return ((proc_table[pid].pcb.cr3) & 0xFFFFF000);
     }
 }
 
@@ -306,5 +306,31 @@ void clear_kernel_pagepte_low() {
     memset((void *)(K_PHY2LIN(KernelPageTblAddr)), 0, 4 * page_num);
     // 从内核页表中清除线性地址的低端映射关系
     memset((void *)(K_PHY2LIN(KernelPageTblAddr + 0x1000)), 0, 4096 * page_num);
+    refresh_page_cache();
+}
+
+void recycle_phy_page(int pid, u32 base, u32 limit) {
+    u32 pde_addr_phy = get_pde_phy_addr(pid);
+    u32 pde_base     = base & 0xFFC00000;
+    u32 pde_limit    = limit & 0xFFC00000;
+    u32 pte_base     = base & 0x003FF000;
+    u32 pte_limit    = limit & 0x003FF000;
+    for (u32 pde_offset = 4194304, i = pde_base / pde_offset;
+         i < pde_limit / pde_offset + 1;
+         i++) {
+        if (pte_exist(pde_addr_phy, pde_offset * i)) {
+            u32 pte_addr_phy = get_pte_phy_addr(pid, pde_offset * i);
+            for (u32 pte_offset = 4096, j = pte_base / pte_offset;
+                 j < pte_limit / pte_offset + 1;
+                 j++) {
+                if (phy_exist(pte_addr_phy, pde_offset * i + pte_offset * j)) {
+                    do_free((void *)K_PHY2LIN(get_page_phy_addr(
+                        pid, pde_offset * i + pte_offset * j)));
+                    write_page_pte(
+                        pte_addr_phy, pde_offset * i + pte_offset * j, 0, 0);
+                }
+            }
+        }
+    }
     refresh_page_cache();
 }

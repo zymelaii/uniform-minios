@@ -21,7 +21,7 @@ static u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) {
         lin_mapping_phy(
             pg_addr,
             MAX_UNSIGNED_INT,
-            p_proc_current->task.pid,
+            p_proc_current->pcb.pid,
             PG_P | PG_USU | PG_RWW,
             attribute);
         pg_addr += 0x1000;
@@ -40,7 +40,7 @@ static u32 exec_load(
     u32 fd, const Elf32_Ehdr* elf_header, const Elf32_Phdr* elf_proghs) {
     assert(elf_header->e_phnum > 0);
 
-    LIN_MEMMAP* memmap = &p_proc_current->task.memmap;
+    LIN_MEMMAP* memmap = &p_proc_current->pcb.memmap;
 
     //! cleanup old ph info
     PH_INFO* ph_info = memmap->ph_info;
@@ -102,11 +102,11 @@ static u32 exec_load(
 static int exec_pcb_init(char* path) {
     char* p_regs;
     strncpy(
-        p_proc_current->task.p_name,
+        p_proc_current->pcb.p_name,
         path,
-        sizeof(p_proc_current->task.p_name) - 1);
+        sizeof(p_proc_current->pcb.p_name) - 1);
 
-    PROCESS_0* task     = &p_proc_current->task;
+    PCB_t* task         = &p_proc_current->pcb;
     task->stat          = READY;
     task->ldts[0].attr1 = DA_C | PRIVILEGE_USER << 5;
     task->ldts[1].attr1 = DA_DRW | PRIVILEGE_USER << 5;
@@ -121,7 +121,7 @@ static int exec_pcb_init(char* path) {
     u32* frame = (void*)(p_proc_current + 1) - P_STACKTOP;
     memcpy(frame, &task->regs, sizeof(task->regs));
 
-    LIN_MEMMAP* memmap        = &p_proc_current->task.memmap;
+    LIN_MEMMAP* memmap        = &p_proc_current->pcb.memmap;
     memmap->vpage_lin_base    = VpageLinBase;
     memmap->vpage_lin_limit   = VpageLinBase;
     memmap->heap_lin_base     = HeapLinBase;
@@ -134,8 +134,8 @@ static int exec_pcb_init(char* path) {
     memmap->kernel_lin_base   = KernelLinBase;
     memmap->kernel_lin_limit  = KernelLinBase + KernelSize;
 
-    p_proc_current->task.info.text_hold = 1;
-    p_proc_current->task.info.data_hold = 1;
+    p_proc_current->pcb.info.text_hold = 1;
+    p_proc_current->pcb.info.data_hold = 1;
 
     return 0;
 }
@@ -172,12 +172,12 @@ int do_exec(char* path) {
 
     exec_pcb_init(path);
 
-    LIN_MEMMAP* memmap            = &p_proc_current->task.memmap;
-    u32*        frame             = (void*)(p_proc_current + 1) - P_STACKTOP;
-    p_proc_current->task.regs.eip = elf_header->e_entry;
-    p_proc_current->task.regs.esp = memmap->stack_lin_base;
-    frame[NR_EIPREG]              = p_proc_current->task.regs.eip;
-    frame[NR_ESPREG]              = p_proc_current->task.regs.esp;
+    LIN_MEMMAP* memmap           = &p_proc_current->pcb.memmap;
+    u32*        frame            = (void*)(p_proc_current + 1) - P_STACKTOP;
+    p_proc_current->pcb.regs.eip = elf_header->e_entry;
+    p_proc_current->pcb.regs.esp = memmap->stack_lin_base;
+    frame[NR_EIPREG]             = p_proc_current->pcb.regs.eip;
+    frame[NR_ESPREG]             = p_proc_current->pcb.regs.esp;
 
     //! FIXME: exceeded stack mapping, see kernel main
     for (u32 laddr = memmap->stack_lin_base; laddr > memmap->stack_lin_limit;
@@ -185,7 +185,7 @@ int do_exec(char* path) {
         int ok = lin_mapping_phy(
             laddr,
             MAX_UNSIGNED_INT,
-            p_proc_current->task.pid,
+            p_proc_current->pcb.pid,
             PG_P | PG_USU | PG_RWW,
             PG_P | PG_USU | PG_RWW);
         if (ok != 0) {

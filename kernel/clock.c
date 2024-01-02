@@ -10,7 +10,7 @@ void clock_handler(int irq) {
      */
     if (kernel_initial == 1) { return; }
     irq = 0;
-    --p_proc_current->task.ticks;
+    --p_proc_current->pcb.ticks;
     do_wakeup(&ticks);
 }
 

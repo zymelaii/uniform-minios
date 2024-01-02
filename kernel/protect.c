@@ -182,7 +182,7 @@ void init_prot() {
     for (i = 0; i < NR_PCBS; i++) { // edit by visual 2016.4.5
         init_descriptor(
             &gdt[selector_ldt >> 3],
-            vir2phys(seg2phys(SELECTOR_KERNEL_DS), proc_table[i].task.ldts),
+            vir2phys(seg2phys(SELECTOR_KERNEL_DS), proc_table[i].pcb.ldts),
             LDT_SIZE * sizeof(DESCRIPTOR) - 1,
             DA_LDT);
         p_proc++;
@@ -275,9 +275,9 @@ void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags) {
         eflags,
         cs,
         err_code,
-        p_proc_current->task.pid);
+        p_proc_current->pcb.pid);
 
-    p_proc_current->task.stat = KILLED;
+    p_proc_current->pcb.stat = KILLED;
 }
 
 /*======================================================================*

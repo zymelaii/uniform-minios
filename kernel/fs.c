@@ -799,7 +799,7 @@ static int do_open(MESSAGE *fs_msg) {
 
     //! find a free slot in proc file_desc
     for (int i = 0; i < NR_FILES; i++) {
-        if (p_proc_current->task.filp[i] == 0) {
+        if (p_proc_current->pcb.filp[i] == 0) {
             fd = i;
             break;
         }
@@ -828,7 +828,7 @@ static int do_open(MESSAGE *fs_msg) {
 
     if (pin) {
         /* connects proc with file_descriptor */
-        p_proc_current->task.filp[fd] = &file_desc_table[index];
+        p_proc_current->pcb.filp[fd] = &file_desc_table[index];
 
         file_desc_table[index].flag = 1;
 
@@ -859,7 +859,7 @@ static int do_open(MESSAGE *fs_msg) {
 
 static int do_close(int fd) {
     //! FIXME: check succeed or not
-    file_desc_t **p_desc = &p_proc_current->task.filp[fd];
+    file_desc_t **p_desc = &p_proc_current->pcb.filp[fd];
     put_inode((*p_desc)->fd_node.fd_inode);
     (*p_desc)->fd_node.fd_inode = NULL;
     (*p_desc)->flag             = 0;
@@ -877,11 +877,11 @@ static int do_rdwt(MESSAGE *fs_msg) {
     //! caller proc nr
     int caller = fs_msg->source;
 
-    if (!(p_proc_current->task.filp[fd]->fd_mode & O_RDWR)) return -1;
+    if (!(p_proc_current->pcb.filp[fd]->fd_mode & O_RDWR)) return -1;
 
-    int pos = p_proc_current->task.filp[fd]->fd_pos;
+    int pos = p_proc_current->pcb.filp[fd]->fd_pos;
 
-    struct inode *pin = p_proc_current->task.filp[fd]->fd_node.fd_inode;
+    struct inode *pin = p_proc_current->pcb.filp[fd]->fd_node.fd_inode;
 
     int imode = pin->i_mode & I_TYPE_MASK;
 
@@ -951,15 +951,15 @@ static int do_rdwt(MESSAGE *fs_msg) {
                 proc2pid(p_proc_current),
                 fsbuf);
         }
-        off                                   = 0;
-        bytes_rw                              += bytes;
-        p_proc_current->task.filp[fd]->fd_pos += bytes;
-        bytes_left                            -= bytes;
+        off                                  = 0;
+        bytes_rw                             += bytes;
+        p_proc_current->pcb.filp[fd]->fd_pos += bytes;
+        bytes_left                           -= bytes;
     }
 
-    if (p_proc_current->task.filp[fd]->fd_pos > pin->i_size) {
+    if (p_proc_current->pcb.filp[fd]->fd_pos > pin->i_size) {
         /* update inode::size */
-        pin->i_size = p_proc_current->task.filp[fd]->fd_pos;
+        pin->i_size = p_proc_current->pcb.filp[fd]->fd_pos;
         sync_inode(pin);
     }
 
@@ -1151,8 +1151,8 @@ static int do_lseek(MESSAGE *fs_msg) {
     int off    = fs_msg->OFFSET;
     int whence = fs_msg->WHENCE;
 
-    int pos    = p_proc_current->task.filp[fd]->fd_pos;
-    int f_size = p_proc_current->task.filp[fd]->fd_node.fd_inode->i_size;
+    int pos    = p_proc_current->pcb.filp[fd]->fd_pos;
+    int f_size = p_proc_current->pcb.filp[fd]->fd_node.fd_inode->i_size;
 
     if (whence == SEEK_SET) {
         pos = off;
@@ -1167,7 +1167,7 @@ static int do_lseek(MESSAGE *fs_msg) {
     }
 
     if (pos < 0 || pos > f_size) { return -1; }
-    p_proc_current->task.filp[fd]->fd_pos = pos;
+    p_proc_current->pcb.filp[fd]->fd_pos = pos;
     return pos;
 }
 

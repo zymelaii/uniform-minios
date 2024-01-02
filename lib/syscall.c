@@ -84,6 +84,10 @@ int fork() {
     return syscall0(NR_fork);
 }
 
+int wait(int *wstatus) {
+    return syscall1(NR_wait, (u32)wstatus);
+}
+
 void exit(int exit_code) {
     syscall1(NR_exit, exit_code);
 }

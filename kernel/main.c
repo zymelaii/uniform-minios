@@ -155,53 +155,53 @@ static int initialize_processes() {
     for (pid = 0; pid < NR_TASKS;
          pid++) { // 1>对前NR_TASKS个PCB初始化,且状态为READY(生成的进程)
         /*************基本信息*********************************/
-        strcpy(p_proc->task.p_name, p_task->name); // 名称
-        p_proc->task.pid  = pid;                   // pid
-        p_proc->task.stat = READY;                 // 状态
-
+        strcpy(p_proc->pcb.p_name, p_task->name); // 名称
+        p_proc->pcb.pid    = pid;                 // pid
+        p_proc->pcb.stat   = READY;               // 状态
+        p_proc->pcb.p_lock = 0;
         /**************LDT*********************************/
-        p_proc->task.ldt_sel = selector_ldt;
+        p_proc->pcb.ldt_sel = selector_ldt;
         memcpy(
-            &p_proc->task.ldts[0],
+            &p_proc->pcb.ldts[0],
             &gdt[SELECTOR_KERNEL_CS >> 3],
             sizeof(DESCRIPTOR));
-        p_proc->task.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
+        p_proc->pcb.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
         memcpy(
-            &p_proc->task.ldts[1],
+            &p_proc->pcb.ldts[1],
             &gdt[SELECTOR_KERNEL_DS >> 3],
             sizeof(DESCRIPTOR));
-        p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
+        p_proc->pcb.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
 
         /**************寄存器初值**********************************/
-        p_proc->task.regs.cs =
+        p_proc->pcb.regs.cs =
             ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.ds =
+        p_proc->pcb.regs.ds =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.es =
+        p_proc->pcb.regs.es =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.fs =
+        p_proc->pcb.regs.fs =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.ss =
+        p_proc->pcb.regs.ss =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
-        p_proc->task.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
+        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
+        p_proc->pcb.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
         // p_proc->task.cr3 在页表初始化中处理
 
         /**************线性地址布局初始化**********************************/ //	add by visual 2016.5.4
         /**************task的代码数据大小及位置暂时是不会用到的，所以没有初始化************************************/
-        p_proc->task.memmap.heap_lin_base = HeapLinBase;
-        p_proc->task.memmap.heap_lin_limit =
+        p_proc->pcb.memmap.heap_lin_base = HeapLinBase;
+        p_proc->pcb.memmap.heap_lin_limit =
             HeapLinBase; // 堆的界限将会一直动态变化
 
-        p_proc->task.memmap.stack_child_limit =
+        p_proc->pcb.memmap.stack_child_limit =
             StackLinLimitMAX; // add by visual 2016.5.27
-        p_proc->task.memmap.stack_lin_base = StackLinBase;
-        p_proc->task.memmap.stack_lin_limit =
+        p_proc->pcb.memmap.stack_lin_base = StackLinBase;
+        p_proc->pcb.memmap.stack_lin_limit =
             StackLinBase
             - 0x4000; // 栈的界限将会一直动态变化，目前赋值为16k，这个值会根据esp的位置进行调整，目前初始化为16K大小
 
-        p_proc->task.memmap.kernel_lin_base = KernelLinBase;
-        p_proc->task.memmap.kernel_lin_limit =
+        p_proc->pcb.memmap.kernel_lin_base = KernelLinBase;
+        p_proc->pcb.memmap.kernel_lin_limit =
             KernelLinBase
             + KernelSize; // 内核大小初始化为8M		//add  by visual 2016.5.10
 
@@ -214,15 +214,15 @@ static int initialize_processes() {
         ////delete by visual 2016.5.19
 
         /****************代码数据*****************************/
-        p_proc->task.regs.eip =
+        p_proc->pcb.regs.eip =
             (u32)p_task
                 ->initial_eip; // 进程入口线性地址		edit by visual 2016.5.4
 
         /****************栈（此时堆、栈已经区分，以后实验会重新规划堆的位置）*****************************/
         //! FIXME: 杀杀杀杀杀杀杀杀杀杀杀！！！就你他们栈往高处拷贝是吧？！
-        p_proc->task.regs.esp = (u32)StackLinBase;
+        p_proc->pcb.regs.esp = (u32)StackLinBase;
         for (u32 laddr = StackLinBase;
-             laddr > p_proc->task.memmap.stack_lin_limit;
+             laddr > p_proc->pcb.memmap.stack_lin_limit;
              laddr -= num_4K) { // 栈
             err_temp = lin_mapping_phy(
                 laddr,
@@ -246,10 +246,10 @@ static int initialize_processes() {
 
         /***************some field about process
          * switch****************************/
-        p_proc->task.esp_save_int =
+        p_proc->pcb.esp_save_int =
             p_regs; // initialize esp_save_int, added by xw, 17/12/11
         // p_proc->task.save_type = 1;
-        p_proc->task.esp_save_context =
+        p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
                       // sched() will fetch value from esp_save_context
@@ -269,36 +269,37 @@ static int initialize_processes() {
         ; pid < NR_K_PCBS;
         pid++) { // 2>对中NR_TASKS~NR_K_PCBS的PCB表初始化,状态为IDLE,没有初始化esp(并没有生成,所以没有代码入口,只是留位置)
         /*************基本信息*********************************/
-        strcpy(p_proc->task.p_name, "Task"); // 名称
-        p_proc->task.pid  = pid;             // pid
-        p_proc->task.stat = IDLE;            // 状态
+        strcpy(p_proc->pcb.p_name, "Task"); // 名称
+        p_proc->pcb.pid    = pid;           // pid
+        p_proc->pcb.p_lock = 0;
+        p_proc->pcb.stat   = IDLE; // 状态
 
         /**************LDT*********************************/
-        p_proc->task.ldt_sel = selector_ldt;
+        p_proc->pcb.ldt_sel = selector_ldt;
         memcpy(
-            &p_proc->task.ldts[0],
+            &p_proc->pcb.ldts[0],
             &gdt[SELECTOR_KERNEL_CS >> 3],
             sizeof(DESCRIPTOR));
-        p_proc->task.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
+        p_proc->pcb.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
         memcpy(
-            &p_proc->task.ldts[1],
+            &p_proc->pcb.ldts[1],
             &gdt[SELECTOR_KERNEL_DS >> 3],
             sizeof(DESCRIPTOR));
-        p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
+        p_proc->pcb.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
 
         /**************寄存器初值**********************************/
-        p_proc->task.regs.cs =
+        p_proc->pcb.regs.cs =
             ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.ds =
+        p_proc->pcb.regs.ds =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.es =
+        p_proc->pcb.regs.es =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.fs =
+        p_proc->pcb.regs.fs =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.ss =
+        p_proc->pcb.regs.ss =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
-        p_proc->task.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
+        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
+        p_proc->pcb.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
 
         /****************页表、代码数据、堆栈*****************************/
         // 无
@@ -313,10 +314,10 @@ static int initialize_processes() {
 
         /***************some field about process
          * switch****************************/
-        p_proc->task.esp_save_int =
+        p_proc->pcb.esp_save_int =
             p_regs; // initialize esp_save_int, added by xw, 17/12/11
         // p_proc->task.save_type = 1;
-        p_proc->task.esp_save_context =
+        p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
                       // sched() will fetch value from esp_save_context
@@ -334,63 +335,64 @@ static int initialize_processes() {
     for (; pid < NR_K_PCBS + 1; pid++) { // initial 进程的初始化
                                          // //add by visual 2016.5.17
         /*************基本信息*********************************/
-        strcpy(p_proc->task.p_name, "initial"); // 名称
-        p_proc->task.pid  = pid;                // pid
-        p_proc->task.stat = READY;              // 状态
+        strcpy(p_proc->pcb.p_name, "initial"); // 名称
+        p_proc->pcb.pid    = pid;              // pid
+        p_proc->pcb.p_lock = 0;
+        p_proc->pcb.stat   = READY; // 状态
 
         /**************LDT*********************************/
-        p_proc->task.ldt_sel = selector_ldt;
+        p_proc->pcb.ldt_sel = selector_ldt;
         memcpy(
-            &p_proc->task.ldts[0],
+            &p_proc->pcb.ldts[0],
             &gdt[SELECTOR_KERNEL_CS >> 3],
             sizeof(DESCRIPTOR));
-        p_proc->task.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
+        p_proc->pcb.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
         memcpy(
-            &p_proc->task.ldts[1],
+            &p_proc->pcb.ldts[1],
             &gdt[SELECTOR_KERNEL_DS >> 3],
             sizeof(DESCRIPTOR));
-        p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
+        p_proc->pcb.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
 
         /**************寄存器初值**********************************/
-        p_proc->task.regs.cs =
+        p_proc->pcb.regs.cs =
             ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.ds =
+        p_proc->pcb.regs.ds =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.es =
+        p_proc->pcb.regs.es =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.fs =
+        p_proc->pcb.regs.fs =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.ss =
+        p_proc->pcb.regs.ss =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
-        p_proc->task.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
+        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
+        p_proc->pcb.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
         // p_proc->task.cr3 在页表初始化中处理
 
         /**************线性地址布局初始化**********************************/ // edit by visual 2016.5.25
-        p_proc->task.memmap.ph_info        = NULL;
-        p_proc->task.memmap.vpage_lin_base = VpageLinBase; // 保留内存基址
-        p_proc->task.memmap.vpage_lin_limit = VpageLinBase; // 保留内存界限
-        p_proc->task.memmap.heap_lin_base  = HeapLinBase;   // 堆基址
-        p_proc->task.memmap.heap_lin_limit = HeapLinBase;   // 堆界限
-        p_proc->task.memmap.stack_lin_base = StackLinBase;  // 栈基址
-        p_proc->task.memmap.stack_lin_limit =
+        p_proc->pcb.memmap.ph_info         = NULL;
+        p_proc->pcb.memmap.vpage_lin_base  = VpageLinBase; // 保留内存基址
+        p_proc->pcb.memmap.vpage_lin_limit = VpageLinBase; // 保留内存界限
+        p_proc->pcb.memmap.heap_lin_base   = HeapLinBase;  // 堆基址
+        p_proc->pcb.memmap.heap_lin_limit  = HeapLinBase;  // 堆界限
+        p_proc->pcb.memmap.stack_lin_base  = StackLinBase; // 栈基址
+        p_proc->pcb.memmap.stack_lin_limit =
             StackLinBase - 0x4000; // 栈界限（使用时注意栈的生长方向）
-        p_proc->task.memmap.arg_lin_base    = ArgLinBase; // 参数内存基址
-        p_proc->task.memmap.arg_lin_limit   = ArgLinBase; // 参数内存界限
-        p_proc->task.memmap.kernel_lin_base = KernelLinBase; // 内核基址
-        p_proc->task.memmap.kernel_lin_limit =
+        p_proc->pcb.memmap.arg_lin_base    = ArgLinBase; // 参数内存基址
+        p_proc->pcb.memmap.arg_lin_limit   = ArgLinBase; // 参数内存界限
+        p_proc->pcb.memmap.kernel_lin_base = KernelLinBase; // 内核基址
+        p_proc->pcb.memmap.kernel_lin_limit =
             KernelLinBase + KernelSize; // 内核大小初始化为8M
 
         /*************************进程树信息初始化***************************************/
-        p_proc->task.info.type = TYPE_PROCESS; // 当前是进程还是线程
-        p_proc->task.info.real_ppid = -1; // 亲父进程，创建它的那个进程
-        p_proc->task.info.ppid        = -1; // 当前父进程
-        p_proc->task.info.child_p_num = 0;  // 子进程数量
+        p_proc->pcb.info.type = TYPE_PROCESS; // 当前是进程还是线程
+        p_proc->pcb.info.real_ppid = -1; // 亲父进程，创建它的那个进程
+        p_proc->pcb.info.ppid        = -1; // 当前父进程
+        p_proc->pcb.info.child_p_num = 0;  // 子进程数量
         // p_proc->task.info.child_process[NR_CHILD_MAX];//子进程列表
-        p_proc->task.info.child_t_num = 0; // 子线程数量
+        p_proc->pcb.info.child_t_num = 0; // 子线程数量
         // p_proc->task.info.child_thread[NR_CHILD_MAX];//子线程列表
-        p_proc->task.info.text_hold = 1; // 是否拥有代码
-        p_proc->task.info.data_hold = 1; // 是否拥有数据
+        p_proc->pcb.info.text_hold = 1; // 是否拥有代码
+        p_proc->pcb.info.data_hold = 1; // 是否拥有数据
 
         /***************初始化PID进程页表*****************************/
         if (0 != init_page_pte(pid)) {
@@ -401,13 +403,13 @@ static int initialize_processes() {
         // //edit by visual 2016.5.19
 
         /****************代码数据*****************************/
-        p_proc->task.regs.eip =
+        p_proc->pcb.regs.eip =
             (u32)initial; // 进程入口线性地址		edit by visual 2016.5.17
 
         /****************栈（此时堆、栈已经区分，以后实验会重新规划堆的位置）*****************************/
-        p_proc->task.regs.esp = (u32)StackLinBase; // 栈地址最高处
+        p_proc->pcb.regs.esp = (u32)StackLinBase; // 栈地址最高处
         for (AddrLin = StackLinBase;
-             AddrLin > p_proc->task.memmap.stack_lin_limit;
+             AddrLin > p_proc->pcb.memmap.stack_lin_limit;
              AddrLin -= num_4K) { // 栈
             // addr_phy_temp =
             // (u32)do_kmalloc_4k();//为栈申请一个物理页,Task的栈是在内核里面
@@ -439,10 +441,10 @@ static int initialize_processes() {
 
         /***************some field about process
          * switch****************************/
-        p_proc->task.esp_save_int =
+        p_proc->pcb.esp_save_int =
             p_regs; // initialize esp_save_int, added by xw, 17/12/11
         // p_proc->task.save_type = 1;
-        p_proc->task.esp_save_context =
+        p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
                       // sched() will fetch value from esp_save_context
@@ -461,36 +463,37 @@ static int initialize_processes() {
         ; pid < NR_PCBS;
         pid++) { // 3>对后NR_K_PCBS~NR_PCBS的PCB表部分初始化,(名称,pid,stat,LDT选择子),状态为IDLE.
         /*************基本信息*********************************/
-        strcpy(p_proc->task.p_name, "USER"); // 名称
-        p_proc->task.pid  = pid;             // pid
-        p_proc->task.stat = IDLE;            // 状态
+        strcpy(p_proc->pcb.p_name, "USER"); // 名称
+        p_proc->pcb.pid    = pid;           // pid
+        p_proc->pcb.p_lock = 0;
+        p_proc->pcb.stat   = IDLE; // 状态
 
         /**************LDT*********************************/
-        p_proc->task.ldt_sel = selector_ldt;
+        p_proc->pcb.ldt_sel = selector_ldt;
         memcpy(
-            &p_proc->task.ldts[0],
+            &p_proc->pcb.ldts[0],
             &gdt[SELECTOR_KERNEL_CS >> 3],
             sizeof(DESCRIPTOR));
-        p_proc->task.ldts[0].attr1 = DA_C | PRIVILEGE_USER << 5;
+        p_proc->pcb.ldts[0].attr1 = DA_C | PRIVILEGE_USER << 5;
         memcpy(
-            &p_proc->task.ldts[1],
+            &p_proc->pcb.ldts[1],
             &gdt[SELECTOR_KERNEL_DS >> 3],
             sizeof(DESCRIPTOR));
-        p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_USER << 5;
+        p_proc->pcb.ldts[1].attr1 = DA_DRW | PRIVILEGE_USER << 5;
 
         /**************寄存器初值**********************************/
-        p_proc->task.regs.cs =
+        p_proc->pcb.regs.cs =
             ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-        p_proc->task.regs.ds =
+        p_proc->pcb.regs.ds =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-        p_proc->task.regs.es =
+        p_proc->pcb.regs.es =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-        p_proc->task.regs.fs =
+        p_proc->pcb.regs.fs =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-        p_proc->task.regs.ss =
+        p_proc->pcb.regs.ss =
             ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-        p_proc->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
-        p_proc->task.regs.eflags = 0x0202; /* IF=1, 倒数第二位恒为1 */
+        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
+        p_proc->pcb.regs.eflags = 0x0202; /* IF=1, 倒数第二位恒为1 */
 
         /****************页表、代码数据、堆栈*****************************/
         // 无
@@ -505,10 +508,10 @@ static int initialize_processes() {
 
         /***************some field about process
          * switch****************************/
-        p_proc->task.esp_save_int =
+        p_proc->pcb.esp_save_int =
             p_regs; // initialize esp_save_int, added by xw, 17/12/11
         // p_proc->task.save_type = 1;
-        p_proc->task.esp_save_context =
+        p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
                       // sched() will fetch value from esp_save_context
@@ -524,19 +527,19 @@ static int initialize_processes() {
         selector_ldt += 1 << 3;
     }
 
-    proc_table[0].task.ticks = proc_table[0].task.priority = 1;
-    proc_table[1].task.ticks = proc_table[1].task.priority = 1;
-    proc_table[2].task.ticks = proc_table[2].task.priority = 1;
-    proc_table[3].task.ticks = proc_table[3].task.priority =
+    proc_table[0].pcb.ticks = proc_table[0].pcb.priority = 1;
+    proc_table[1].pcb.ticks = proc_table[1].pcb.priority = 1;
+    proc_table[2].pcb.ticks = proc_table[2].pcb.priority = 1;
+    proc_table[3].pcb.ticks = proc_table[3].pcb.priority =
         1; // added by xw, 18/8/27
-    proc_table[NR_K_PCBS].task.ticks = proc_table[NR_K_PCBS].task.priority = 1;
+    proc_table[NR_K_PCBS].pcb.ticks = proc_table[NR_K_PCBS].pcb.priority = 1;
 
     /* When the first process begin running, a clock-interruption will happen
      * immediately. If the first process's initial ticks is 1, it won't be the
      * first process to execute its user code. Thus, it's will look weird, for
      * proc_table[0] don't output first. added by xw, 18/4/19
      */
-    proc_table[0].task.ticks = 2;
+    proc_table[0].pcb.ticks = 2;
 
     return 0;
 }

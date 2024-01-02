@@ -233,7 +233,7 @@ int do_vopen(const char *path, int flags) {
 
     int fd = vfs_table[index].ops->open(relpath, flags);
     if (fd != -1) {
-        p_proc_current->task.filp[fd]->dev_index = index;
+        p_proc_current->pcb.filp[fd]->dev_index = index;
     } else {
         trace_logging("filesystem error: invalid path: %s\n", path);
     }
@@ -243,21 +243,21 @@ int do_vopen(const char *path, int flags) {
 
 int do_vclose(int fd) {
     assert(fd != -1 && "invalid fd");
-    int index = p_proc_current->task.filp[fd]->dev_index;
+    int index = p_proc_current->pcb.filp[fd]->dev_index;
     assert(index != -1 && "invalid vfs index");
     return vfs_table[index].ops->close(fd);
 }
 
 int do_vread(int fd, char *buf, int count) {
     assert(fd != -1 && "invalid fd");
-    int index = p_proc_current->task.filp[fd]->dev_index;
+    int index = p_proc_current->pcb.filp[fd]->dev_index;
     assert(index != -1 && "invalid vfs index");
     return vfs_table[index].ops->read(fd, buf, count);
 }
 
 int do_vwrite(int fd, const char *buf, int count) {
     assert(fd != -1 && "invalid fd");
-    int index = p_proc_current->task.filp[fd]->dev_index;
+    int index = p_proc_current->pcb.filp[fd]->dev_index;
     assert(index != -1 && "invalid vfs index");
 
     char wrbuf[512] = {};
@@ -293,7 +293,7 @@ int do_vunlink(const char *path) {
 
 int do_vlseek(int fd, int offset, int whence) {
     assert(fd != -1 && "invalid fd");
-    int index = p_proc_current->task.filp[fd]->dev_index;
+    int index = p_proc_current->pcb.filp[fd]->dev_index;
     assert(index != -1 && "invalid vfs index");
     return vfs_table[index].ops->lseek(fd, offset, whence);
 }

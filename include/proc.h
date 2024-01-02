@@ -88,7 +88,8 @@ enum proc_stat {
     IDLE,
     READY,
     SLEEPING,
-    KILLED
+    KILLED,
+    ZOMBIE
 }; /* add KILLED state. when a process's state is KILLED, the process
     * won't be scheduled anymore, but all of the resources owned by
     * it is not freed yet.
@@ -126,12 +127,12 @@ typedef struct s_stackframe { /* proc_ptr points here				↑ Low
 typedef struct s_tree_info { // 进程树记录，包括父进程，子进程，子线程  //add by
                              // visual 2016.5.25
     int type;                        // 当前是进程还是线程
-    int real_ppid;                   // 亲父进程，创建它的那个进程
-    int ppid;                        // 当前父进程
-    int child_p_num;                 // 子进程数量
-    int child_process[NR_CHILD_MAX]; // 子进程列表
-    int child_t_num;                 // 子线程数量
-    int child_thread[NR_CHILD_MAX];  // 子线程列表
+    u32 real_ppid;                   // 亲父进程，创建它的那个进程
+    u32 ppid;                        // 当前父进程
+    u32 child_p_num;                 // 子进程数量
+    u32 child_process[NR_CHILD_MAX]; // 子进程列表
+    u32 child_t_num;                 // 子线程数量
+    u32 child_thread[NR_CHILD_MAX];  // 子线程列表
     int text_hold;                   // 是否拥有代码
     int data_hold;                   // 是否拥有数据
 } TREE_INFO;
@@ -171,7 +172,8 @@ typedef struct s_lin_memmap { // 线性地址分布结构体	edit by visual 2016
                            // 2016.5.27
 } LIN_MEMMAP;
 
-typedef struct s_proc {
+typedef struct s_pcb {
+    //! WARNING: offset 0 is reserved for user context regs
     STACK_FRAME regs; /* process registers saved in stack frame */
 
     u16        ldt_sel;        /* gdt selector giving ldt base and limit */
@@ -207,14 +209,16 @@ typedef struct s_proc {
 
     // added by zcr
     struct file_desc* filp[NR_FILES];
+    u32               p_lock;
+    u32               p_exitcode;
     //~zcr
-} PROCESS_0;
+} PCB_t;
 
 // new PROCESS struct with PCB and process's kernel stack
 // added by xw, 17/12/11
 typedef union task_union {
-    PROCESS_0 task;
-    char      stack[INIT_STACK_SIZE / sizeof(char)];
+    PCB_t  pcb;
+    char stack[INIT_STACK_SIZE / sizeof(char)];
 } PROCESS;
 
 typedef struct s_task {

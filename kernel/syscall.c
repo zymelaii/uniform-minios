@@ -28,7 +28,7 @@ typedef u32 (*syscall_t)();
 
 static u32 get_syscall_argument(int index) {
     //! FIXME: p_proc_current may not from the caller proc?
-    u32 *frame = (u32 *)p_proc_current->task.esp_save_syscall;
+    u32 *frame = (u32 *)p_proc_current->pcb.esp_save_syscall;
     switch (index) {
         case 0: {
             return frame[NR_EBXREG];
@@ -83,6 +83,10 @@ static u32 sys_fork() {
 static u32 sys_exit() {
     do_exit(SYSCALL_ARGS1(int));
     return 0;
+}
+
+static u32 sys_wait() {
+    return do_wait(SYSCALL_ARGS1(int *));
 }
 
 static u32 sys_get_pid() {
@@ -156,5 +160,5 @@ syscall_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(close),     SYSCALL_ENTRY(read),    SYSCALL_ENTRY(write),
     SYSCALL_ENTRY(lseek),     SYSCALL_ENTRY(unlink),  SYSCALL_ENTRY(create),
     SYSCALL_ENTRY(delete),    SYSCALL_ENTRY(opendir), SYSCALL_ENTRY(createdir),
-    SYSCALL_ENTRY(deletedir), SYSCALL_ENTRY(exit),
+    SYSCALL_ENTRY(deletedir), SYSCALL_ENTRY(wait),    SYSCALL_ENTRY(exit),
 };

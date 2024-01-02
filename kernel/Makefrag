@@ -33,6 +33,7 @@ KERN_SRCFILES := \
 		kernel/uart.c     \
 		kernel/tar.c      \
 		kernel/exit.c     \
+		kernel/wait.c     \
 		kernel/malloc.c   \
 
 KERN_OBJFILES	:= $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))

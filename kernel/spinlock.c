@@ -1,8 +1,8 @@
 #include <spinlock.h>
 
-static inline u32 cmpxchg(u32 oldval, u32 newval, volatile u32 *lock_addr) {
+u32 cmpxchg(u32 oldval, u32 newval, volatile u32 *lock_addr) {
     u32 result;
-    __asm__ volatile("lock; cmpxchg %0, %2"
+    __asm__ volatile("lock\n cmpxchg %0, %2"
                      : "+m"(*lock_addr), "=a"(result)
                      : "r"(newval), "1"(oldval)
                      : "cc");

@@ -149,7 +149,7 @@ void hd_service() {
         // the hd queue is not empty when out_hd_queue return 1.
         while (out_hd_queue(&hdque, &rwinfo)) {
             hd_rdwt_real(rwinfo);
-            rwinfo->proc->task.stat = READY;
+            rwinfo->proc->pcb.stat = READY;
         }
         yield();
     }
@@ -213,15 +213,15 @@ void hd_rdwt_sched(MESSAGE *p) {
 
     if (p->type == DEV_READ) {
         in_hd_queue(&hdque, &rwinfo);
-        p_proc_current->task.channel = &hdque;
-        p_proc_current->task.stat    = SLEEPING;
+        p_proc_current->pcb.channel = &hdque;
+        p_proc_current->pcb.stat    = SLEEPING;
         sched();
         memcpy(p->BUF, buffer, p->CNT);
     } else {
         memcpy(buffer, p->BUF, p->CNT);
         in_hd_queue(&hdque, &rwinfo);
-        p_proc_current->task.channel = &hdque;
-        p_proc_current->task.stat    = SLEEPING;
+        p_proc_current->pcb.channel = &hdque;
+        p_proc_current->pcb.stat    = SLEEPING;
         sched();
     }
 

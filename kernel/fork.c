@@ -32,25 +32,25 @@ static void fork_clone_part_rww(u32 ppid, u32 pid, u32 base, u32 limit) {
 
 static int fork_update_proc_info(PROCESS* p_child) {
     //! update parent
-    int child_index = p_proc_current->task.info.child_p_num;
-    ++p_proc_current->task.info.child_p_num;
-    p_proc_current->task.info.child_process[child_index] = p_child->task.pid;
+    int child_index = p_proc_current->pcb.info.child_p_num;
+    ++p_proc_current->pcb.info.child_p_num;
+    p_proc_current->pcb.info.child_process[child_index] = p_child->pcb.pid;
 
     //! update child
-    p_child->task.info.type = p_proc_current->task.info.type;
+    p_child->pcb.info.type = p_proc_current->pcb.info.type;
     //! parent creator (may be outdated)
-    p_child->task.info.real_ppid   = p_proc_current->task.pid;
-    p_child->task.info.ppid        = p_proc_current->task.pid;
-    p_child->task.info.child_p_num = 0;
-    p_child->task.info.child_t_num = 0;
-    p_child->task.info.text_hold   = false;
-    p_child->task.info.data_hold   = true;
+    p_child->pcb.info.real_ppid   = p_proc_current->pcb.pid;
+    p_child->pcb.info.ppid        = p_proc_current->pcb.pid;
+    p_child->pcb.info.child_p_num = 0;
+    p_child->pcb.info.child_t_num = 0;
+    p_child->pcb.info.text_hold   = false;
+    p_child->pcb.info.data_hold   = true;
 
     return 0;
 }
 
 static int fork_memory_clone(u32 ppid, u32 pid) {
-    LIN_MEMMAP* memmap = &p_proc_current->task.memmap;
+    LIN_MEMMAP* memmap = &p_proc_current->pcb.memmap;
     PH_INFO*    ph_ptr = memmap->ph_info;
 
     //! clone elf part
@@ -88,21 +88,21 @@ static int fork_pcb_clone(PROCESS* p_child) {
     u32* parent_frame = (void*)(p_proc_current + 1) - P_STACKTOP;
 
     //! save status
-    int   pid              = p_child->task.pid;
+    int   pid              = p_child->pcb.pid;
     u32   eflags           = frame[NR_EFLAGSREG];
-    u32   selector_ldt     = p_child->task.ldt_sel;
-    u32   cr3_child        = p_child->task.cr3;
-    char* esp_save_int     = p_child->task.esp_save_int;
-    char* esp_save_context = p_child->task.esp_save_context;
+    u32   selector_ldt     = p_child->pcb.ldt_sel;
+    u32   cr3_child        = p_child->pcb.cr3;
+    char* esp_save_int     = p_child->pcb.esp_save_int;
+    char* esp_save_context = p_child->pcb.esp_save_context;
 
     //! FIXME: risky action, here child proc come into READY unexpectedly
-    p_child->task      = p_proc_current->task;
-    p_child->task.stat = IDLE;
+    p_child->pcb      = p_proc_current->pcb;
+    p_child->pcb.stat = IDLE;
 
     memcpy(frame, parent_frame, P_STACKTOP);
 
-    LIN_MEMMAP* memmap = &p_child->task.memmap;
-    PH_INFO*    ph_ptr = p_proc_current->task.memmap.ph_info;
+    LIN_MEMMAP* memmap = &p_child->pcb.memmap;
+    PH_INFO*    ph_ptr = p_proc_current->pcb.memmap.ph_info;
     memmap->ph_info    = NULL;
     while (ph_ptr != NULL) {
         PH_INFO* new_ph_info        = (PH_INFO*)do_kmalloc(sizeof(PH_INFO));
@@ -121,22 +121,22 @@ static int fork_pcb_clone(PROCESS* p_child) {
         ph_ptr = ph_ptr->next;
     }
 
-    memmap->vpage_lin_base  = p_proc_current->task.memmap.vpage_lin_base;
-    memmap->vpage_lin_limit = p_proc_current->task.memmap.vpage_lin_limit;
-    memmap->heap_lin_base   = p_proc_current->task.memmap.heap_lin_base;
-    memmap->heap_lin_limit  = p_proc_current->task.memmap.heap_lin_limit;
-    memmap->stack_lin_limit = p_proc_current->task.memmap.stack_lin_limit;
-    memmap->stack_lin_base  = p_proc_current->task.memmap.stack_lin_base;
-    memmap->arg_lin_limit   = p_proc_current->task.memmap.arg_lin_limit;
-    memmap->arg_lin_base    = p_proc_current->task.memmap.arg_lin_base;
+    memmap->vpage_lin_base  = p_proc_current->pcb.memmap.vpage_lin_base;
+    memmap->vpage_lin_limit = p_proc_current->pcb.memmap.vpage_lin_limit;
+    memmap->heap_lin_base   = p_proc_current->pcb.memmap.heap_lin_base;
+    memmap->heap_lin_limit  = p_proc_current->pcb.memmap.heap_lin_limit;
+    memmap->stack_lin_limit = p_proc_current->pcb.memmap.stack_lin_limit;
+    memmap->stack_lin_base  = p_proc_current->pcb.memmap.stack_lin_base;
+    memmap->arg_lin_limit   = p_proc_current->pcb.memmap.arg_lin_limit;
+    memmap->arg_lin_base    = p_proc_current->pcb.memmap.arg_lin_base;
 
     // restore status
-    p_child->task.pid              = pid;
-    frame[NR_EFLAGSREG]            = eflags;
-    p_child->task.ldt_sel          = selector_ldt;
-    p_child->task.cr3              = cr3_child;
-    p_child->task.esp_save_int     = esp_save_int;
-    p_child->task.esp_save_context = esp_save_context;
+    p_child->pcb.pid              = pid;
+    frame[NR_EFLAGSREG]           = eflags;
+    p_child->pcb.ldt_sel          = selector_ldt;
+    p_child->pcb.cr3              = cr3_child;
+    p_child->pcb.esp_save_int     = esp_save_int;
+    p_child->pcb.esp_save_context = esp_save_context;
 
     return 0;
 }
@@ -149,29 +149,30 @@ int do_fork() {
     if (p_child == NULL) {
         trace_logging(
             "fork failed from pid=%d: pcb res is not available",
-            p_proc_current->task.pid);
+            p_proc_current->pcb.pid);
         return -1;
     }
 
-    init_page_pte(p_child->task.pid);
+    init_page_pte(p_child->pcb.pid);
     fork_pcb_clone(p_child);
-    fork_memory_clone(p_proc_current->task.pid, p_child->task.pid);
+    fork_memory_clone(p_proc_current->pcb.pid, p_child->pcb.pid);
     fork_update_proc_info(p_child);
 
     //! TODO: modify forked proc name
-    strcpy(p_child->task.p_name, "fork");
+    strcpy(p_child->pcb.p_name, "fork");
 
     //! first frame point in child stack
-    u32* frame             = (u32*)((void*)(p_child + 1) - P_STACKTOP);
-    p_child->task.regs.eax = 0;
+    u32* frame            = (u32*)((void*)(p_child + 1) - P_STACKTOP);
+    p_child->pcb.regs.eax = 0;
     //! update retval address in stack to be safe
-    frame[NR_EAXREG] = p_child->task.regs.eax;
+    frame[NR_EAXREG] = p_child->pcb.regs.eax;
 
     //! fork done
     ++u_proc_sum;
-    p_child->task.stat = READY;
+    p_child->pcb.stat = READY;
 
     //! FIXME: use lock instead (see above)
     enable_int();
-    return p_child->task.pid;
+
+    return p_child->pcb.pid;
 }

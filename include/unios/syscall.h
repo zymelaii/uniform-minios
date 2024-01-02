@@ -23,6 +23,7 @@ enum {
     NR_opendir,
     NR_createdir,
     NR_deletedir,
+    NR_wait,
     NR_exit,
 
     //! total syscalls
@@ -41,6 +42,7 @@ int   do_pthread(void *arg);                        //<! from pthread.c
 int   do_exec(char *path);                          //<! from exec.c
 int   do_fork();                                    //<! from fork.c
 void  do_exit(int exit_code);                       //<! from exit.c
+int   do_wait(int *wstatus);                        //<! from wait.c
 int   do_get_pid();                                 //<! from proc.c -->
 void  do_yield();                                   //<!
 void  do_sleep(int n);                              //<!

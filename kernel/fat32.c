@@ -143,7 +143,7 @@ STATE ReadFile(int fd, void *buf, int length) {
     DWORD curSectorIndex = 0, nextSectorIndex = 0, off_in_sector = 0,
           free_in_sector = 0, readsize = 0;
     UINT  isLastSector = 0, tag = 0;
-    PFile pfile = p_proc_current->task.filp[fd]->fd_node.fd_file;
+    PFile pfile = p_proc_current->pcb.filp[fd]->fd_node.fd_file;
 
     if (pfile->flag != R && pfile->flag != RW
         && pfile->flag != (RW | C)) // modified by mingxuan 2019-5-18
@@ -202,7 +202,7 @@ STATE WriteFile(int fd, const void *buf, int length) {
           free_in_sector = 0, off_in_buf = 0;
     UINT  isLastSector = 0;
     STATE state;
-    PFile pfile = p_proc_current->task.filp[fd]->fd_node.fd_file;
+    PFile pfile = p_proc_current->pcb.filp[fd]->fd_node.fd_file;
     // PFile pfile = &f_desc_table_fat[0];
 
     // if(pfile->flag!=W) //deleted by mingxuan 2019-5-18
@@ -258,17 +258,17 @@ STATE WriteFile(int fd, const void *buf, int length) {
 
 STATE CloseFile(int fd) {
     PFile pfile;
-    pfile                = p_proc_current->task.filp[fd]->fd_node.fd_file;
+    pfile                = p_proc_current->pcb.filp[fd]->fd_node.fd_file;
     DWORD curSectorIndex = 0, curClusterIndex = 0, nextClusterIndex = 0,
           parentCluster = 0;
     UINT   isLastSector = 0;
     Record record;
     DWORD  sectorIndex = 0, off_in_sector = 0;
 
-    // p_proc_current->task.filp_fat[fd] = 0;
-    f_desc_table_fat[fd].flag           = 0;
-    p_proc_current->task.filp[fd]->flag = 0;
-    p_proc_current->task.filp[fd]       = 0;
+    // p_proc_current->pcb.filp_fat[fd] = 0;
+    f_desc_table_fat[fd].flag          = 0;
+    p_proc_current->pcb.filp[fd]->flag = 0;
+    p_proc_current->pcb.filp[fd]       = 0;
     if (pfile->flag == R) {
         return OK;
     } else {
@@ -359,7 +359,7 @@ STATE OpenFile(const char *filename, int mode) {
     int i;
     int fd = -1;
     for (i = 3; i < NR_FILES; i++) {
-        if (p_proc_current->task.filp[i] == 0) {
+        if (p_proc_current->pcb.filp[i] == 0) {
             fd = i;
             break;
         }
@@ -383,8 +383,8 @@ STATE OpenFile(const char *filename, int mode) {
         return -1;
     }
 
-    p_proc_current->task.filp[fd] = &file_desc_table[i];
-    file_desc_table[i].flag       = 1;
+    p_proc_current->pcb.filp[fd] = &file_desc_table[i];
+    file_desc_table[i].flag      = 1;
 
     // 找一个未用的FILE
     for (i = 0; i < NR_FILE_DESC; i++)
@@ -415,7 +415,7 @@ STATE OpenFile(const char *filename, int mode) {
     // deint(f_desc_table_fat[i].flag);
     // kprintf("index:");
     // deint(i);
-    p_proc_current->task.filp[fd]->fd_node.fd_file = &f_desc_table_fat[i];
+    p_proc_current->pcb.filp[fd]->fd_node.fd_file = &f_desc_table_fat[i];
 
     return fd;
 }

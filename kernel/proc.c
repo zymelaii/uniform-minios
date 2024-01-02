@@ -21,7 +21,7 @@ void schedule() {
     int      greatest_ticks = 0;
 
     // Added by xw, 18/4/21
-    if (p_proc_current->task.stat == READY && p_proc_current->task.ticks > 0) {
+    if (p_proc_current->pcb.stat == READY && p_proc_current->pcb.ticks > 0) {
         p_proc_next = p_proc_current; // added by xw, 18/4/26
         return;
     }
@@ -30,10 +30,10 @@ void schedule() {
         for (p = proc_table; p < proc_table + NR_PCBS;
              p++) // edit by visual 2016.4.5
         {
-            if (p->task.stat == READY
-                && p->task.ticks > greatest_ticks) // edit by visual 2016.4.5
+            if (p->pcb.stat == READY
+                && p->pcb.ticks > greatest_ticks) // edit by visual 2016.4.5
             {
-                greatest_ticks = p->task.ticks;
+                greatest_ticks = p->pcb.ticks;
                 // p_proc_current = p;
                 p_proc_next = p; // modified by xw, 18/4/26
             }
@@ -43,7 +43,7 @@ void schedule() {
             for (p = proc_table; p < proc_table + NR_PCBS;
                  p++) // edit by visual 2016.4.5
             {
-                p->task.ticks = p->task.priority;
+                p->pcb.ticks = p->pcb.priority;
             }
         }
     }
@@ -57,7 +57,7 @@ PROCESS* alloc_pcb() { // 分配PCB表
     int      i;
     p = proc_table + NR_K_PCBS; // 跳过前NR_K_PCBS个
     for (i = NR_K_PCBS; i < NR_PCBS; i++) {
-        if (p->task.stat == IDLE) break;
+        if (p->pcb.stat == IDLE) break;
         p++;
     }
     if (i >= NR_PCBS)
@@ -67,29 +67,29 @@ PROCESS* alloc_pcb() { // 分配PCB表
 }
 
 void free_pcb(PROCESS* p) {
-    p->task.stat = IDLE;
+    p->pcb.stat = IDLE;
 }
 
 void do_yield() {
-    p_proc_current->task.ticks = 0;
+    p_proc_current->pcb.ticks = 0;
     sched();
 }
 
 void do_sleep(int n) {
     int ticks0;
 
-    ticks0                       = ticks;
-    p_proc_current->task.channel = &ticks;
+    ticks0                      = ticks;
+    p_proc_current->pcb.channel = &ticks;
 
     while (ticks - ticks0 < n) {
-        p_proc_current->task.stat = SLEEPING;
+        p_proc_current->pcb.stat = SLEEPING;
         //		save_context();
         sched(); // Modified by xw, 18/4/19
     }
 }
 
 int do_get_pid() {
-    return p_proc_current->task.pid;
+    return p_proc_current->pcb.pid;
 }
 
 /*invoked by clock-interrupt handler to wakeup
@@ -99,15 +99,15 @@ void do_wakeup(void* channel) {
     PROCESS* p;
 
     for (p = proc_table; p < proc_table + NR_PCBS; p++) {
-        if (p->task.stat == SLEEPING && p->task.channel == channel) {
-            p->task.stat = READY;
+        if (p->pcb.stat == SLEEPING && p->pcb.channel == channel) {
+            p->pcb.stat = READY;
         }
     }
 }
 
 // added by zcr
 int ldt_seg_linear(PROCESS* p, int idx) {
-    struct s_descriptor* d = &p->task.ldts[idx];
+    struct s_descriptor* d = &p->pcb.ldts[idx];
     return d->base_high << 24 | d->base_mid << 16 | d->base_low;
 }
 
@@ -121,4 +121,6 @@ void* va2la(int pid, void* va) {
     return (void*)la;
 }
 
-//~zcr
+PROCESS* pid2proc(int pid) {
+    return &proc_table[pid];
+}
