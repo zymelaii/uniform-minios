@@ -1,8 +1,14 @@
 {
+    //! format on save
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "files.trimTrailingWhitespace": true,
-
+    //! todo notes
+    "todo-tree.highlights.enabled": false,
+    "todo-tree.regex.regex": "(//!?(!<)?|#|<!--|;|/\\*|^|^[ \\t]*(-|\\d+.))\\s*($TAGS)",
+    //! linter conf
+    "clangd.onConfigChanged": "restart",
+    "clangd.restartAfterCrash": true,
     "clangd.fallbackFlags": [
         "-x",
         "c",
@@ -13,5 +19,16 @@
         "-fno-builtin",
         "-I${workspaceFolder}/include",
         "-Wno-unknown-attributes",
+    ],
+    "clangd.arguments": [
+        "--enable-config",
+        "--compile-commands-dir=build",
+        "--clang-tidy",
+        "--all-scopes-completion",
+        "--completion-style=detailed",
+        "--header-insertion=never",
+        "--background-index",
+        "--pch-storage=disk",
+        "-j=8",
     ],
 }
