@@ -141,6 +141,7 @@ $RECYCLE.BIN/
 
 ### Misc ###
 .*/*
+/.lock
 
 build/*
 BUILD/*
