@@ -1,24 +1,31 @@
 OBJDIR  := obj
 
+LIBSTD      := unirt
+LIBSTD_FILE := $(OBJDIR)/lib/lib$(LIBSTD).a
+
 INCDIRS ?=
 INCDIRS += include/kernel
 INCDIRS += include/lib
 
+LINKDIRS ?=
+LINKDIRS += $(OBJDIR)/lib
+
 PREFIX ?=
 
-CC	    := $(PREFIX)gcc
-AS	    := nasm
-AR	    := $(PREFIX)ar
-LD	    := $(PREFIX)ld
-NM	    := $(PREFIX)nm
-OBJCOPY	:= $(PREFIX)objcopy
-OBJDUMP	:= $(PREFIX)objdump
+CC      := $(PREFIX)gcc
+AS      := nasm
+AR      := $(PREFIX)ar
+LD      := $(PREFIX)ld
+NM      := $(PREFIX)nm
+OBJCOPY := $(PREFIX)objcopy
+OBJDUMP := $(PREFIX)objdump
 
 DEFS ?=
 
 CFLAGS ?=
 CFLAGS += $(DEFS)
 CFLAGS += $(addprefix -I, $(INCDIRS)) -MD
+CFLAGS += $(addprefix -L, $(LINKDIRS))
 CFLAGS += -fno-stack-protector
 CFLAGS += -O0
 CFLAGS += -std=gnu99
@@ -32,13 +39,16 @@ CFLAGS += -mno-sse -mno-sse2
 
 ASFLAGS ?=
 
+ARFLAGS ?=
+
 LDFLAGS	?=
 LDFLAGS += -m elf_i386
 LDFLAGS += -nostdlib
+LDFLAGS += $(addprefix -L, $(LINKDIRS))
 
-GCC_LIB	:= $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
+GCC_LIB := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 
-OBJDIRS	:=
+OBJDIRS :=
 
 QEMU ?= qemu-system-i386
 
@@ -121,10 +131,11 @@ $(IMAGE): \
 		$(BUILD_IMAGE_SCRIPT)		\
 		$(OBJDIR)/user/$(USER_TAR)	\
 		$(FS_FLAG_OBJFILES)
-	@./build_img.sh $@ $(OBJDIR) $(OSBOOT_START_OFFSET)
-	@dd if=$(OBJDIR)/user/$(USER_TAR) of=$@ bs=512 count=$(INSTALL_NR_SECTORS) seek=$(INSTALL_PHY_SECTOR) conv=notrunc
-	@dd if=$(OBJDIR)/fs_flags/orange_flag.bin of=$@ bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
-	@dd if=$(OBJDIR)/fs_flags/fat32_flag.bin of=$@ bs=1 count=11 seek=$(FAT32_FS_START_OFFSET) conv=notrunc
+	@echo + build $(IMAGE)
+	@./build_img.sh $@ $(OBJDIR) $(OSBOOT_START_OFFSET) > /dev/null 2>&1
+	@dd if=$(OBJDIR)/user/$(USER_TAR) of=$@ bs=512 count=$(INSTALL_NR_SECTORS) seek=$(INSTALL_PHY_SECTOR) conv=notrunc > /dev/null 2>&1
+	@dd if=$(OBJDIR)/fs_flags/orange_flag.bin of=$@ bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc > /dev/null 2>&1
+	@dd if=$(OBJDIR)/fs_flags/fat32_flag.bin of=$@ bs=1 count=11 seek=$(FAT32_FS_START_OFFSET) conv=notrunc > /dev/null 2>&1
 
 run: $(IMAGE)
 	@$(QEMU) $(QEMU_FLAGS) -drive file=$(IMAGE),format=raw

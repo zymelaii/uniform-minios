@@ -1,7 +1,8 @@
-OBJDIRS		+= fs_flags
+OBJDIRS += fs_flags
 
-FS_FLAG_SRCFILES:=	fs_flags/orange_flag.asm	\
-			fs_flags/fat32_flag.asm
+FS_FLAG_SRCFILES := \
+	fs_flags/orange_flag.asm \
+	fs_flags/fat32_flag.asm  \
 
 FS_FLAG_OBJFILES:= $(patsubst %.asm, $(OBJDIR)/%.bin, $(FS_FLAG_SRCFILES))
 

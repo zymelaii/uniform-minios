@@ -2,16 +2,22 @@
 
 #include <stdint.h>
 
-struct spinlock {
+typedef struct spinlock_s {
+    //! NOTE: keep &locked the same with &spinlock_t to make spinlock method
+    //! compatible
     u32 locked;
 
     //! for debug use
     char *name;
     int   cpu;     //<! number of the cpu holding the lock
     u32   pcs[10]; //<! call stack that locked the lock
-};
+} spinlock_t;
 
-u32  cmpxchg(u32 oldval, u32 newval, volatile u32 *lock_addr);
-void initlock(struct spinlock *lock, char *name);
-void acquire(struct spinlock *lock);
-void release(struct spinlock *lock);
+void initlock(spinlock_t *lock, char *name);
+
+//! NOTE: use void* instead of spinlock_t*, so the spinlock method is also
+//! usable for other compatible types
+
+void acquire(void *lock);
+void lock_or_yield(void *lock);
+void release(void *lock);

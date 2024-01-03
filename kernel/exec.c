@@ -136,7 +136,7 @@ int do_exec(char* path) {
 
     u32 fd = do_open(path, O_RDWR);
     if (fd == -1) {
-        trace_logging("exec: executable not found");
+        trace_logging("exec: executable not found\n");
         return -1;
     }
 

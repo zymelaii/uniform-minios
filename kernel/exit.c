@@ -11,7 +11,7 @@ static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
     assert(src_pid != dst_pid);
     pcb_t* src_pcb = (pcb_t*)pid2proc(src_pid);
     pcb_t* dst_pcb = (pcb_t*)pid2proc(dst_pid);
-    while (cmpxchg(0, 1, &dst_pcb->p_lock) == 1) { yield(); }
+    lock_or_yield(&dst_pcb->p_lock);
     for (int i = 0, j = dst_pcb->info.child_p_num;
          i < src_pcb->info.child_p_num;
          ++i, ++j) {
@@ -37,7 +37,7 @@ static void kill_child_thread(u32 pid) {
 }
 
 void do_exit(int exit_code) {
-    while (cmpxchg(0, 1, &p_proc_current->pcb.p_lock) == 1) { yield(); }
+    lock_or_yield(&p_proc_current->pcb.p_lock);
     //! FIXME: this way of locking son then father proc may cause deadlock
     //! according to lab-6 exit.c
     pcb_t* exit_task = (pcb_t*)pid2proc(p_proc_current->pcb.pid);
