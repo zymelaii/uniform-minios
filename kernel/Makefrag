@@ -67,7 +67,7 @@ $(OBJDIR)/kernel/%.o: kernel/%.c $(OBJDIR)/.vars.CFLAGS
 $(OBJDIR)/kernel/%.o: kernel/%.asm
 	@echo + as obj $<
 	@mkdir -p $(@D)
-	@$(AS) -I ./include -f elf -o $@ $<
+	@$(AS) -I kernel -f elf -o $@ $<
 
 $(OBJDIR)/kernel/kernel.bin: $(KERN_OBJFILES) $(LIB_A) $(OBJDIR)/.vars.LDFLAGS
 	@echo + ld $@

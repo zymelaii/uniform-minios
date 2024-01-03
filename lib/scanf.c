@@ -1,9 +1,8 @@
 #include <stdio.h>
-#include <const.h>
 
 char getchar() {
     char ch;
-    return read(STD_IN, &ch, 1) == 1 ? ch : EOF;
+    return read(stdin, &ch, 1) == 1 ? ch : EOF;
 }
 
 char *gets(char *str) {

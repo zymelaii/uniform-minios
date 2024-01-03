@@ -1,11 +1,11 @@
-﻿#include <type.h>
-#include <const.h>
-#include <protect.h>
-#include <string.h>
-#include <proc.h>
-#include <global.h>
-#include <proto.h>
+﻿#include <unios/const.h>
+#include <unios/protect.h>
+#include <unios/proc.h>
+#include <unios/global.h>
+#include <unios/proto.h>
 #include <unios/page.h>
+#include <string.h>
+#include <stdint.h>
 
 static int pthread_pcb_cpy(PROCESS *p_child, PROCESS *p_parent);
 static int pthread_update_info(PROCESS *p_child, PROCESS *p_parent);

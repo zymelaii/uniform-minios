@@ -1,25 +1,17 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                              protect.c
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                                                    Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-
 #include <unios/syscall.h>
-#include <type.h>
-#include <const.h>
-#include <protect.h>
-#include <proc.h>
-#include <global.h>
-#include <proto.h>
+#include <unios/const.h>
+#include <unios/protect.h>
+#include <unios/proc.h>
+#include <unios/global.h>
+#include <unios/proto.h>
+#include <sys/types.h>
 #include <string.h>
 #include <stdio.h>
 
-/* 本文件内函数声明 */
 static void init_idt_desc(
     unsigned char vector,
     u8            desc_type,
-    int_handler   handler,
+    int_handler_t handler,
     unsigned char privilege);
 static void
     init_descriptor(DESCRIPTOR* p_desc, u32 base, u32 limit, u16 attribute);
@@ -198,7 +190,7 @@ void init_prot() {
 void init_idt_desc(
     unsigned char vector,
     u8            desc_type,
-    int_handler   handler,
+    int_handler_t handler,
     unsigned char privilege) {
     GATE* p_gate        = &idt[vector];
     u32   base          = (u32)handler;

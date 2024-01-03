@@ -1,9 +1,9 @@
 #include <unios/syscall.h>
-#include <stdio.h>
+#include <unios/proto.h>
+#include <unios/uart.h>
+#include <unios/spinlock.h>
 #include <stdarg.h>
-#include <proto.h>
-#include <uart.h>
-#include <spinlock.h>
+#include <stdio.h>
 
 static struct spinlock trace_lock;
 

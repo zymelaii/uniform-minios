@@ -1,5 +1,5 @@
 #include <unios/syscall.h>
-#include <global.h>
+#include <unios/global.h>
 
 void clock_handler(int irq) {
     ++ticks;

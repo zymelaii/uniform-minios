@@ -1,18 +1,13 @@
-/**********************************************************
- *	fat32.c       //added by mingxuan 2019-5-17
- ***********************************************************/
-
 #include <unios/syscall.h>
-#include <fat32.h>
-#include <type.h>
-#include <const.h>
-#include <proc.h>
-#include <global.h>
-#include <proto.h>
-#include <fs_const.h>
-#include <hd.h>
-#include <fs.h>
-#include <fs_misc.h>
+#include <unios/fat32.h>
+#include <unios/const.h>
+#include <unios/proc.h>
+#include <unios/global.h>
+#include <unios/proto.h>
+#include <unios/fs_const.h>
+#include <unios/hd.h>
+#include <unios/fs.h>
+#include <unios/fs_misc.h>
 #include <stdio.h>
 #include <string.h>
 

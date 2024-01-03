@@ -1,15 +1,15 @@
 ﻿#include <unios/syscall.h>
 #include <unios/malloc.h>
 #include <unios/page.h>
-#include <x86.h>
-#include <type.h>
-#include <const.h>
-#include <proc.h>
-#include <global.h>
-#include <proto.h>
+#include <unios/const.h>
+#include <unios/proc.h>
+#include <unios/global.h>
+#include <unios/proto.h>
+#include <unios/assert.h>
+#include <arch/x86.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 
 static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
     //! FIXME: risky action, this is relevant to current cr3, but ppid may be
@@ -163,7 +163,7 @@ int do_fork() {
     strcpy(p_child->pcb.p_name, "fork");
 
     //! first frame point in child stack
-    u32* frame             = (void*)(p_child + 1) - P_STACKTOP;
+    u32* frame            = (void*)(p_child + 1) - P_STACKTOP;
     p_child->pcb.regs.eax = 0;
     //! update retval address in stack to be safe
     frame[NR_EAXREG] = p_child->pcb.regs.eax;

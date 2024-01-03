@@ -1,5 +1,8 @@
-OBJDIR := obj
-INCDIR := include
+OBJDIR  := obj
+
+INCDIRS ?=
+INCDIRS += include/kernel
+INCDIRS += include/lib
 
 PREFIX ?=
 
@@ -15,7 +18,7 @@ DEFS ?=
 
 CFLAGS ?=
 CFLAGS += $(DEFS)
-CFLAGS += -I$(INCDIR) -MD
+CFLAGS += $(addprefix -I, $(INCDIRS)) -MD
 CFLAGS += -fno-stack-protector
 CFLAGS += -O0
 CFLAGS += -std=gnu99

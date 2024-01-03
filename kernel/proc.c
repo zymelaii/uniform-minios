@@ -1,17 +1,9 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                               proc.c
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                                                    Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-
-#include <type.h>
-#include <const.h>
-#include <protect.h>
+#include <unios/const.h>
+#include <unios/protect.h>
+#include <unios/proc.h>
+#include <unios/global.h>
+#include <unios/proto.h>
 #include <string.h>
-#include <proc.h>
-#include <global.h>
-#include <proto.h>
 
 /*======================================================================*
                               schedule
@@ -123,4 +115,8 @@ void* va2la(int pid, void* va) {
 
 PROCESS* pid2proc(int pid) {
     return &proc_table[pid];
+}
+
+int proc2pid(PROCESS* proc) {
+    return proc - proc_table;
 }

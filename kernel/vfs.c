@@ -1,10 +1,11 @@
 #include <unios/vfs.h>
-#include <fs_const.h>
-#include <string.h>
-#include <assert.h>
+#include <unios/fs_const.h>
+#include <unios/fs.h>
+#include <unios/assert.h>
+#include <unios/global.h>
+#include <unios/proto.h>
 #include <stdio.h>
-#include <global.h>
-#include <proto.h>
+#include <string.h>
 
 file_desc_t  file_desc_table[NR_FILE_DESC];
 superblock_t superblock_table[NR_SUPER_BLOCK];
@@ -265,7 +266,7 @@ int do_vwrite(int fd, const char *buf, int count) {
     while (left > 0) {
         //! copy to kernel buffer
         //! FIXME: really necessary?
-        int nbytes = min(512, left);
+        int nbytes = MIN(512, left);
         memcpy(wrbuf, buf, nbytes);
         buf += nbytes;
 

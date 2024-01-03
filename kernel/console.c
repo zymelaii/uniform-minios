@@ -1,12 +1,11 @@
-#include <type.h>
-#include <stdio.h>
-#include <const.h>
+#include <unios/const.h>
 #include <unios/tty.h>
-#include <console.h>
-#include <global.h>
-#include <proto.h>
-#include <x86.h>
+#include <unios/console.h>
+#include <unios/global.h>
+#include <unios/proto.h>
+#include <arch/x86.h>
 #include <string.h>
+#include <stdio.h>
 
 /* local routines */
 static void set_cursor(unsigned int position);

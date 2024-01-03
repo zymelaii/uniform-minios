@@ -2,21 +2,18 @@
 
 int strlen(const char *s) {
     int n;
-
     for (n = 0; *s != '\0'; s++) n++;
     return n;
 }
 
 int strnlen(const char *s, size_t size) {
     int n;
-
     for (n = 0; size > 0 && *s != '\0'; s++, size--) n++;
     return n;
 }
 
 char *strcpy(char *dst, const char *src) {
     char *ret;
-
     ret = dst;
     while ((*dst++ = *src++) != '\0') /* do nothing */
         ;
@@ -32,7 +29,6 @@ char *strcat(char *dst, const char *src) {
 char *strncpy(char *dst, const char *src, size_t size) {
     size_t i;
     char  *ret;
-
     ret = dst;
     for (i = 0; i < size; i++) {
         *dst++ = *src;
@@ -49,10 +45,11 @@ int strcmp(const char *p, const char *q) {
 
 int strncmp(const char *p, const char *q, size_t n) {
     while (n > 0 && *p && *p == *q) n--, p++, q++;
-    if (n == 0)
+    if (n == 0) {
         return 0;
-    else
+    } else {
         return (int)((unsigned char)*p - (unsigned char)*q);
+    }
 }
 
 void *memset(void *v, int c, size_t n) {

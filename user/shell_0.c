@@ -1,8 +1,9 @@
-#include <type.h>
+#include <sys/defs.h>
+#include <stddef.h>
 #include <string.h>
-#include <global.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #define assert(expected)                                    \
  do {                                                       \
@@ -49,12 +50,11 @@ void setup_for_all_tty() {
         break;
     }
 
-    char tty[MAX_PATH] = {};
+    char tty[PATH_MAX] = {};
     snprintf(tty, sizeof(tty), "/dev_tty%d", nr_tty);
-    int stdin  = open(tty, O_RDWR);
-    int stdout = open(tty, O_RDWR);
-    int stderr = open(tty, O_RDWR);
-    assert(stdin == 0 && stdout == 1 && stderr == 2);
+    int fd[3] = {};
+    for (int i = 0; i < 3; ++i) { fd[i] = open(tty, O_RDWR); }
+    assert(fd[0] == stdin && fd[1] == stdout && fd[2] == stderr);
 }
 
 bool arg_from_cmdline(const char *buf, int *p_argc, char ***p_argv) {
@@ -193,7 +193,7 @@ int main(int arg, char *argv[]) {
 
     setup_for_all_tty();
 
-    char buf[MAX_PATH] = {};
+    char buf[PATH_MAX] = {};
     while (1) {
         printf("miniOS:/ $ ");
         gets(buf);

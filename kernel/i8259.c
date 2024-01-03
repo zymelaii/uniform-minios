@@ -1,16 +1,10 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                            i8259.c
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                                                    Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-
-#include <type.h>
-#include <const.h>
-#include <protect.h>
-#include <global.h>
-#include <proto.h>
-#include <x86.h>
+#include <unios/const.h>
+#include <unios/protect.h>
+#include <unios/global.h>
+#include <unios/proto.h>
+#include <arch/x86.h>
+#include <sys/types.h>
+#include <stdint.h>
 #include <stdio.h>
 
 /*======================================================================*
@@ -61,7 +55,7 @@ void spurious_irq(int irq) {
 /*======================================================================*
                            put_irq_handler
  *======================================================================*/
-void put_irq_handler(int irq, irq_handler handler) {
+void put_irq_handler(int irq, irq_handler_t handler) {
     disable_irq(irq);
     irq_table[irq] = handler;
 }

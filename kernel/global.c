@@ -1,23 +1,11 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                global.c
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                            Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-/*
- * To make things more direct. In the headers below,
- * the variable will be defined here.
- * added by xw, 18/6/17
- */
-// #define GLOBAL_VARIABLES_HERE
-#include <const.h>
-#include <type.h>
-#include <protect.h>
-#include <proc.h>
-#include <proto.h>
-#include <fs_const.h>
-#include <hd.h>
 #include <unios/vfs.h>
+#include <unios/const.h>
+#include <unios/protect.h>
+#include <unios/proc.h>
+#include <unios/proto.h>
+#include <unios/fs_const.h>
+#include <unios/hd.h>
+#include <stdint.h>
 
 int        kernel_initial;
 int        ticks;
@@ -45,7 +33,7 @@ TASK task_table[NR_TASKS] = {
     {task_tty,   STACK_SIZE_TASK, "task_tty"  },
 }; // added by xw, 18/8/27
 
-irq_handler irq_table[NR_IRQ];
+irq_handler_t irq_table[NR_IRQ];
 
 tty_t   tty_table[NR_CONSOLES];     // added by mingxuan 2019-5-19
 CONSOLE console_table[NR_CONSOLES]; // added by mingxuan 2019-5-19

@@ -1,17 +1,10 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                            start.c
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                                                    Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-
-#include <stdio.h>
-#include <protect.h>
-#include <proc.h>
-#include <global.h>
-#include <proto.h>
+#include <unios/protect.h>
+#include <unios/proc.h>
+#include <unios/global.h>
+#include <unios/proto.h>
+#include <unios/assert.h>
 #include <stdarg.h>
-#include <assert.h>
+#include <stdio.h>
 #include <string.h>
 
 /*

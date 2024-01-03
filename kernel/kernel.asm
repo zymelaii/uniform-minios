@@ -70,23 +70,23 @@ global sched
 
     global _start
 _start:
-    mov esp, KernelStackTop
+    mov     esp, KernelStackTop
 
     ; load & flush gdt
-    sgdt [gdt_ptr]
-    call cstart
-    lgdt [gdt_ptr]
+    sgdt    [gdt_ptr]
+    call    cstart
+    lgdt    [gdt_ptr]
 
-    lidt [idt_ptr]
+    lidt    [idt_ptr]
 
     ; force to activate the lately inited struct
-    jmp  SELECTOR_KERNEL_CS:csinit
+    jmp     SELECTOR_KERNEL_CS:csinit
 csinit:
-    xor eax, eax
-    mov ax, SELECTOR_TSS
-    ltr ax
+    xor     eax, eax
+    mov     ax, SELECTOR_TSS
+    ltr     ax
 
-    jmp kernel_main
+    jmp     kernel_main
 
     global save_exception
 save_exception:
@@ -191,7 +191,7 @@ renew_env:
 
     global syscall_handler
 syscall_handler:
-    call save_syscall
+    call    save_syscall
     sti
     call    [syscall_table + eax * 4]
     cli
@@ -201,35 +201,35 @@ syscall_handler:
     ret
 
 restart_int:
-    mov  eax, [p_proc_current]
-    mov  esp, [eax + ESP_SAVE_INT]
+    mov     eax, [p_proc_current]
+    mov     esp, [eax + ESP_SAVE_INT]
     cmp     dword [kernel_initial], 0
     jnz     restart_restore
-    call sched
+    call    sched
     jmp     restart_restore
 
 restart_syscall:
-    mov  eax, [p_proc_current]
-    mov  esp, [eax + ESP_SAVE_SYSCALL]
-    call sched
-    jmp  restart_restore
+    mov     eax, [p_proc_current]
+    mov     esp, [eax + ESP_SAVE_SYSCALL]
+    call    sched
+    jmp     restart_restore
 
     global restart_restore
 restart_restore:
-    pop  gs
-    pop  fs
-    pop  es
-    pop  ds
+    pop     gs
+    pop     fs
+    pop     es
+    pop     ds
     popad
-    add  esp, 4
+    add     esp, 4
     iretd
 
     global restart_initial
 restart_initial:
-    call renew_env
-    mov  eax, [p_proc_current]
-    mov  esp, [eax + ESP_SAVE_INT]
-    jmp  restart_restore
+    call    renew_env
+    mov     eax, [p_proc_current]
+    mov     esp, [eax + ESP_SAVE_INT]
+    jmp     restart_restore
 
 ; u32 get_arg(void *uesp, int order)
 ; used to get the specified argument of the syscall from user space stack
@@ -237,14 +237,14 @@ restart_initial:
 ; TODO: abandon this
     global get_arg
 get_arg:
-    push ebp
-    mov ebp, esp
-    push esi
-    push edi
-    mov esi, dword [ebp + 8] ; void *uesp
-    mov edi, dword [ebp + 12] ; int order
-    mov eax, dword [esi + edi * 4 + 4]
-    pop edi
-    pop esi
-    pop ebp
+    push    ebp
+    mov     ebp, esp
+    push    esi
+    push    edi
+    mov     esi, dword [ebp + 8] ; void *uesp
+    mov     edi, dword [ebp + 12] ; int order
+    mov     eax, dword [esi + edi * 4 + 4]
+    pop     edi
+    pop     esi
+    pop     ebp
     ret

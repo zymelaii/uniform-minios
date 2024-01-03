@@ -1,28 +1,16 @@
-/// zcr copy whole file from Orange's and the file was modified.
-
-/*************************************************************************/
-/*****************************************************************************
- * @file   hd.c
- * @brief  Hard disk (winchester) driver.
- * The `device nr' in this file means minor device nr.
- * @author Forrest Y. Yu
- * @date   2005~2008
- *****************************************************************************
- *****************************************************************************/
-
 #include <unios/syscall.h>
 #include <unios/malloc.h>
+#include <unios/global.h>
+#include <unios/const.h>
+#include <unios/proc.h>
+#include <unios/proto.h>
+#include <unios/fs_const.h>
+#include <unios/hd.h>
+#include <unios/assert.h>
+#include <arch/x86.h>
 #include <stdlib.h>
-#include <type.h>
-#include <const.h>
-#include <proc.h>
-#include <global.h>
-#include <proto.h>
-#include <fs_const.h>
-#include <hd.h>
-#include <x86.h>
+#include <stddef.h>
 #include <stdio.h>
-#include <assert.h>
 #include <string.h>
 
 struct part_ent PARTITION_ENTRY;
@@ -122,7 +110,7 @@ void hd_rdwt(MESSAGE *p) {
     void *la         = (void *)va2la(p->PROC_NR, p->BUF);
 
     while (bytes_left) {
-        int bytes = min(SECTOR_SIZE, bytes_left);
+        int bytes = MIN(SECTOR_SIZE, bytes_left);
         if (p->type == DEV_READ) {
             interrupt_wait();
             insw(REG_DATA, hdbuf, SECTOR_SIZE);
@@ -182,7 +170,7 @@ static void hd_rdwt_real(RWInfo *p) {
     void *la         = p->kbuf; // attention here!
 
     while (bytes_left) {
-        int bytes = min(SECTOR_SIZE, bytes_left);
+        int bytes = MIN(SECTOR_SIZE, bytes_left);
         if (p->msg->type == DEV_READ) {
             interrupt_wait();
             insw(REG_DATA, hdbuf, SECTOR_SIZE);

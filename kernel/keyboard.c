@@ -1,15 +1,15 @@
-#include <type.h>
-#include <const.h>
-#include <protect.h>
-#include <string.h>
-#include <proc.h>
+#include <unios/const.h>
+#include <unios/protect.h>
+#include <unios/proc.h>
 #include <unios/tty.h>
-#include <console.h>
-#include <global.h>
-#include <proto.h>
-#include <keyboard.h>
-#include <keymap.h>
-#include <x86.h>
+#include <unios/console.h>
+#include <unios/global.h>
+#include <unios/proto.h>
+#include <unios/keyboard.h>
+#include <unios/keymap.h>
+#include <arch/x86.h>
+#include <string.h>
+#include <stdint.h>
 
 static KB_INPUT    kb_in;
 static MOUSE_INPUT mouse_in;

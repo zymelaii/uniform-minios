@@ -1,54 +1,53 @@
-#include <uart.h>
-#include <x86.h>
+#include <unios/uart.h>
 #include <unios/tty.h>
-#include <const.h>
-#include <type.h>
-#include <assert.h>
-#include <stdio.h>
+#include <unios/const.h>
+#include <unios/assert.h>
 #include <unios/malloc.h>
+#include <arch/x86.h>
+#include <sys/types.h>
+#include <stdio.h>
 
-
-void put_irq_handler(int irq, irq_handler handler);
+void put_irq_handler(int irq, irq_handler_t handler);
 void enable_irq(int irq);
 
 int init_serial() {
-   outb(PORT + 1, 0x00);    // Disable all interrupts
-   outb(PORT + 3, 0x80);    // Enable DLAB (set baud rate divisor)
-   outb(PORT + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
-   outb(PORT + 1, 0x00);    //                  (hi byte)
-   outb(PORT + 3, 0x03);    // 8 bits, no parity, one stop bit
-   outb(PORT + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
-   outb(PORT + 4, 0x0B);    // IRQs enabled, RTS/DSR set
-   outb(PORT + 4, 0x1E);    // Set in loopback mode, test the serial chip
-   outb(PORT + 0, 0xAE);    // Test serial chip (send byte 0xAE and check if serial returns same byte)
+    outb(PORT + 1, 0x00); // Disable all interrupts
+    outb(PORT + 3, 0x80); // Enable DLAB (set baud rate divisor)
+    outb(PORT + 0, 0x03); // Set divisor to 3 (lo byte) 38400 baud
+    outb(PORT + 1, 0x00); //                  (hi byte)
+    outb(PORT + 3, 0x03); // 8 bits, no parity, one stop bit
+    outb(PORT + 2, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
+    outb(PORT + 4, 0x0B); // IRQs enabled, RTS/DSR set
+    outb(PORT + 4, 0x1E); // Set in loopback mode, test the serial chip
+    outb(PORT + 0, 0xAE); // Test serial chip (send byte 0xAE and check if
+                          // serial returns same byte)
 
-   // Check if serial is faulty (i.e: not same byte as sent)
-   if(inb(PORT + 0) != 0xAE) {
-      assert(0);
-      return 1;
-   }
+    // Check if serial is faulty (i.e: not same byte as sent)
+    if (inb(PORT + 0) != 0xAE) {
+        assert(0);
+        return 1;
+    }
 
-   // If serial is not faulty set it in normal operation mode
-   // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
-   outb(PORT + 4, 0x0f);
-   return 0;
+    // If serial is not faulty set it in normal operation mode
+    // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
+    outb(PORT + 4, 0x0f);
+    return 0;
 }
+
 static inline int is_transmit_empty() {
-   return inb(PORT + 5) & 0x20;
+    return inb(PORT + 5) & 0x20;
 }
 
 static inline int serial_received() {
-   return inb(PORT + 5) & 1;
+    return inb(PORT + 5) & 1;
 }
 
 char read_serial() {
-   while (serial_received() == 0);
-
-   return inb(PORT);
+    while (serial_received() == 0) {}
+    return inb(PORT);
 }
 
 void write_serial(char a) {
-   while (is_transmit_empty() == 0);
-
-   outb(PORT,a);
+    while (is_transmit_empty() == 0) {}
+    outb(PORT, a);
 }

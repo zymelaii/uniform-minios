@@ -1,12 +1,11 @@
 ﻿#include <unios/page.h>
 #include <unios/syscall.h>
-#include <assert.h>
-#include <type.h>
-#include <const.h>
-#include <global.h>
+#include <unios/assert.h>
+#include <unios/const.h>
+#include <unios/global.h>
+#include <arch/x86.h>
 #include <string.h>
 #include <stdio.h>
-#include <x86.h>
 
 // to determine if a page fault is reparable
 u32 cr2_save;

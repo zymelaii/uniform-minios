@@ -1,11 +1,6 @@
-/**********************************************************
- *	assist.c       //added by mingxuan 2019-5-17
- ***********************************************************/
-
-#include <fat32.h>
-#include <type.h>
-#include <const.h>
-#include <fs_const.h>
+#include <unios/fat32.h>
+#include <unios/const.h>
+#include <unios/fs_const.h>
 #include <string.h>
 
 extern CHAR cur_path[256];

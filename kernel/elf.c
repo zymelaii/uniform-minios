@@ -1,8 +1,8 @@
 #include <unios/syscall.h>
-#include <type.h>
-#include <elf.h>
-#include <fs.h>
-#include <assert.h>
+#include <unios/elf.h>
+#include <unios/fs.h>
+#include <unios/assert.h>
+#include <stdint.h>
 
 void read_Ehdr(u32 fd, Elf32_Ehdr *File_Ehdr, u32 offset) {
     do_lseek(fd, offset, SEEK_SET);

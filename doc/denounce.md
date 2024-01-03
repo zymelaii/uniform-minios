@@ -67,7 +67,7 @@ static int get_index(char path[]) {
 
 ```c
 int pathlen = strlen(path);
-char pathname[MAX_PATH];
+char pathname[PATH_MAX];
 strcpy(pathname,(char *)path);
 pathname[pathlen] = 0;
 
@@ -90,7 +90,7 @@ int fd = vfs_table[index].op->open(pathname, flags);
 int do_vcreatedir(char *path) {
     int  state;
     int  pathlen = strlen(path);
-    char pathname[MAX_PATH];
+    char pathname[PATH_MAX];
     strcpy(pathname, path);
     pathname[pathlen] = 0;
 
@@ -119,7 +119,7 @@ int do_vcreatedir(char *path) {
 ```c
 int do_vdelete(char *path) {
     int pathlen = strlen(path);
-    char pathname[MAX_PATH];
+    char pathname[PATH_MAX];
     strcpy(pathname,path);
     pathname[pathlen] = 0;
     int index;

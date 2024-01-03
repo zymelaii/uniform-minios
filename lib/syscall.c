@@ -1,5 +1,5 @@
-#include <type.h>
 #include <unios/syscall.h>
+#include <stdint.h>
 
 static int syscall0(u32 NR_syscall) {
     int ret = 0;

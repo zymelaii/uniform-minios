@@ -1,8 +1,9 @@
 ﻿#include <unios/syscall.h>
-#include <type.h>
-#include <global.h>
-#include <assert.h>
-#include <x86.h>
+#include <unios/global.h>
+#include <unios/assert.h>
+#include <sys/types.h>
+#include <arch/x86.h>
+#include <stdint.h>
 
 #define SYSCALL_ENTRY(name) [NR_##name] = sys_##name
 
@@ -23,8 +24,6 @@
  (t1) get_syscall_argument(0), (t2)get_syscall_argument(1),    \
      (t3)get_syscall_argument(2), (t4)get_syscall_argument(3), \
      (t5)get_syscall_argument(4), (t6)get_syscall_argument(5)
-
-typedef u32 (*syscall_t)();
 
 static u32 get_syscall_argument(int index) {
     //! FIXME: p_proc_current may not from the caller proc?

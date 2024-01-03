@@ -1,19 +1,14 @@
-/**********************************************************
- *	base.c       //added by mingxuan 2019-5-17
- ***********************************************************/
-
-#include <fat32.h>
-#include <type.h>
-#include <const.h>
-#include <string.h>
-#include <proc.h>
-#include <global.h>
-#include <proto.h>
-#include <fs_const.h>
-#include <hd.h>
-#include <fs.h>
-#include <fs_misc.h>
+#include <unios/const.h>
+#include <unios/fat32.h>
+#include <unios/proc.h>
+#include <unios/global.h>
+#include <unios/proto.h>
+#include <unios/fs_const.h>
+#include <unios/hd.h>
+#include <unios/fs.h>
+#include <unios/fs_misc.h>
 #include <unios/syscall.h>
+#include <string.h>
 
 DWORD FAT_END = 268435455; // 文件簇号结束标记
 DWORD TotalSectors = 0; // 总扇区数，当载入磁盘时，才从DBR中读取。

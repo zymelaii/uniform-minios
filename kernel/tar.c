@@ -1,13 +1,16 @@
-#include <unios/utils/tar.h>
+#include <tar.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <assert.h>
+#include <limits.h>
 
 int untar(const char *tar_path, const char *extract_dir) {
     //! NOTE: untar may only support 1-depth extraction
 
     char buf[512 * 16]     = {};
-    char pathbuf[MAX_PATH] = {};
+    char pathbuf[PATH_MAX] = {};
 
     int fd = open(tar_path, O_RDWR);
     assert(fd != -1 && "tar file not exists");
@@ -32,7 +35,7 @@ int untar(const char *tar_path, const char *extract_dir) {
         bool skip = fdout == -1;
 
         while (left > 0) {
-            int iobytes = min(sizeof(buf), left);
+            int iobytes = MIN(sizeof(buf), left);
             read(fd, buf, ((iobytes - 1) / 512 + 1) * 512);
             if (!skip) { write(fdout, buf, iobytes); }
             left -= iobytes;

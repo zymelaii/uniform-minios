@@ -1,14 +1,14 @@
-﻿#include <type.h>
-#include <elf.h>
-#include <unios/syscall.h>
+﻿#include <unios/syscall.h>
 #include <unios/page.h>
-#include <assert.h>
+#include <unios/elf.h>
+#include <unios/assert.h>
+#include <unios/proc.h>
+#include <unios/global.h>
+#include <unios/const.h>
+#include <unios/proto.h>
 #include <stdio.h>
-#include <proc.h>
-#include <global.h>
-#include <const.h>
-#include <proto.h>
 #include <string.h>
+#include <stdint.h>
 
 static u32 exec_elfcpy(u32 fd, Elf32_Phdr elf_progh, u32 pte_attr) {
     u32 laddr   = elf_progh.p_vaddr;
@@ -21,7 +21,7 @@ static u32 exec_elfcpy(u32 fd, Elf32_Phdr elf_progh, u32 pte_attr) {
     assert(ok);
     pg_refresh();
 
-    u32 size = min(llimit - laddr, flimit - foffset);
+    u32 size = MIN(llimit - laddr, flimit - foffset);
     do_lseek(fd, foffset, SEEK_SET);
     do_read(fd, (void*)laddr, size);
     laddr += size;
@@ -97,7 +97,7 @@ static int exec_pcb_init(char* path) {
         path,
         sizeof(p_proc_current->pcb.p_name) - 1);
 
-    PCB_t* task         = &p_proc_current->pcb;
+    pcb_t* task         = &p_proc_current->pcb;
     task->stat          = READY;
     task->ldts[0].attr1 = DA_C | PRIVILEGE_USER << 5;
     task->ldts[1].attr1 = DA_DRW | PRIVILEGE_USER << 5;

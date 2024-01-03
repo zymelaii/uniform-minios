@@ -1,8 +1,5 @@
 #include <unios/tty.h>
-#include <x86.h>
-#include <console.h>
-#include <const.h>
-#include <assert.h>
+#include <arch/x86.h>
 
 /*****************************************************************************
     Set the position of cursor in the screen

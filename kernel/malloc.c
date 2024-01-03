@@ -1,9 +1,10 @@
 #include <unios/malloc.h>
+#include <unios/const.h>
+#include <unios/assert.h>
+#include <unios/spinlock.h>
+#include <stdbool.h>
 #include <string.h>
-#include <const.h>
 #include <stdio.h>
-#include <assert.h>
-#include <spinlock.h>
 
 //! memory bounds
 #define MEMSTART 0x00400000
@@ -130,7 +131,7 @@ static u32 memm_sized_free(memman_t *man, u32 addr, u32 size) {
         man->free[j] = man->free[j - 1];
     }
     ++man->frees;
-    man->maxfrees         = max(man->maxfrees, man->frees);
+    man->maxfrees         = MAX(man->maxfrees, man->frees);
     man->free[index].addr = addr;
     man->free[index].size = size;
     return 0;

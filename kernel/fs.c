@@ -1,17 +1,17 @@
 #include <unios/config.h>
-#include <type.h>
-#include <const.h>
-#include <protect.h>
-#include <string.h>
-#include <proc.h>
-#include <global.h>
-#include <proto.h>
-#include <fs_const.h>
-#include <hd.h>
-#include <fs.h>
-#include <fs_misc.h>
+#include <unios/const.h>
+#include <unios/protect.h>
+#include <unios/proc.h>
+#include <unios/global.h>
+#include <unios/assert.h>
+#include <unios/proto.h>
+#include <unios/fs_const.h>
+#include <unios/hd.h>
+#include <unios/fs.h>
+#include <unios/fs_misc.h>
 #include <stdio.h>
-#include <assert.h>
+#include <string.h>
+#include <stddef.h>
 
 extern struct file_desc   file_desc_table[NR_FILE_DESC];
 extern struct super_block superblock_table[NR_SUPER_BLOCK];
@@ -321,7 +321,7 @@ static int rw_sector_sched(
  * @see do_open()
  *****************************************************************************/
 static struct inode *create_file(char *path, int flags) {
-    char          filename[MAX_PATH];
+    char          filename[PATH_MAX];
     struct inode *dir_inode;
     if (strip_path(filename, path, &dir_inode) != 0) return 0;
     int inode_nr     = alloc_imap_bit(dir_inode->i_dev);
@@ -346,8 +346,8 @@ static struct inode *create_file(char *path, int flags) {
 static int search_file(char *path) {
     int i, j;
 
-    char filename[MAX_PATH];
-    memset(filename, 0, MAX_FILENAME_LEN);
+    char filename[PATH_MAX];
+    memset(filename, 0, FILENAME_MAX);
     struct inode *dir_inode;
     if (strip_path(filename, path, &dir_inode) != 0) return 0;
 
@@ -373,7 +373,7 @@ static int search_file(char *path) {
         RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
         pde = (struct dir_entry *)fsbuf;
         for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++, pde++) {
-            if (memcmp(filename, pde->name, MAX_FILENAME_LEN) == 0)
+            if (memcmp(filename, pde->name, FILENAME_MAX) == 0)
                 return pde->inode_nr;
             if (++m > nr_dir_entries) break;
         }
@@ -424,7 +424,7 @@ static int strip_path(char *file, const char *path, struct inode **ppinode) {
         if (*s == '/') { return -1; }
         *t++ = *s++;
         /* if file is too long, just truncate it */
-        if (t - file >= MAX_FILENAME_LEN) { break; }
+        if (t - file >= FILENAME_MAX) { break; }
     }
     *t       = 0;
     *ppinode = root_inode;
@@ -784,7 +784,7 @@ static int do_open(MESSAGE *fs_msg) {
     /*caller_nr is the process number of the */
     int fd = -1;
 
-    char pathname[MAX_PATH];
+    char pathname[PATH_MAX];
 
     /* get parameters from the message */
     int flags    = fs_msg->FLAGS;    /* access mode */
@@ -820,7 +820,7 @@ static int do_open(MESSAGE *fs_msg) {
         if (inode_nr) { return -1; }
         pin = create_file(pathname, flags);
     } else {
-        char          filename[MAX_PATH] = {};
+        char          filename[PATH_MAX] = {};
         struct inode *dir_inode          = NULL;
         if (strip_path(filename, pathname, &dir_inode) != 0) { return -1; }
         pin = get_inode(dir_inode->i_dev, inode_nr);
@@ -904,16 +904,16 @@ static int do_rdwt(MESSAGE *fs_msg) {
 
     int pos_end;
     if (fs_msg->type == READ)
-        pos_end = min(pos + len, pin->i_size);
+        pos_end = MIN(pos + len, pin->i_size);
     else /* WRITE */
-        pos_end = min(pos + len, pin->i_nr_sects * SECTOR_SIZE);
+        pos_end = MIN(pos + len, pin->i_nr_sects * SECTOR_SIZE);
 
     int off         = pos % SECTOR_SIZE;
     int rw_sect_min = pin->i_start_sect + (pos >> SECTOR_SIZE_SHIFT);
     int rw_sect_max = pin->i_start_sect + (pos_end >> SECTOR_SIZE_SHIFT);
 
     int chunk =
-        min(rw_sect_max - rw_sect_min + 1, SECTOR_SIZE >> SECTOR_SIZE_SHIFT);
+        MIN(rw_sect_max - rw_sect_min + 1, SECTOR_SIZE >> SECTOR_SIZE_SHIFT);
 
     int bytes_rw   = 0;
     int bytes_left = len;
@@ -923,7 +923,7 @@ static int do_rdwt(MESSAGE *fs_msg) {
 
     for (i = rw_sect_min; i <= rw_sect_max; i += chunk) {
         /* read/write this amount of bytes every time */
-        int bytes = min(bytes_left, chunk * SECTOR_SIZE - off);
+        int bytes = MIN(bytes_left, chunk * SECTOR_SIZE - off);
         rw_sector(
             DEV_READ,
             pin->i_dev,
@@ -969,12 +969,12 @@ static int do_rdwt(MESSAGE *fs_msg) {
 //! NOTE: We clear the i-node in inode_array[] although it is not really needed.
 //! We don't clear the data bytes so the file is recoverable.
 static int do_unlink(MESSAGE *fs_msg) {
-    char pathname[MAX_PATH];
+    char pathname[PATH_MAX];
 
     /* get parameters from the message */
     int name_len = fs_msg->NAME_LEN; /* length of filename */
     int src      = fs_msg->source;   /* caller proc nr. */
-    // assert(name_len < MAX_PATH);
+    // assert(name_len < PATH_MAX);
     memcpy(
         (void *)va2la(proc2pid(p_proc_current), pathname),
         (void *)va2la(src, fs_msg->PATHNAME),
@@ -994,7 +994,7 @@ static int do_unlink(MESSAGE *fs_msg) {
         return -1;
     }
 
-    char          filename[MAX_PATH];
+    char          filename[PATH_MAX];
     struct inode *dir_inode;
     if (strip_path(filename, pathname, &dir_inode) != 0) return -1;
 

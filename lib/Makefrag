@@ -8,6 +8,7 @@ LIB_OBJS :=	\
 		lib/printfmt.o    \
 		lib/vga_display.o \
 		lib/syscall.o     \
+		lib/assert.o      \
 
 LIB_OBJS := $(patsubst %, $(OBJDIR)/%, $(LIB_OBJS))
 
