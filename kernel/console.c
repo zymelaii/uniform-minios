@@ -62,8 +62,6 @@ void init_screen(tty_t* tty) {
 
 void out_char(CONSOLE* con, char ch) {
     //! FIXME: dirty current_line
-    disable_int();
-
     int cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
     int cursor_y = (con->cursor - con->orig) / SCR_WIDTH;
 
@@ -106,8 +104,6 @@ void out_char(CONSOLE* con, char ch) {
     }
 
     flush(con);
-
-    enable_int();
 }
 
 /*****************************************************************************
@@ -281,7 +277,7 @@ static void flush(CONSOLE* con) {
  *****************************************************************************/
 static void w_copy(unsigned int dst, const unsigned int src, int size) {
     memcpy(
-        (void*)(V_MEM_BASE + (dst << 1)),
-        (void*)(V_MEM_BASE + (src << 1)),
+        (void*)K_PHY2LIN(V_MEM_BASE + (dst << 1)),
+        (void*)K_PHY2LIN(V_MEM_BASE + (src << 1)),
         size << 1);
 }
