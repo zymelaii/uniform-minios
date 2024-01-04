@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <limits.h>
 
 static u32 exec_elfcpy(u32 fd, Elf32_Phdr elf_progh, u32 pte_attr) {
     u32 laddr   = elf_progh.p_vaddr;
@@ -131,10 +132,40 @@ static int exec_pcb_init(char* path) {
     return 0;
 }
 
+static int open_first_executable(const char* path) {
+    assert(path != NULL);
+    if (path[0] == '/') { return do_open(path, O_RDWR); }
+
+    char abspath[PATH_MAX] = {};
+
+    const char* env_pwd    = "/orange";
+    const char* env_path[] = {
+        "/orange",
+        NULL,
+    };
+    const char* env_ext[] = {".bin", NULL};
+
+    int i = -1; //<! search path index
+    int j = -1; //<! extension index
+
+    const char* prefix = env_pwd;
+    do {
+        const char* ext = "";
+        do {
+            snprintf(abspath, sizeof(abspath), "%s/%s%s", prefix, path, ext);
+            int fd = do_open(abspath, O_RDWR);
+            if (fd != -1) { return fd; }
+            ext = env_ext[++j];
+        } while (env_ext[j] != NULL);
+        prefix = env_path[++i];
+    } while (env_path[i] != NULL);
+
+    return -1;
+}
+
 int do_exec(char* path) {
     assert(path != NULL);
-
-    u32 fd = do_open(path, O_RDWR);
+    u32 fd = open_first_executable(path);
     if (fd == -1) {
         trace_logging("exec: executable not found\n");
         return -1;

@@ -1,11 +1,11 @@
 BaseOfBoot 					equ	1000h 		; 段地址，mbr加载loader到这个段
-OffsetOfBoot				equ	7c00h		; load Boot sector to BaseOfBoot:OffsetOfBoot 
-OffsetOfActiPartStartSec	equ 7e00h		; 活动分区的起始扇区号相对于BaseOfBoot的偏移量	;added by mingxuan 2020-9-12 
+OffsetOfBoot				equ	7c00h		; load Boot sector to BaseOfBoot:OffsetOfBoot
+OffsetOfActiPartStartSec	equ 7e00h		; 活动分区的起始扇区号相对于BaseOfBoot的偏移量	;added by mingxuan 2020-9-12
 											; 该变量来自分区表，保存在该内存地址，用于在os_boot和loader中查找FAT32文件
 
 org 07c00h
 
-LABEL_START:	
+LABEL_START:
 	mov		ax, cs
 	mov		ds, ax
 	mov		es, ax
@@ -19,10 +19,10 @@ LABEL_START:
 	mov		dx, 0184fh		; 右下角: (80, 50)
 	int		10h				; int 10h
 
-	mov		dh, 0			; 
-	call 	DispStr		; 
-	
-	
+	mov		dh, 0			;
+	call 	DispStr		;
+
+
 	xor		ah, ah	; ┓
 	xor		dl, dl	; ┣ 软驱复位
 	int		13h		; ┛
@@ -37,7 +37,7 @@ LABEL_START:
 LABLE_END_EXTENDED:
 
 	mov		byte [EndInExt], 0 ;将EndInExt置0，复位
-	
+
 	; 检查扩展分区表的第二项是否是空项。如果是空项则表明当前逻辑分区就是最后一个。
 	add		bx, 16
 	mov		cl, [es:7c00h+446+bx+4]		 ;分区类型
@@ -51,13 +51,13 @@ CHECK_PARTITION:
 
 	;mov	ax, word [es:7c00h+446+bx+8]   ;分区起始扇区地址 ;deletd by mingxuan 2020-9-12
 	mov		eax, dword [es:7c00h+446+bx+8] ;分区起始扇区地址 ;modified by mingxuan 2020-9-12
-										   ;修改为eax的原因: 分区表用4个字节来表示起始扇区，而不是2个字节, mingxuan 
+										   ;修改为eax的原因: 分区表用4个字节来表示起始扇区，而不是2个字节, mingxuan
 
 	;add	ax, [SecOffset]	 				;deletd by mingxuan 2020-9-12
 	;add	eax, [SecOffset] 				;modified by mingxuan 2020-9-29
 							 				;deleted by mingxuan 2020-9-29
 	mov		cl, [es:7c00h+446+bx+4]		 	;分区类型
-		
+
 	cmp		cl, 5  				;extended partition type = 5
 	;jz		LABLE_EXTENDED
 	jz		LABLE_IN_EXTENDED	;modified by mingxuan 2020-9-29
@@ -66,7 +66,7 @@ CHECK_PARTITION:
 
 	add		byte [CurPartNo], 1
 	add		byte [CurPartNum], 1 ; added by mingxuan 2020-9-29	;deleted by mingxuan 2020-9-30
-	
+
 	cmp		dl, 80h
 	jz		LABLE_ACTIVE
 
@@ -82,7 +82,7 @@ CHECK_PARTITION:
 	add		bx, 16
 	jmp		CHECK_PARTITION
 
-	
+
 RESET_SecOffset_SELF:
 
 	; SecOffset_SELF置0的目的是以后又恢复到搜索主分区
@@ -113,7 +113,7 @@ LABLE_IN_EXTENDED:					;在分区表中发现扩展分区后，跳转到这里�
 	; FirstInExt是标志位，判断是否是第一次进入该过程
 	mov		cl, [FirstInExt]
 	; 若为1，表示不是第一次进入该过程。
-	cmp		cl, 1	
+	cmp		cl, 1
 	jz      LABLE_EXTENDED
 
 	; 以下是第一次进入该过程要执行的语句（仅执行一遍）
@@ -135,8 +135,8 @@ LABLE_EXTENDED:
 
 	add		byte [EbrNum], 1
 	cmp		byte [EbrNum], 1
-	jz		._add_CurPartNo	
-._read_ebr:	
+	jz		._add_CurPartNo
+._read_ebr:
 	mov 	cl, 1
 	mov		bx, BaseOfBoot
 	mov 	es, bx
@@ -152,10 +152,10 @@ LABLE_EXTENDED:
 ._add_CurPartNo:
 	add		byte [CurPartNo], 1
 	jmp		._read_ebr
-	
+
 
 LABLE_ACTIVE:
-	
+
 	mov 	cl, 1 			 ;要读取的扇区个数
 
 	mov		bx, BaseOfBoot
@@ -167,22 +167,22 @@ LABLE_ACTIVE:
 	mov 	bx, OffsetOfBoot ;对应扇区会被加载到内存的 es:bx 处
 
 	call 	ReadSector
-	
+
 	;mov	dh, 1
 	;call	DispStr
 	;mov	dh, 2
 	;call 	DispStr
-	
+
 	; mov	ah,0h
 	; int	16h
 
 	jmp 	BaseOfBoot:OffsetOfBoot
-	
+
 LABLE_NOT_FOUND:
 	mov		dh, 3
 	call 	DispStr
 	jmp	$
-	
+
 
 ;SecOffset 		dw 	0 ;deletd by mingxuan 2020-9-12
 ;SecOffset 		dd 	0 ;modifed by mingxuan 2020-9-29
@@ -202,8 +202,8 @@ BootMessage:		db	"Finding active partition..."	; 27字节, 不够则用空格补
 Message1			db	"    partition "
 CurPartNo			db	"0"
 					db	":     active"
-;Message2			db	"press any key to continue  "	
-Message3			db	"active partition not found!"	 
+;Message2			db	"press any key to continue  "
+Message3			db	"active partition not found!"
 
 DispStr:
 	push	ax
@@ -230,12 +230,12 @@ DispStr:
 ; 作用:
 ;	从第 ax 个 Sector 开始, 将 cl 个 Sector 读入 es:bx 中
 
-DAPS:   
-	DB 0x10               		; size of packet 
+DAPS:
+	DB 0x10               		; size of packet
     DB 0                  		; Always 0
 	D_CL	DW 1          		; number of sectors to transfer
-	D_BX	DW OffsetOfBoot     ; transfer buffer (16 bit segment:16 bit offset) 
-	D_ES	DW BaseOfBoot	
+	D_BX	DW OffsetOfBoot     ; transfer buffer (16 bit segment:16 bit offset)
+	D_ES	DW BaseOfBoot
 	LBA_Lo	DD 1	      		; lower 32-bits of 48-bit starting LBA
 	LBA_Hi	DD 0	      		; upper 32-bits of 48-bit starting LBAs
 
@@ -245,11 +245,11 @@ ReadSector:
 	mov	[D_ES],   es
 	;mov	[LBA_Lo], ax	;deleted by mingxuan 2020-9-17
 	mov	[LBA_Lo], eax		;modified by mingxuan 2020-9-17
-							;修改为eax的原因: 分区表用4个字节来表示起始扇区，而不是2个字节, mingxuan 
-	mov	dl, 0x80		
+							;修改为eax的原因: 分区表用4个字节来表示起始扇区，而不是2个字节, mingxuan
+	mov	dl, 0x80
 
 .GoOnReading:
-	mov		ah, 42h			
+	mov		ah, 42h
 	mov 	si, DAPS
 	int		13h
 	jc	.GoOnReading		; 如果读取错误 CF 会被置为 1, 这时就不停地读, 直到正确为止

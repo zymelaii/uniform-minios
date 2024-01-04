@@ -35,6 +35,6 @@ void initial() {
     close(stdout);
     close(stderr);
 
-    int err = exec("/orange/shell_0.bin");
+    int err = exec("shell_0");
     panic("unreachable");
 }
