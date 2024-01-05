@@ -67,14 +67,14 @@ $(IMAGE_FILE)p3: $(IMAGE_FILE)p2 $(ORANGE_FS_FLAG_FILE) $(FAT32_FS_FLAG_FILE)
 # image sha1sum for outdated detection
 $(IMAGE_FILE).sha1: $(IMAGE_FILE)p3 force
 	@\
-	sha1_old=`cat $@ 2> /dev/null || echo -n ''`;			\
-	if [ -e "$(IMAGE_FILE)" ]; then 						\
-		sha1_new=`sha1sum $(IMAGE_FILE) | cut -d ' ' -f 1`; \
-	else													\
-		sha1_new=`sha1sum $< | cut -d ' ' -f 1`; 			\
-	fi;														\
-	if [ "$${sha1_new}" != "$${sha1_old}" ]; then			\
-		echo -n "$${sha1_new}" > $@;						\
+	if [ -e "$(IMAGE_FILE)" ]; then						\
+		sha1=`sha1sum $(IMAGE_FILE) | cut -d ' ' -f 1`;	\
+	else												\
+		sha1=`cat $@`;									\
+	fi;													\
+	sha1org=`sha1sum $< | cut -d ' ' -f 1`;				\
+	if [ "$${sha1}" != "$${sha1org}" ]; then			\
+		echo -n "$${sha1org}" > $@;						\
 	fi
 .PHONY: force
 

@@ -9,10 +9,6 @@ clean:
 	@rm -rf $(OBJDIR)
 .PHONY: clean
 
-.DELETE_ON_ERROR:
-
-.PRECIOUS: $(OBJECT_FILES)
-
 # run & debug rules
 run: $(IMAGE_FILE)
 	@$(QEMU) $(QEMU_FLAGS) -drive file=$<,format=raw
@@ -55,3 +51,7 @@ install:
 		fi;															\
 	done
 .PHONY: install
+
+# extra configures
+.DELETE_ON_ERROR:
+.PRECIOUS: $(OBJECT_FILES) $(CACHED_FLAG_FILES)

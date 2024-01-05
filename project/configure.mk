@@ -36,7 +36,7 @@ INSTALL_PHY_SECTOR     := 7095
 INSTALL_NR_SECTORS     := 1000
 
 INSTALL_START_SECTOR := $(shell echo $$[$(INSTALL_PHY_SECTOR) - $(PART_START_SECTOR)])
-SUPER_BLOCK_ADDR = $(shell echo $$[($(PART_START_SECTOR) + 1) * 512])
+SUPER_BLOCK_ADDR     := $(shell echo $$[($(PART_START_SECTOR) + 1) * 512])
 
 # configure toolchain
 DEFINES  ?=
