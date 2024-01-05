@@ -83,4 +83,3 @@ rename("$maindeps.tmp", "$maindeps") or die "Can't overwrite $maindeps";
 foreach $i (1 .. $#ARGV) {
 	unlink($ARGV[$i]) or print "Error removing $ARGV[$i]\n";
 }
-

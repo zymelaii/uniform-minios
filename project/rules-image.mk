@@ -70,7 +70,7 @@ $(IMAGE_FILE).sha1: $(IMAGE_FILE)p3 force
 	if [ -e "$(IMAGE_FILE)" ]; then						\
 		sha1=`sha1sum $(IMAGE_FILE) | cut -d ' ' -f 1`;	\
 	else												\
-		sha1=`cat $@`;									\
+		sha1=`cat $@ 2> /dev/null || echo -n ''`;		\
 	fi;													\
 	sha1org=`sha1sum $< | cut -d ' ' -f 1`;				\
 	if [ "$${sha1}" != "$${sha1org}" ]; then			\

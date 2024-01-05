@@ -30,6 +30,7 @@ include $(PROJMK_PREFIX)rules-lib.mk
 include $(PROJMK_PREFIX)rules-user.mk
 include $(PROJMK_PREFIX)rules-kernel.mk
 include $(PROJMK_PREFIX)rules-image.mk
+include $(PROJMK_PREFIX)rules-deps.mk
 
 # install rules
 install:
@@ -54,4 +55,4 @@ install:
 
 # extra configures
 .DELETE_ON_ERROR:
-.PRECIOUS: $(OBJECT_FILES) $(CACHED_FLAG_FILES)
+.PRECIOUS: $(OBJECT_FILES) $(CACHED_FLAG_FILES) $(SOURCE_DEPS_FILE)
