@@ -16,6 +16,31 @@ void switch_pde() {
     cr3_ready = p_proc_current->pcb.cr3;
 }
 
+bool pg_free_pde(u32 cr3) {
+    assert(cr3 != 0);
+    assert(cr3 == pg_frame_phyaddr(cr3));
+    assert(cr3 != p_proc_current->pcb.cr3);
+    do_free((void *)pg_frame_phyaddr(cr3));
+    return true;
+}
+
+bool pg_unmap_pte(u32 cr3, bool free) {
+    assert(cr3 != 0);
+    u32 laddr = 0;
+    for (u32 i = 0; i < 1024; ++i, laddr += 0x400000) {
+        u32 *pde_ptr = pg_pde_ptr(cr3, laddr);
+        u32  pde     = *pde_ptr;
+        //! case 0: pde not exist is also a good unmap
+        if ((pde & PG_MASK_P) != PG_P) { continue; }
+        //! case 1: unmap the pde
+        u32 pde_phyaddr = pg_frame_phyaddr(pde);
+        if (free) { do_free((void *)pde_phyaddr); }
+        *pde_ptr = 0;
+    }
+    pg_refresh();
+    return true;
+}
+
 bool pg_unmap_laddr(u32 cr3, u32 laddr, bool free) {
     assert(cr3 != 0);
     u32 pde = pg_pde(cr3, laddr);
@@ -26,8 +51,6 @@ bool pg_unmap_laddr(u32 cr3, u32 laddr, bool free) {
     //! case 1: pte already not present
     if ((pte & PG_MASK_P) != PG_P) { return true; }
     u32 phyaddr = pg_frame_phyaddr(pte);
-    assert(phyaddr != 0);
-    assert(phyaddr == pg_frame_phyaddr(phyaddr));
     //! case 2: pte present, reset then
     if (free) { do_free((void *)phyaddr); }
     *pte_ptr = 0;
@@ -39,23 +62,20 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
     assert(cr3 != 0);
     assert(pg_frame_phyaddr(pde_attr) == 0);
     assert(pg_frame_phyaddr(pte_attr) == 0);
-    assert(phyaddr == 0 || phyaddr == pg_frame_phyaddr(phyaddr));
+    assert(phyaddr == PG_INVALID || phyaddr == pg_frame_phyaddr(phyaddr));
     assert((pde_attr & PG_MASK_P) == PG_P);
     assert((pte_attr & PG_MASK_P) == PG_P);
-
     u32 *pde_ptr = pg_pde_ptr(cr3, laddr);
     if ((*pde_ptr & PG_MASK_P) != PG_P) {
         u32 pde_phyaddr = (u32)do_kmalloc_4k();
-        assert(pde_phyaddr != 0);
         assert(pde_phyaddr == pg_frame_phyaddr(pde_phyaddr));
         memset((void *)K_PHY2LIN(pde_phyaddr), 0, num_4K);
         *pde_ptr = pde_phyaddr | pde_attr;
     }
-    u32 pde = *pde_ptr;
-
+    u32 pde         = *pde_ptr;
     u32 old_pte     = pg_pte(pde, laddr);
     u32 old_phyaddr = pg_frame_phyaddr(old_pte);
-    if (phyaddr == 0) {
+    if (phyaddr == PG_INVALID) {
         if ((old_pte & PG_MASK_P) != PG_P) {
             bool in_kernel = laddr >= KernelLinBase;
             phyaddr = (u32)(in_kernel ? do_kmalloc_4k() : do_malloc_4k());
@@ -63,7 +83,6 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
             phyaddr = old_phyaddr;
         }
     }
-    assert(phyaddr != 0);
     assert(phyaddr == pg_frame_phyaddr(phyaddr));
 
     u32 pte = phyaddr | pte_attr;
@@ -90,7 +109,7 @@ bool pg_map_laddr_range(
     laddr_base  = pg_frame_phyaddr(laddr_base);
     laddr_limit = pg_frame_phyaddr(laddr_limit + 0xfff);
     for (u32 laddr = laddr_base; laddr < laddr_limit; laddr += num_4K) {
-        bool ok = pg_map_laddr(cr3, laddr, 0, pde_attr, pte_attr);
+        bool ok = pg_map_laddr(cr3, laddr, PG_INVALID, pde_attr, pte_attr);
         if (!ok) { return false; }
     }
     return true;
@@ -107,7 +126,8 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
     if (kernel_initial) { trace_logging("during initializing kernel\n"); }
 
     trace_logging(
-        "eip=0x%08x cr2=0x%08x code=%x cs=0x%08x eflags=0x%04x\n",
+        "pid[%d]: eip=0x%08x cr2=0x%08x code=%x cs=0x%08x eflags=0x%04x\n",
+        p_proc_current->pcb.pid,
         eip,
         cr2,
         err_code,
@@ -156,10 +176,6 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
             trace_logging(
                 "%d times retry available\n", MAX_RETRIES - cr2_count);
         }
-
-        *pde_ptr |= PG_P;
-        *pte_ptr |= PG_P;
-        pg_refresh();
     } while (0);
 
     if (recovery_failed) { trace_logging("page fault recovery failed\n"); }
@@ -174,8 +190,10 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
 
 u32 pg_create_and_init() {
     u32 cr3 = (u32)do_kmalloc_4k();
+    //! NOTE: cr3 should only comes from pg_create_and_init and is always
+    //! non-zero
     assert(cr3 != 0);
-    assert(pg_frame_phyaddr(cr3) == cr3);
+    assert(cr3 == pg_frame_phyaddr(cr3));
     memset((void *)K_PHY2LIN(cr3), 0, num_4K);
 
     //! init kernel memory space

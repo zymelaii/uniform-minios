@@ -36,16 +36,17 @@ u32  get_arg(void* uesp, int order); // added by xw, 18/6/18
 void initial();
 
 /* keyboard.c */
-// added by mingxuan 2019-5-19
 void init_kb();
 void keyboard_read(tty_t* p_tty);
 
 /* tty.c */
-// added by mingxuan 2019-5-19
 void tty_keyboard_proc(tty_t* tty, u32 key);
 void task_tty();
 void tty_write(tty_t* tty, char* buf, int len);
 int  tty_read(tty_t* tty, char* buf, int len);
+
+/* recycler.c */
+void sweeper();
 
 /* printf.c */
 // added by mingxuan 2019-5-19
@@ -75,5 +76,5 @@ void*    va2la(int pid, void* va);
 void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);
 void clear_kernel_pagepte_low();
 
-PROCESS* pid2proc(int pid);
+PROCESS* pid2pcb(int pid);
 int      proc2pid(PROCESS* proc);

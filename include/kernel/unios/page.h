@@ -2,17 +2,38 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 #include "const.h"
 
-#define PG_MASK_P  0x1        //<! P
-#define PG_MASK_RW 0x2        //<! R/W
-#define PG_MASK_US 0x4        //<! U/S
-#define PG_NP      0          //<! not present
-#define PG_P       PG_MASK_P  //<! present
-#define PG_RX      0          //<! read & executable
-#define PG_RWX     PG_MASK_RW //<! read & write & executable
-#define PG_S       0          //<! supervisor
-#define PG_U       PG_MASK_US //<! user
+#define PG_INVALID (~(uintptr_t)0) //<! invalid phypage addr
+#define PG_MASK_P  0x1             //<! P
+#define PG_MASK_RW 0x2             //<! R/W
+#define PG_MASK_US 0x4             //<! U/S
+#define PG_NP      0               //<! not present
+#define PG_P       PG_MASK_P       //<! present
+#define PG_RX      0               //<! read & executable
+#define PG_RWX     PG_MASK_RW      //<! read & write & executable
+#define PG_S       0               //<! supervisor
+#define PG_U       PG_MASK_US      //<! user
+
+/*!
+ * \brief free pde table according to the given cr3
+ *
+ * \param cr3 page table phyaddr
+ *
+ * \return succeed or not, always return true currently
+ */
+bool pg_free_pde(u32 cr3);
+
+/*!
+ * \brief unmap all pte table in the given cr3(pde) table
+ *
+ * \param cr3 page table phyaddr
+ * \param free whether to free the phy page held by laddr
+ *
+ * \return succeed or not, always return true currently
+ */
+bool pg_unmap_pte(u32 cr3, bool free);
 
 /*!
  * \brief unmap laddr in page table
@@ -29,7 +50,7 @@ bool pg_unmap_laddr(u32 cr3, u32 laddr, bool free);
  * \brief map laddr in page table
  *
  * \param laddr linear address to map
- * \param phyaddr expected phy page assigned to laddr, if zero, try malloc
+ * \param phyaddr expected phy page assigned to laddr, if PG_INVALID, try malloc
  * internally
  * \param pde_attr attribute for newly created pde, if already present, it will
  * not change

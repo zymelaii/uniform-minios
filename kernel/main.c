@@ -408,8 +408,9 @@ static int initialize_processes() {
     proc_table[0].pcb.ticks = proc_table[0].pcb.priority = 1;
     proc_table[1].pcb.ticks = proc_table[1].pcb.priority = 1;
     proc_table[2].pcb.ticks = proc_table[2].pcb.priority = 1;
-    proc_table[3].pcb.ticks = proc_table[3].pcb.priority =
-        1; // added by xw, 18/8/27
+    proc_table[3].pcb.ticks = proc_table[3].pcb.priority = 1;
+    proc_table[4].pcb.ticks = proc_table[4].pcb.priority = 1;
+
     proc_table[NR_K_PCBS].pcb.ticks = proc_table[NR_K_PCBS].pcb.priority = 1;
 
     /* When the first process begin running, a clock-interruption will happen

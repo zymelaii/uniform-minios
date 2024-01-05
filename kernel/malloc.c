@@ -56,10 +56,9 @@ static u32
         }
         break;
     }
-
     if (has_size_info) {
         //! FIXME: awful code, expect better solution
-        *(u32 *)K_PHY2LIN(addr) = size;
+        *(u32 *)K_PHY2LIN(addr) = real_size;
         addr                    += 4;
     }
 
@@ -110,7 +109,7 @@ static u32 memm_sized_free(memman_t *man, u32 addr, u32 size) {
     }
 
     if (merged == 2) {
-        before->size += after->addr + after->size - before->addr;
+        before->size = after->addr + after->size - before->addr;
         --man->frees;
         while (index < man->frees) {
             man->free[index] = man->free[index + 1];

@@ -25,13 +25,15 @@ u32 cr3_ready;
  * process. added by xw, 18/6/1
  */
 PROCESS cpu_table[NR_CPUS];
+PROCESS proc_table[NR_PCBS];
 
-PROCESS proc_table[NR_PCBS]; // edit by visual 2016.4.5
-
+#define TASK_ENTRY(handler) \
+ { handler, STACK_SIZE_TASK, #handler }
 TASK task_table[NR_TASKS] = {
-    {hd_service, STACK_SIZE_TASK, "hd_service"},
-    {task_tty,   STACK_SIZE_TASK, "task_tty"  },
-}; // added by xw, 18/8/27
+    TASK_ENTRY(hd_service),
+    TASK_ENTRY(task_tty),
+    TASK_ENTRY(sweeper),
+};
 
 irq_handler_t irq_table[NR_IRQ];
 

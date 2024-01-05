@@ -47,19 +47,10 @@
 #define SSREG        (NR_SSREG * 4)
 #define P_STACKTOP   (SSREG + 4)
 
-/*总PCB表数和taskPCB表数*/
-// modified by xw, 18/8/27
-// the memory space we put kernel is 0x30400~0x6ffff, so we should limit kernel
-// size
-//  #define NR_PCBS	32		//add by visual 2016.4.5
-//  #define NR_K_PCBS 10		//add by visual 2016.4.5
-#define NR_PCBS 25
-// #define NR_TASKS	4	//TestA~TestC + hd_service //deleted by mingxuan
-// 2019-5-19
-#define NR_TASKS  2 // task_tty + hd_service	//modified by mingxuan 2019-5-19
-#define NR_K_PCBS 4 // no K_PCB is empty now
-
-//~xw
+#define NR_PCBS      20
+#define NR_TASKS     3
+#define NR_K_PCBS    5
+#define NR_RECY_PROC 2
 
 #define NR_CPUS  1  // numbers of cpu. added by xw, 18/6/1
 #define NR_FILES 64 // numbers of files a process can own. added by xw, 18/6/14

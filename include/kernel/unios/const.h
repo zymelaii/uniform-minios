@@ -87,9 +87,7 @@
 #define HeapLinLimitMAX (HeapLinBase + 0x40000000) // 大小：1G
 #define StackLinLimitMAX \
  HeapLinLimitMAX // 栈的大小： 1G-128M-4K（注意栈的基址和界限方向）
-#define StackLinBase \
- (ArgLinBase         \
-  - num_4B) //=(StackLinLimitMAX+1G-128M-4K-4B)栈的起始地址,放在参数位置之前（注意堆栈的增长方向）
+#define StackLinBase (ArgLinBase)
 // 参数存放位置起始地址，放在3G前，暂时还没没用到
 #define ArgLinBase        (KernelLinBase - 0x1000)
 #define ArgLinLimitMAX    KernelLinBase //=(ArgLinBase+0x1000)大小：4K。

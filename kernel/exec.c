@@ -12,12 +12,11 @@
 #include <limits.h>
 
 static u32 exec_elfcpy(u32 fd, Elf32_Phdr elf_progh, u32 pte_attr) {
-    u32 laddr   = elf_progh.p_vaddr;
-    u32 llimit  = elf_progh.p_vaddr + elf_progh.p_memsz;
-    u32 foffset = elf_progh.p_offset;
-    u32 flimit  = elf_progh.p_offset + elf_progh.p_filesz;
-
-    bool ok = pg_map_laddr_range(
+    u32  laddr   = elf_progh.p_vaddr;
+    u32  llimit  = elf_progh.p_vaddr + elf_progh.p_memsz;
+    u32  foffset = elf_progh.p_offset;
+    u32  flimit  = elf_progh.p_offset + elf_progh.p_filesz;
+    bool ok      = pg_map_laddr_range(
         p_proc_current->pcb.cr3, laddr, llimit, PG_P | PG_U | PG_RWX, pte_attr);
     assert(ok);
     pg_refresh();
@@ -36,11 +35,17 @@ static u32 exec_load(
     assert(elf_header->e_phnum > 0);
 
     LIN_MEMMAP* memmap = &p_proc_current->pcb.memmap;
-
+    u32         cr3    = p_proc_current->pcb.cr3;
     //! cleanup old ph info
     PH_INFO* ph_info = memmap->ph_info;
     while (ph_info != NULL) {
-        PH_INFO* next = ph_info->next;
+        PH_INFO* next  = ph_info->next;
+        u32      laddr = ph_info->lin_addr_base;
+        u32      limit = ph_info->lin_addr_limit;
+        while (laddr < limit) {
+            pg_unmap_laddr(cr3, laddr, true);
+            laddr = pg_frame_phyaddr(laddr) + num_4K;
+        }
         do_free((void*)K_LIN2PHY((u32)ph_info));
         ph_info = next;
     }

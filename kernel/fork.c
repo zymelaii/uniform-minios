@@ -15,24 +15,27 @@ static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
     //! FIXME: risky action, this is relevant to current cr3, but ppid may be
     //! not the expected one
     //! FIXME: pid allocation method may changes
-    u32 cr3_ppid = proc_table[ppid].pcb.cr3;
-    u32 cr3_pid  = proc_table[pid].pcb.cr3;
+    u32 cr3_ppid = ((pcb_t*)pid2pcb(ppid))->cr3;
+    u32 cr3_pid  = ((pcb_t*)pid2pcb(pid))->cr3;
 
     u32 attr        = PG_P | PG_U | PG_RWX;
     u32 laddr_share = SharePageBase;
     assert(laddr_share == pg_frame_phyaddr(laddr_share));
 
-    u32 laddr = base;
+    u32  laddr = base;
+    bool ok    = false;
     while (laddr < limit) {
-        bool ok = pg_unmap_laddr(cr3_ppid, laddr_share, false);
-        assert(ok);
-        ok = pg_map_laddr(cr3_ppid, laddr_share, 0, attr, attr);
+        assert(!pg_pte_exist(
+            pg_pte(pg_pde(cr3_ppid, laddr_share), laddr_share), laddr_share));
+        bool ok = pg_map_laddr(cr3_ppid, laddr_share, PG_INVALID, attr, attr);
         pg_refresh();
         memcpy((void*)laddr_share, (void*)pg_frame_phyaddr(laddr), num_4K);
         u32 phyaddr = pg_laddr_phyaddr(cr3_ppid, laddr_share);
         ok          = pg_map_laddr(cr3_pid, laddr, phyaddr, attr, attr);
         assert(ok);
         laddr = pg_frame_phyaddr(laddr) + num_4K;
+        ok    = pg_unmap_laddr(cr3_ppid, laddr_share, false);
+        assert(ok);
     }
 }
 
@@ -58,13 +61,16 @@ static int fork_update_proc_info(PROCESS* p_child) {
 static int fork_memory_clone(u32 ppid, u32 pid) {
     LIN_MEMMAP* memmap = &p_proc_current->pcb.memmap;
     PH_INFO*    ph_ptr = memmap->ph_info;
-
     //! clone elf part
     while (ph_ptr != NULL) {
         fork_clone_part_rwx(
             ppid, pid, ph_ptr->lin_addr_base, ph_ptr->lin_addr_limit);
         ph_ptr = ph_ptr->next;
     }
+
+    //! FIXME: laddr range might be dynamic according to the impl, simply clone
+    //! from base to limit might lost some pages differing from the parent's,
+    //! cases are like that, e.g. heap limit reduction, thread clone, etc.
 
     //! clone vpage
     fork_clone_part_rwx(
@@ -78,9 +84,8 @@ static int fork_memory_clone(u32 ppid, u32 pid) {
     //! NOTE: inverse grow
     fork_clone_part_rwx(
         ppid, pid, memmap->stack_lin_limit, memmap->stack_lin_base);
-
     //! clone args
-    fork_clone_part_rwx(ppid, pid, memmap->arg_lin_limit, memmap->arg_lin_base);
+    fork_clone_part_rwx(ppid, pid, memmap->arg_lin_base, memmap->arg_lin_limit);
 
     return 0;
 }
@@ -99,9 +104,10 @@ static int fork_pcb_clone(PROCESS* p_child) {
     char* esp_save_context = p_child->pcb.esp_save_context;
 
     //! FIXME: risky action, here child proc come into READY unexpectedly
-    p_child->pcb      = p_proc_current->pcb;
+    p_child->pcb        = p_proc_current->pcb;
+    p_child->pcb.p_lock = 0;
+    //! FIXME: IDLE may not represents the complete status
     p_child->pcb.stat = IDLE;
-
     memcpy(frame, parent_frame, P_STACKTOP);
 
     LIN_MEMMAP* memmap = &p_child->pcb.memmap;
@@ -124,15 +130,6 @@ static int fork_pcb_clone(PROCESS* p_child) {
         ph_ptr = ph_ptr->next;
     }
 
-    memmap->vpage_lin_base  = p_proc_current->pcb.memmap.vpage_lin_base;
-    memmap->vpage_lin_limit = p_proc_current->pcb.memmap.vpage_lin_limit;
-    memmap->heap_lin_base   = p_proc_current->pcb.memmap.heap_lin_base;
-    memmap->heap_lin_limit  = p_proc_current->pcb.memmap.heap_lin_limit;
-    memmap->stack_lin_limit = p_proc_current->pcb.memmap.stack_lin_limit;
-    memmap->stack_lin_base  = p_proc_current->pcb.memmap.stack_lin_base;
-    memmap->arg_lin_limit   = p_proc_current->pcb.memmap.arg_lin_limit;
-    memmap->arg_lin_base    = p_proc_current->pcb.memmap.arg_lin_base;
-
     // restore status
     p_child->pcb.pid              = pid;
     frame[NR_EFLAGSREG]           = eflags;
@@ -146,10 +143,11 @@ static int fork_pcb_clone(PROCESS* p_child) {
 
 int do_fork() {
     //! FIXME: use lock instead
+    disable_int();
     PROCESS* p_child = alloc_pcb();
     if (p_child == NULL) {
         trace_logging(
-            "fork failed from pid=%d: pcb res is not available",
+            "fork failed from pid=%d: pcb res is not available\n",
             p_proc_current->pcb.pid);
         return -1;
     }
@@ -167,11 +165,9 @@ int do_fork() {
     p_child->pcb.regs.eax = 0;
     //! update retval address in stack to be safe
     frame[NR_EAXREG] = p_child->pcb.regs.eax;
-
-    //! fork done
     ++u_proc_sum;
     p_child->pcb.stat = READY;
-
     //! FIXME: use lock instead (see above)
+    enable_int();
     return p_child->pcb.pid;
 }

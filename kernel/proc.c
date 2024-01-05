@@ -12,9 +12,8 @@ void schedule() {
     PROCESS* p;
     int      greatest_ticks = 0;
 
-    // Added by xw, 18/4/21
     if (p_proc_current->pcb.stat == READY && p_proc_current->pcb.ticks > 0) {
-        p_proc_next = p_proc_current; // added by xw, 18/4/26
+        p_proc_next = p_proc_current;
         return;
     }
 
@@ -113,7 +112,7 @@ void* va2la(int pid, void* va) {
     return (void*)la;
 }
 
-PROCESS* pid2proc(int pid) {
+PROCESS* pid2pcb(int pid) {
     return &proc_table[pid];
 }
 
