@@ -143,8 +143,8 @@ int do_wait(int* wstatus) {
         wait_reset_child(exit_pcb->pid);
         int pid = exit_pcb->pid;
         --u_proc_sum;
-        exit_pcb->p_lock = 0;
-        fa_pcb->p_lock   = 0;
+        release(&exit_pcb->p_lock);
+        release(&fa_pcb->p_lock);
         return pid;
     }
 }

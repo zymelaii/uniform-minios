@@ -18,7 +18,7 @@ void pthread_test1() {
 
 int main(int arg, char *argv[]) {
     int i = 0;
-    pthread(pthread_test1);
+    pthread_create(pthread_test1);
     while (1) {
         printf("init");
         printf("%d", ++global);

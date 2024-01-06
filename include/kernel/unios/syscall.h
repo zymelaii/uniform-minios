@@ -7,7 +7,7 @@ enum {
     NR_malloc_4k,
     NR_free,
     NR_fork,
-    NR_pthread,
+    NR_pthread_create,
     NR_execve,
     NR_yield,
     NR_sleep,
@@ -24,6 +24,7 @@ enum {
     NR_createdir,
     NR_deletedir,
     NR_wait,
+    NR_killerabbit,
     NR_exit,
 
     //! total syscalls
@@ -73,3 +74,9 @@ int do_delete(const char *path);
 int do_opendir(const char *path);
 int do_createdir(const char *path);
 int do_deletedir(const char *path);
+
+//! from pthread.c
+int do_pthread_create(void *arg);
+
+//! from killerabbit.c
+int do_killerabbit(int pid);

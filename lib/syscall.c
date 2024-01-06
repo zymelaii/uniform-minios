@@ -72,8 +72,8 @@ int free(void *ptr) {
     return syscall1(NR_free, (u32)ptr);
 }
 
-int pthread(void *arg) {
-    return syscall1(NR_pthread, (u32)arg);
+int pthread_create(void *entry) {
+    return syscall1(NR_pthread_create, (u32)entry);
 }
 
 int execve(const char *path, char *const *argv, char *const *envp) {
@@ -90,6 +90,10 @@ int wait(int *wstatus) {
 
 void exit(int exit_code) {
     syscall1(NR_exit, exit_code);
+}
+
+int killerabbit(int pid) {
+    return syscall1(NR_killerabbit, pid);
 }
 
 int get_pid() {

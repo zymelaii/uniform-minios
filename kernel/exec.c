@@ -4,6 +4,7 @@
 #include <unios/syscall.h>
 #include <unios/assert.h>
 #include <unios/layout.h>
+#include <unios/spinlock.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -114,18 +115,17 @@ static int exec_pcb_init(const char* path) {
     u32* frame = (void*)(p_proc_current + 1) - P_STACKTOP;
     memcpy(frame, &task->regs, sizeof(task->regs));
 
-    lin_memmap_t* memmap      = &p_proc_current->pcb.memmap;
-    memmap->vpage_lin_base    = VpageLinBase;
-    memmap->vpage_lin_limit   = VpageLinBase;
-    memmap->heap_lin_base     = HeapLinBase;
-    memmap->heap_lin_limit    = HeapLinBase;
-    memmap->stack_child_limit = StackLinLimitMAX;
-    memmap->stack_lin_base    = StackLinBase;
-    memmap->stack_lin_limit   = StackLinBase - 0x4000;
-    memmap->arg_lin_base      = ArgLinBase;
-    memmap->arg_lin_limit     = ArgLinBase;
-    memmap->kernel_lin_base   = KernelLinBase;
-    memmap->kernel_lin_limit  = KernelLinBase + KernelSize;
+    lin_memmap_t* memmap     = &p_proc_current->pcb.memmap;
+    memmap->vpage_lin_base   = VpageLinBase;
+    memmap->vpage_lin_limit  = VpageLinBase;
+    memmap->heap_lin_base    = HeapLinBase;
+    memmap->heap_lin_limit   = HeapLinBase;
+    memmap->stack_lin_base   = StackLinBase;
+    memmap->stack_lin_limit  = StackLinBase - 0x4000;
+    memmap->arg_lin_base     = ArgLinBase;
+    memmap->arg_lin_limit    = ArgLinBase;
+    memmap->kernel_lin_base  = KernelLinBase;
+    memmap->kernel_lin_limit = KernelLinBase + KernelSize;
 
     p_proc_current->pcb.tree_info.text_hold = 1;
     p_proc_current->pcb.tree_info.data_hold = 1;
@@ -171,7 +171,7 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
         trace_logging("exec: executable not found\n");
         return -1;
     }
-
+    lock_or_schedule(&p_proc_current->pcb.p_lock);
     Elf32_Ehdr* elf_header = NULL;
     Elf32_Phdr* elf_proghs = NULL;
     elf_header             = K_PHY2LIN(do_kmalloc(sizeof(Elf32_Ehdr)));
@@ -221,6 +221,6 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     do_close(fd);
     do_free((void*)K_LIN2PHY((u32)elf_header));
     do_free((void*)K_LIN2PHY((u32)elf_proghs));
-
+    release(&p_proc_current->pcb.p_lock);
     return 0;
 }

@@ -5,11 +5,12 @@
 
 void sweeper() {
     while (true) {
-        if (wait(NULL) == -1) {
+        int pid = wait(NULL);
+        if (pid == -1) {
             p_proc_current->pcb.stat = SLEEPING;
             yield();
         } else {
-            trace_logging("---recycled orphan! pid[/]---\n");
+            trace_logging("---recycled orphan! pid[%d]---\n", pid);
         }
     }
 }

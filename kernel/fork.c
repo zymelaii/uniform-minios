@@ -136,7 +136,7 @@ static int fork_pcb_clone(PROCESS* p_child) {
     p_child->pcb.cr3              = cr3_child;
     p_child->pcb.esp_save_int     = esp_save_int;
     p_child->pcb.esp_save_context = esp_save_context;
-
+    p_child->pcb.tree_info.type   = TYPE_PROCESS;
     return 0;
 }
 
