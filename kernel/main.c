@@ -7,9 +7,11 @@
 #include <unios/hd.h>
 #include <unios/global.h>
 #include <unios/fs.h>
+#include <unios/interrupt.h>
+#include <unios/vga.h>
 #include <unios/fs_const.h>
 #include <unios/fat32.h>
-#include <unios/const.h>
+#include <unios/keyboard.h>
 #include <unios/console.h>
 #include <unios/assert.h>
 #include <sys/types.h>
@@ -58,35 +60,35 @@ static int initialize_processes() {
     for (pid = 0; pid < NR_TASKS;
          pid++) { // 1>对前NR_TASKS个PCB初始化,且状态为READY(生成的进程)
         /*************基本信息*********************************/
-        strcpy(p_proc->pcb.p_name, p_task->name); // 名称
-        p_proc->pcb.pid    = pid;                 // pid
-        p_proc->pcb.stat   = READY;               // 状态
+        strcpy(p_proc->pcb.name, p_task->name); // 名称
+        p_proc->pcb.pid    = pid;               // pid
+        p_proc->pcb.stat   = READY;             // 状态
         p_proc->pcb.p_lock = 0;
         /**************LDT*********************************/
         p_proc->pcb.ldt_sel = selector_ldt;
         memcpy(
             &p_proc->pcb.ldts[0],
             &gdt[SELECTOR_KERNEL_CS >> 3],
-            sizeof(DESCRIPTOR));
-        p_proc->pcb.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
+            sizeof(descriptor_t));
+        p_proc->pcb.ldts[0].attr0 = DA_C | RPL_TASK << 5;
         memcpy(
             &p_proc->pcb.ldts[1],
             &gdt[SELECTOR_KERNEL_DS >> 3],
-            sizeof(DESCRIPTOR));
-        p_proc->pcb.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
+            sizeof(descriptor_t));
+        p_proc->pcb.ldts[1].attr0 = DA_DRW | RPL_TASK << 5;
 
         /**************寄存器初值**********************************/
         p_proc->pcb.regs.cs =
-            ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 0) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.ds =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.es =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.fs =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.ss =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
+        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | RPL_TASK;
         p_proc->pcb.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
         // p_proc->pcb.cr3 在页表初始化中处理
 
@@ -163,8 +165,8 @@ static int initialize_processes() {
         ; pid < NR_K_PCBS;
         pid++) { // 2>对中NR_TASKS~NR_K_PCBS的PCB表初始化,状态为IDLE,没有初始化esp(并没有生成,所以没有代码入口,只是留位置)
         /*************基本信息*********************************/
-        strcpy(p_proc->pcb.p_name, "Task"); // 名称
-        p_proc->pcb.pid    = pid;           // pid
+        strcpy(p_proc->pcb.name, "Task"); // 名称
+        p_proc->pcb.pid    = pid;         // pid
         p_proc->pcb.p_lock = 0;
         p_proc->pcb.stat   = IDLE; // 状态
 
@@ -173,26 +175,26 @@ static int initialize_processes() {
         memcpy(
             &p_proc->pcb.ldts[0],
             &gdt[SELECTOR_KERNEL_CS >> 3],
-            sizeof(DESCRIPTOR));
-        p_proc->pcb.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
+            sizeof(descriptor_t));
+        p_proc->pcb.ldts[0].attr0 = DA_C | RPL_TASK << 5;
         memcpy(
             &p_proc->pcb.ldts[1],
             &gdt[SELECTOR_KERNEL_DS >> 3],
-            sizeof(DESCRIPTOR));
-        p_proc->pcb.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
+            sizeof(descriptor_t));
+        p_proc->pcb.ldts[1].attr0 = DA_DRW | RPL_TASK << 5;
 
         /**************寄存器初值**********************************/
         p_proc->pcb.regs.cs =
-            ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 0) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.ds =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.es =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.fs =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.ss =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
+        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | RPL_TASK;
         p_proc->pcb.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
 
         /****************页表、代码数据、堆栈*****************************/
@@ -229,8 +231,8 @@ static int initialize_processes() {
     for (; pid < NR_K_PCBS + 1; pid++) { // initial 进程的初始化
                                          // //add by visual 2016.5.17
         /*************基本信息*********************************/
-        strcpy(p_proc->pcb.p_name, "initial"); // 名称
-        p_proc->pcb.pid    = pid;              // pid
+        strcpy(p_proc->pcb.name, "initial"); // 名称
+        p_proc->pcb.pid    = pid;            // pid
         p_proc->pcb.p_lock = 0;
         p_proc->pcb.stat   = READY; // 状态
 
@@ -239,26 +241,26 @@ static int initialize_processes() {
         memcpy(
             &p_proc->pcb.ldts[0],
             &gdt[SELECTOR_KERNEL_CS >> 3],
-            sizeof(DESCRIPTOR));
-        p_proc->pcb.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
+            sizeof(descriptor_t));
+        p_proc->pcb.ldts[0].attr0 = DA_C | RPL_TASK << 5;
         memcpy(
             &p_proc->pcb.ldts[1],
             &gdt[SELECTOR_KERNEL_DS >> 3],
-            sizeof(DESCRIPTOR));
-        p_proc->pcb.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
+            sizeof(descriptor_t));
+        p_proc->pcb.ldts[1].attr0 = DA_DRW | RPL_TASK << 5;
 
         /**************寄存器初值**********************************/
         p_proc->pcb.regs.cs =
-            ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 0) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.ds =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.es =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.fs =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
         p_proc->pcb.regs.ss =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
-        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_TASK;
+        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | RPL_TASK;
         p_proc->pcb.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
         // p_proc->pcb.cr3 在页表初始化中处理
 
@@ -278,15 +280,15 @@ static int initialize_processes() {
             KernelLinBase + KernelSize; // 内核大小初始化为8M
 
         /*************************进程树信息初始化***************************************/
-        p_proc->pcb.info.type = TYPE_PROCESS; // 当前是进程还是线程
-        p_proc->pcb.info.real_ppid = -1; // 亲父进程，创建它的那个进程
-        p_proc->pcb.info.ppid        = -1; // 当前父进程
-        p_proc->pcb.info.child_p_num = 0;  // 子进程数量
-        // p_proc->pcb.info.child_process[NR_CHILD_MAX];//子进程列表
-        p_proc->pcb.info.child_t_num = 0; // 子线程数量
-        // p_proc->pcb.info.child_thread[NR_CHILD_MAX];//子线程列表
-        p_proc->pcb.info.text_hold = 1; // 是否拥有代码
-        p_proc->pcb.info.data_hold = 1; // 是否拥有数据
+        p_proc->pcb.tree_info.type = TYPE_PROCESS; // 当前是进程还是线程
+        p_proc->pcb.tree_info.real_ppid = -1; // 亲父进程，创建它的那个进程
+        p_proc->pcb.tree_info.ppid        = -1; // 当前父进程
+        p_proc->pcb.tree_info.child_p_num = 0;  // 子进程数量
+        // p_proc->pcb.tree_info.child_process[NR_CHILD_MAX];//子进程列表
+        p_proc->pcb.tree_info.child_t_num = 0; // 子线程数量
+        // p_proc->pcb.tree_info.child_thread[NR_CHILD_MAX];//子线程列表
+        p_proc->pcb.tree_info.text_hold = 1; // 是否拥有代码
+        p_proc->pcb.tree_info.data_hold = 1; // 是否拥有数据
 
         /***************初始化PID进程页表*****************************/
         p_proc->pcb.cr3 = pg_create_and_init();
@@ -341,8 +343,8 @@ static int initialize_processes() {
         ; pid < NR_PCBS;
         pid++) { // 3>对后NR_K_PCBS~NR_PCBS的PCB表部分初始化,(名称,pid,stat,LDT选择子),状态为IDLE.
         /*************基本信息*********************************/
-        strcpy(p_proc->pcb.p_name, "USER"); // 名称
-        p_proc->pcb.pid    = pid;           // pid
+        strcpy(p_proc->pcb.name, "USER"); // 名称
+        p_proc->pcb.pid    = pid;         // pid
         p_proc->pcb.p_lock = 0;
         p_proc->pcb.stat   = IDLE; // 状态
 
@@ -351,26 +353,26 @@ static int initialize_processes() {
         memcpy(
             &p_proc->pcb.ldts[0],
             &gdt[SELECTOR_KERNEL_CS >> 3],
-            sizeof(DESCRIPTOR));
-        p_proc->pcb.ldts[0].attr1 = DA_C | PRIVILEGE_USER << 5;
+            sizeof(descriptor_t));
+        p_proc->pcb.ldts[0].attr0 = DA_C | RPL_USER << 5;
         memcpy(
             &p_proc->pcb.ldts[1],
             &gdt[SELECTOR_KERNEL_DS >> 3],
-            sizeof(DESCRIPTOR));
-        p_proc->pcb.ldts[1].attr1 = DA_DRW | PRIVILEGE_USER << 5;
+            sizeof(descriptor_t));
+        p_proc->pcb.ldts[1].attr0 = DA_DRW | RPL_USER << 5;
 
         /**************寄存器初值**********************************/
         p_proc->pcb.regs.cs =
-            ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+            ((8 * 0) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
         p_proc->pcb.regs.ds =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
         p_proc->pcb.regs.es =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
         p_proc->pcb.regs.fs =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
         p_proc->pcb.regs.ss =
-            ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
+            ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+        p_proc->pcb.regs.gs     = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | RPL_USER;
         p_proc->pcb.regs.eflags = 0x0202; /* IF=1, 倒数第二位恒为1 */
 
         /****************页表、代码数据、堆栈*****************************/
@@ -405,20 +407,21 @@ static int initialize_processes() {
         selector_ldt += 1 << 3;
     }
 
-    proc_table[0].pcb.ticks = proc_table[0].pcb.priority = 1;
-    proc_table[1].pcb.ticks = proc_table[1].pcb.priority = 1;
-    proc_table[2].pcb.ticks = proc_table[2].pcb.priority = 1;
-    proc_table[3].pcb.ticks = proc_table[3].pcb.priority = 1;
-    proc_table[4].pcb.ticks = proc_table[4].pcb.priority = 1;
+    proc_table[0].pcb.live_ticks = proc_table[0].pcb.priority = 1;
+    proc_table[1].pcb.live_ticks = proc_table[1].pcb.priority = 1;
+    proc_table[2].pcb.live_ticks = proc_table[2].pcb.priority = 1;
+    proc_table[3].pcb.live_ticks = proc_table[3].pcb.priority = 1;
+    proc_table[4].pcb.live_ticks = proc_table[4].pcb.priority = 1;
 
-    proc_table[NR_K_PCBS].pcb.ticks = proc_table[NR_K_PCBS].pcb.priority = 1;
+    proc_table[NR_K_PCBS].pcb.live_ticks = proc_table[NR_K_PCBS].pcb.priority =
+        1;
 
     /* When the first process begin running, a clock-interruption will happen
      * immediately. If the first process's initial ticks is 1, it won't be the
      * first process to execute its user code. Thus, it's will look weird, for
      * proc_table[0] don't output first. added by xw, 18/4/19
      */
-    proc_table[0].pcb.ticks = 2;
+    proc_table[0].pcb.live_ticks = 2;
 
     return 0;
 }
@@ -434,11 +437,11 @@ int kernel_main() {
 
     int error;
     clear_kernel_pagepte_low();
-    uart_kprintf("-----Kernel Initialization Begins-----\n");
+    trace_logging("-----Kernel Initialization Begins-----\n");
     kernel_initial = 1; // kernel is in initial state. added by xw, 18/5/31
 
     init_mem(); // 内存管理模块的初始化  add by liang
-    uart_kprintf("-----mem module init done-----\n");
+    trace_logging("-----mem module init done-----\n");
 
     // initialize PCBs, added by xw, 18/5/26
     error = initialize_processes();
@@ -466,7 +469,7 @@ int kernel_main() {
     put_irq_handler(CLOCK_IRQ, clock_handler); /* 设定时钟中断处理程序 */
     enable_irq(CLOCK_IRQ); /* 让8259A可以接收时钟中断 */
 
-    init_kb(); // added by mingxuan 2019-5-19
+    init_keyboard(); // added by mingxuan 2019-5-19
 
     /* initialize hd-irq and hd rdwt queue */
     init_hd();
@@ -498,7 +501,7 @@ int kernel_main() {
      */
     disable_int();
 
-    uart_kprintf("-----Processes Begin-----\n");
+    trace_logging("-----Processes Begin-----\n");
 
     /* linear address 0~8M will no longer be mapped to physical address 0~8M.
      * note that disp_xx can't work after this function is invoked until

@@ -4,6 +4,7 @@
 #include <unios/assert.h>
 #include <unios/global.h>
 #include <unios/proto.h>
+#include <sys/defs.h>
 #include <stdio.h>
 #include <string.h>
 

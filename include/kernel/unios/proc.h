@@ -1,7 +1,8 @@
 #pragma once
 
-#include <stdint.h>
+#include <unios/fs_misc.h>
 #include <sys/types.h>
+#include <stdint.h>
 #include "protect.h"
 
 // new kernel stack is 8kB
@@ -52,13 +53,10 @@
 #define NR_K_PCBS    5
 #define NR_RECY_PROC 2
 
-#define NR_CPUS  1  // numbers of cpu. added by xw, 18/6/1
-#define NR_FILES 64 // numbers of files a process can own. added by xw, 18/6/14
+#define NR_CPUS  1
+#define NR_FILES 64
 
-// enum proc_stat	{IDLE,READY,WAITING,RUNNING};		//add by visual smile
-// 2016.4.5 enum proc_stat	{IDLE,READY,SLEEPING};		//eliminate RUNNING
-// state
-enum proc_stat {
+enum process_stat {
     IDLE,
     READY,
     SLEEPING,
@@ -70,115 +68,97 @@ enum proc_stat {
     * added by xw, 18/12/19
     */
 
-#define NR_CHILD_MAX \
- (NR_PCBS - NR_K_PCBS - 1) // 定义最多子进程/线程数量	//add by visual
-                           // 2016.5.26
-#define TYPE_PROCESS 0     // 进程//add by visual 2016.5.26
-#define TYPE_THREAD  1     // 线程//add by visual 2016.5.26
+#define NR_CHILD_MAX (NR_PCBS - NR_K_PCBS - 1)
+#define TYPE_PROCESS 0
+#define TYPE_THREAD  1
 
-typedef struct s_stackframe { /* proc_ptr points here				↑ Low
-                               */
-    u32 gs;                   /* ┓						│			*/
-    u32 fs;                   /* ┃						│			*/
-    u32 es;                   /* ┃						│			*/
-    u32 ds;                   /* ┃						│			*/
-    u32 edi;                  /* ┃						│			*/
-    u32 esi;                  /* ┣ pushed by save()				│			*/
-    u32 ebp;                  /* ┃						│			*/
-    u32 kernel_esp;           /* <- 'popad' will ignore it			│			*/
-    u32 ebx;                  /* ┃						↑栈从高地址往低地址增长*/
-    u32 edx;                  /* ┃						│			*/
-    u32 ecx;                  /* ┃						│			*/
-    u32 eax;                  /* ┛						│			*/
-    u32 retaddr; /* return address for assembly code save()	│			*/
-    u32 eip;     /*  ┓						│			*/
-    u32 cs;      /*  ┃						│			*/
-    u32 eflags;  /*  ┣ these are pushed by CPU during interrupt	│			*/
-    u32 esp;     /*  ┃						│			*/
-    u32 ss;      /*  ┛						┷High			*/
-} STACK_FRAME;
+typedef struct stackframe_s { /*      proc_ptr points here      ↑          Low*/
+    u32 gs;  /* ┓                              │                       */
+    u32 fs;  /* ┃                              │                       */
+    u32 es;  /* ┃                              │                       */
+    u32 ds;  /* ┃                              │                       */
+    u32 edi; /* ┃                              │                       */
+    u32 esi; /* ┣  pushed by save()            │                       */
+    u32 ebp; /* ┃                              │                       */
+    u32 kernel_esp; /* <- popad will ignore it │                       */
+    u32 ebx; /* ┃                              ↑  栈从高地址往低地址增长 */
+    u32 edx; /* ┃                              │                       */
+    u32 ecx; /* ┃                              │                       */
+    u32 eax; /* ┛                              │                       */
+    u32 retaddr; /* return address for assembly code save()     │      */
+    u32 eip;     /*  ┓                                          │      */
+    u32 cs;      /*  ┃                                          │      */
+    u32 eflags;  /*  ┣ these are pushed by CPU during interrupt │      */
+    u32 esp;     /*  ┃                                          │      */
+    u32 ss;      /*  ┛                                          ┷High  */
+} stack_frame_t;
 
-typedef struct s_tree_info { // 进程树记录，包括父进程，子进程，子线程  //add by
-                             // visual 2016.5.25
-    int type;                        // 当前是进程还是线程
-    u32 real_ppid;                   // 亲父进程，创建它的那个进程
-    u32 ppid;                        // 当前父进程
-    u32 child_p_num;                 // 子进程数量
-    u32 child_process[NR_CHILD_MAX]; // 子进程列表
-    u32 child_t_num;                 // 子线程数量
-    u32 child_thread[NR_CHILD_MAX];  // 子线程列表
-    int text_hold;                   // 是否拥有代码
-    int data_hold;                   // 是否拥有数据
-} TREE_INFO;
+typedef struct tree_info_s {
+    int type;                        //<! type of task
+    u32 real_ppid;                   //<! pid of creator task
+    u32 ppid;                        //<! pid of current parent task
+    u32 child_p_num;                 //<! total child proc
+    u32 child_process[NR_CHILD_MAX]; //<! child proc list
+    u32 child_t_num;                 //<! total child thread
+    u32 child_thread[NR_CHILD_MAX];  //<! child thread list
+    int text_hold;                   //<! owner of text or not
+    int data_hold;                   //<! owner of data or not
+} tree_info_t;
 
-typedef struct s_ph_info {
-    u32               lin_addr_base;
-    u32               lin_addr_limit;
-    struct s_ph_info* next;
-    struct s_ph_info* before;
-} PH_INFO;
+typedef struct ph_info_s {
+    u32               base;
+    u32               limit;
+    struct ph_info_s* next;
+    struct ph_info_s* before;
+} ph_info_t;
 
-typedef struct s_lin_memmap { // 线性地址分布结构体	edit by visual 2016.5.25
-    // u32 text_lin_base;        // 代码段基址// BULL SHIT!!!!!
-    // u32 text_lin_limit;       // 代码段界限
+typedef struct lin_memmap_s { // 线性地址分布结构体	edit by visual 2016.5.25
+    ph_info_t* ph_info;
+    //! stack limit for child thread
+    u32 stack_child_limit;
+    //! reserved
+    u32 vpage_lin_base;
+    u32 vpage_lin_limit;
+    //! heap
+    u32 heap_lin_base;
+    u32 heap_lin_limit;
+    //! stack
+    u32 stack_lin_base;
+    u32 stack_lin_limit;
+    //! where to store exec argv & envp
+    u32 arg_lin_base;
+    u32 arg_lin_limit;
+    //! kernel space
+    u32 kernel_lin_base;
+    u32 kernel_lin_limit;
+} lin_memmap_t;
 
-    // u32 data_lin_base;  // 数据段基址// BULL SHIT!!!!!
-    // u32 data_lin_limit; // 数据段界限
-
-    PH_INFO* ph_info;
-
-    u32 vpage_lin_base;  // 保留内存基址
-    u32 vpage_lin_limit; // 保留内存界限
-
-    u32 heap_lin_base;  // 堆基址
-    u32 heap_lin_limit; // 堆界限
-
-    u32 stack_lin_base;  // 栈基址
-    u32 stack_lin_limit; // 栈界限（使用时注意栈的生长方向）
-
-    u32 arg_lin_base;  // 参数内存基址
-    u32 arg_lin_limit; // 参数内存界限
-
-    u32 kernel_lin_base;  // 内核基址
-    u32 kernel_lin_limit; // 内核界限
-
-    u32 stack_child_limit; // 分给子线程的栈的界限		//add by visual
-                           // 2016.5.27
-} LIN_MEMMAP;
-
-typedef struct s_pcb {
+typedef struct pcb_s {
     //! WARNING: offset 0 is reserved for user context regs
-    STACK_FRAME regs; /* process registers saved in stack frame */
+    stack_frame_t regs;
 
-    u16        ldt_sel;        /* gdt selector giving ldt base and limit */
-    DESCRIPTOR ldts[LDT_SIZE]; /* local descriptors for code and data */
+    u16          ldt_sel;        /* gdt selector giving ldt base and limit */
+    descriptor_t ldts[LDT_SIZE]; /* local descriptors for code and data */
 
-    char* esp_save_int; // to save the position of esp in the kernel stack of
-                        // the process added by xw, 17/12/11
-    char* esp_save_syscall; // to save the position of esp in the kernel stack
-                            // of the process
-    char* esp_save_context; // to save the position of esp in the kernel stack
-                            // of the process
-    //	int   save_type;		//the cause of process losting CPU	//save_type
-    // is not needed any more, xw, 18/4/20 1st-bit for interruption, 2nd-bit for
-    // context, 3rd-bit for syscall
-    void* channel; /*if non-zero, sleeping on channel, which is a pointer of the
-                   target field for example, as for syscall sleep(int n), the
-                   target field is 'ticks', and the channel is a pointer of
-                   'ticks'.
-                   */
+    char* esp_save_int;
+    char* esp_save_syscall;
+    char* esp_save_context;
 
-    LIN_MEMMAP memmap; // 线性内存分部信息 		add by visual 2016.5.4 //
-                       // BULLSHIT FUCK IDIOT
-    TREE_INFO info;    // 记录进程树关系	add by visual 2016.5.25
-    int       ticks;   /* remained ticks */
-    int       priority;
+    //! if non-zero, sleeping on channel, which is a pointer of the target field
+    //! for example, as for syscall sleep(int n), the target field is 'ticks',
+    //! and the channel is a pointer of 'ticks'.
+    void*        channel;
+    lin_memmap_t memmap;
 
-    u32  pid;        /* process id passed in from MM */
-    char p_name[16]; /* name of the process */
+    tree_info_t tree_info;
+    int         live_ticks;
+    int         priority;
 
-    enum proc_stat stat;
-    u32            cr3;
+    u32  pid;
+    char name[16];
+
+    enum process_stat stat;
+    u32               cr3;
 
     struct file_desc* filp[NR_FILES];
     u32               p_lock;
@@ -191,10 +171,20 @@ typedef union task_union {
     char  stack[INIT_STACK_SIZE / sizeof(char)];
 } PROCESS;
 
-typedef struct s_task {
+typedef struct task_s {
     task_handler_t initial_eip;
     int            stacksize;
     char           name[32];
 } TASK;
 
 #define STACK_SIZE_TASK 0x1000
+
+extern tss_t    tss;
+extern PROCESS* p_proc_current;
+extern PROCESS* p_proc_next;
+extern PROCESS  cpu_table[];
+extern PROCESS  proc_table[];
+extern TASK     task_table[];
+
+PROCESS* pid2pcb(int pid);
+int      proc2pid(PROCESS* proc);

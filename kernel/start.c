@@ -1,73 +1,23 @@
 #include <unios/protect.h>
-#include <unios/proc.h>
-#include <unios/global.h>
-#include <unios/proto.h>
-#include <unios/assert.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
-/*
- * 当发生不可挽回的错误时就打印错误信息并使CPU核休眠
- */
-void _panic(const char* file, int line, const char* fmt, ...) {
-    va_list ap;
-
-    // 确保CPU核不受外界中断的影响
-    __asm__ volatile("cli");
-    __asm__ volatile("cld");
-
-    va_start(ap, fmt);
-    kprintf("kernel panic at %s:%d: ", file, line);
-    vkprintf(fmt, ap);
-    kprintf("\n");
-    va_end(ap);
-
-    // 休眠 CPU 核，直接罢工
-    while (1) __asm__ volatile("hlt");
-}
-
-/*
- * 很像panic，但是不会休眠CPU核，就是正常打印信息
- */
-void _warn(const char* file, int line, const char* fmt, ...) {
-    va_list ap;
-
-    va_start(ap, fmt);
-    kprintf("kernel warning at %s:%d: ", file, line);
-    vkprintf(fmt, ap);
-    kprintf("\n");
-    va_end(ap);
-}
-
-/*======================================================================*
-                            cstart
- *======================================================================*/
 void cstart() {
-    vga_set_disppos(0);
-    kprintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n-----\"cstart\" begins-----\n");
+    trace_logging("-----\"cstart\" begins-----\n");
 
-    // 将 LOADER 中的 GDT 复制到新的 GDT 中
-    memcpy(
-        &gdt,                            // New GDT
-        (void*)(*((u32*)(&gdt_ptr[2]))), // Base  of Old GDT
-        *((u16*)(&gdt_ptr[0])) + 1       // Limit of Old GDT
-    );
-    // gdt_ptr[6] 共 6 个字节：0~15:Limit  16~47:Base。用作 sgdt 以及 lgdt
-    // 的参数。
-    u16* p_gdt_limit = (u16*)(&gdt_ptr[0]);
-    u32* p_gdt_base  = (u32*)(&gdt_ptr[2]);
-    *p_gdt_limit     = GDT_SIZE * sizeof(DESCRIPTOR) - 1;
-    *p_gdt_base      = (u32)&gdt;
+    // descriptor(&gdt, 0, 0x00000000, 0x00000, 0);
+    // descriptor(&gdt, 1, 0x00000000, 0xfffff, DA_CR | DA_32 | DA_LIMIT_4K);
+    // descriptor(&gdt, 2, 0x00000000, 0xfffff, DA_DRW | DA_32 | DA_LIMIT_4K);
+    // descriptor(&gdt, 3, 0x000b8000, 0x0ffff, DA_DRW | DA_DPL3);
 
-    // idt_ptr[6] 共 6 个字节：0~15:Limit  16~47:Base。用作 sidt 以及 lidt
-    // 的参数。
-    u16* p_idt_limit = (u16*)(&idt_ptr[0]);
-    u32* p_idt_base  = (u32*)(&idt_ptr[2]);
-    *p_idt_limit     = IDT_SIZE * sizeof(GATE) - 1;
-    *p_idt_base      = (u32)&idt;
+    memcpy(&gdt, (void*)gdt_ptr.base, gdt_ptr.limit + 1);
 
-    init_prot();
+    gdt_ptr.limit = GDT_SIZE * sizeof(descriptor_t) - 1;
+    gdt_ptr.base  = (u32)&gdt;
+    idt_ptr.limit = IDT_SIZE * sizeof(gate_descriptor_t) - 1;
+    idt_ptr.base  = (u32)&idt;
 
-    kprintf("-----\"cstart\" finished-----\n");
+    init_protect_mode();
+
+    trace_logging("-----\"cstart\" finished-----\n");
 }

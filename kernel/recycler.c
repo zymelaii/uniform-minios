@@ -1,11 +1,10 @@
-#include <unios/syscall.h>
-#include <unios/global.h>
+#include <unios/proc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
 
 void sweeper() {
-    while (1) {
+    while (true) {
         if (wait(NULL) == -1) {
             p_proc_current->pcb.stat = SLEEPING;
             yield();

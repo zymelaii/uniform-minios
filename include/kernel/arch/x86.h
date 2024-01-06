@@ -172,6 +172,10 @@ ASMCALL u32 xchg(volatile u32 *addr, u32 newval) {
     return result;
 }
 
+ASMCALL void clear_dir_flag() {
+    __asm__ volatile("cld");
+}
+
 ASMCALL void disable_int() {
     __asm__ volatile("cli");
 }

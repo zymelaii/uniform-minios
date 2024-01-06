@@ -76,8 +76,8 @@ int pthread(void *arg) {
     return syscall1(NR_pthread, (u32)arg);
 }
 
-int exec(char *path) {
-    return syscall1(NR_exec, (u32)path);
+int execve(const char *path, char *const *argv, char *const *envp) {
+    return syscall3(NR_execve, (u32)path, (u32)argv, (u32)envp);
 }
 
 int fork() {

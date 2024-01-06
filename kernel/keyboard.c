@@ -1,4 +1,3 @@
-#include <unios/const.h>
 #include <unios/protect.h>
 #include <unios/proc.h>
 #include <unios/tty.h>
@@ -7,7 +6,9 @@
 #include <unios/proto.h>
 #include <unios/keyboard.h>
 #include <unios/keymap.h>
+#include <unios/interrupt.h>
 #include <arch/x86.h>
+#include <sys/defs.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -103,7 +104,7 @@ void init_mouse() {
     enable_irq(MOUSE_IRQ);
 }
 
-void init_kb() {
+void init_keyboard() {
     kb_in.count  = 0;
     kb_in.p_head = kb_in.p_tail = kb_in.buf;
 
@@ -370,7 +371,6 @@ static u8 get_byte_from_kb_buf() {
 static void kb_wait() /* 等待 8042 的输入缓冲区空 */
 {
     u8 kb_stat;
-
     do { kb_stat = inb(KB_CMD); } while (kb_stat & 0x02);
 }
 

@@ -2,7 +2,8 @@
 
 int  get_pid();
 int  get_ticks();
-int  exec(char *path);
+int  exec(const char *path);
+int  execve(const char *path, char *const *argv, char *const *envp);
 int  fork();
 int  wait(int *wstatus1);
 void exit(int exit_code);

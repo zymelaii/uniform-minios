@@ -123,20 +123,19 @@ impl_hwint_slave  hwint13, 13 ; interrupt routine for irq 13 (fpu exception)
 impl_hwint_slave  hwint14, 14 ; interrupt routine for irq 14 (AT winchester)
 impl_hwint_slave  hwint15, 15 ; interrupt routine for irq 15
 
-extern division_error_handler
 extern exception_handler
 extern page_fault_handler
 
-impl_exception_no_errcode division_error,           0, division_error_handler ; division error, fault, #DE, no error code
-impl_exception_no_errcode debug_exception,          1, exception_handler      ; debug exception, fault/trap, #DB, no error code
-impl_exception_no_errcode nmi,                      2, exception_handler      ; non-maskable interrupt, int, \, no error code
-impl_exception_no_errcode breakpoint_exception,     3, exception_handler      ; breakpoint exception, trap, #BP, no error code
-impl_exception_no_errcode overflow_exception,       4, exception_handler      ; overflow exception, trap, #OF, no error code
-impl_exception_no_errcode bound_range_exceeded,     5, exception_handler      ; bound range exceeded exception, fault, #BR, no error code
-impl_exception_no_errcode invalid_opcode,           6, exception_handler      ; invalid opcode, fault, #UD, no error code
-impl_exception_no_errcode device_not_available,     7, exception_handler      ; device not available, fault, #NM, no error code
-impl_exception_errcode    double_fault,             8, exception_handler      ; double fault, abort, #DF, error code = 0
-impl_exception_no_errcode copr_seg_overrun,         9, exception_handler      ; coprocessor segment overrun, fault, \, no error code
+impl_exception_no_errcode division_error,           0,  exception_handler     ; division error, fault, #DE, no error code
+impl_exception_no_errcode debug_exception,          1,  exception_handler     ; debug exception, fault/trap, #DB, no error code
+impl_exception_no_errcode nmi,                      2,  exception_handler     ; non-maskable interrupt, int, \, no error code
+impl_exception_no_errcode breakpoint_exception,     3,  exception_handler     ; breakpoint exception, trap, #BP, no error code
+impl_exception_no_errcode overflow_exception,       4,  exception_handler     ; overflow exception, trap, #OF, no error code
+impl_exception_no_errcode bound_range_exceeded,     5,  exception_handler     ; bound range exceeded exception, fault, #BR, no error code
+impl_exception_no_errcode invalid_opcode,           6,  exception_handler     ; invalid opcode, fault, #UD, no error code
+impl_exception_no_errcode device_not_available,     7,  exception_handler     ; device not available, fault, #NM, no error code
+impl_exception_errcode    double_fault,             8,  exception_handler     ; double fault, abort, #DF, error code = 0
+impl_exception_no_errcode copr_seg_overrun,         9,  exception_handler     ; coprocessor segment overrun, fault, \, no error code
 impl_exception_errcode    invalid_tss,              10, exception_handler     ; invalid tss, fault, #TS, error code
 impl_exception_errcode    segment_not_present,      11, exception_handler     ; segment not present, fault, #NP, error code
 impl_exception_errcode    stack_seg_exception,      12, exception_handler     ; stack-segment fault, fault, #SS, error code

@@ -1,14 +1,6 @@
 #include <unios/uart.h>
-#include <unios/tty.h>
-#include <unios/const.h>
 #include <unios/assert.h>
-#include <unios/malloc.h>
 #include <arch/x86.h>
-#include <sys/types.h>
-#include <stdio.h>
-
-void put_irq_handler(int irq, irq_handler_t handler);
-void enable_irq(int irq);
 
 int init_serial() {
     outb(PORT + 1, 0x00); // Disable all interrupts

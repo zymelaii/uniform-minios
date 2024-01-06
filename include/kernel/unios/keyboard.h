@@ -1,10 +1,40 @@
 #pragma once
 
 #include <stdint.h>
+#include <unios/tty.h>
 
-/************************************************************************/
-/*                          Macros Declaration                          */
-/************************************************************************/
+/*! I/O port for keyboard data
+ *	Read : Read Output Buffer
+ *	Write: Write Input Buffer
+ *      (8042 Data & 8048 Command)
+ */
+#define KB_DATA 0x60
+
+/*! I/O port for keyboard command
+ *	Read : Read Status Register
+ *	Write: Write Input Buffer
+ *	    (8042 Command)
+ */
+#define KB_CMD 0x64
+
+#define KB_STA               0x64
+#define KEYSTA_SEND_NOTREADY 0x02
+#define KBSTATUS_IBF         0x02
+#define KBSTATUS_OBF         0x01
+
+#define wait_KB_write() while (in_byte(KB_STA) & KBSTATUS_IBF)
+#define wait_KB_read()  while (in_byte(KB_STA) & KBSTATUS_OBF)
+
+#define KEYCMD_WRITE_MODE 0x60
+#define KBC_MODE          0x47
+
+#define KEYCMD_SENDTO_MOUSE    0xd4
+#define MOUSECMD_ENABLE        0xf4
+#define KBCMD_EN_MOUSE_INTFACE 0xa8
+
+#define LED_CODE 0xED
+#define KB_ACK   0xFA
+
 #define KB_IN_BYTES    320 /* FIXME: size of keyboard input buffer */
 #define MOUSE_IN_BYTES 3
 #define MAP_COLS       3    /* Number of columns in keymap */
@@ -20,11 +50,9 @@
 #define FLAG_ALT_R   0x4000 /* Alternate key		*/
 #define FLAG_PAD     0x8000 /* keys in num pad		*/
 
-#define MASK_RAW                                         \
- 0x01FF /* raw key value = code_passed_to_tty & MASK_RAW \
-         * the value can be found either in the keymap   \
-         * column 0 or in the list below                 \
-         */
+//! raw key value = code_passed_to_tty & MASK_RAW the value can be found either
+//! in the keymap column 0 or in the list below
+#define MASK_RAW 0x01FF
 
 /* Special keys */
 #define ESC       (0x01 + FLAG_EXT) /* Esc		*/
@@ -111,9 +139,6 @@
 #define PAD_MID      PAD_5             /* Middle key	*/
 #define PAD_DEL      PAD_DOT           /* Del		*/
 
-/************************************************************************/
-/*                         Stucture Definition                          */
-/************************************************************************/
 /* Keyboard structure, 1 per console. */
 /**
  * @todo change u8 into char
@@ -133,3 +158,6 @@ typedef struct mouse_inbuf {
     int count;
     u8  buf[MOUSE_IN_BYTES];
 } MOUSE_INPUT;
+
+void init_keyboard();
+void keyboard_read(tty_t* p_tty);

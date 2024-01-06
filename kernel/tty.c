@@ -1,43 +1,34 @@
-#include <unios/const.h>
 #include <unios/protect.h>
 #include <unios/proc.h>
 #include <unios/tty.h>
 #include <unios/console.h>
-#include <unios/global.h>
-#include <unios/proto.h>
 #include <unios/keyboard.h>
 #include <unios/assert.h>
+#include <unios/vga.h>
+#include <unios/console.h>
+#include <sys/defs.h>
 #include <arch/x86.h>
 #include <string.h>
 
 #define TTY_FIRST (tty_table)
 #define TTY_END   (tty_table + NR_CONSOLES)
 
-int current_console;
+int   current_console;
+tty_t tty_table[NR_CONSOLES];
 
 static void flush_screen_scroll(tty_t *tty, int expected_cur_line) {
     assert(expected_cur_line == -1 || expected_cur_line >= 0);
-    disable_int();
     if (expected_cur_line != -1) {
         tty->console->current_line = expected_cur_line;
     }
     int cur_line   = tty->console->current_line;
     int real_line  = tty->console->orig / SCR_WIDTH;
     int vga_offset = SCR_WIDTH * (cur_line + real_line);
-    outb(CRTC_ADDR_REG, START_ADDR_H);
-    outb(CRTC_DATA_REG, (vga_offset >> 8) & 0xff);
-    outb(CRTC_ADDR_REG, START_ADDR_L);
-    outb(CRTC_DATA_REG, (vga_offset >> 0) & 0xff);
-    enable_int();
+    vga_set_video_start_addr(vga_offset);
 }
 
 static void flush_cursor_pos(int pos) {
-    disable_int();
-    outb(CRTC_ADDR_REG, CURSOR_H);
-    outb(CRTC_DATA_REG, (pos >> 8) & 0xff);
-    outb(CRTC_ADDR_REG, CURSOR_L);
-    outb(CRTC_DATA_REG, (pos >> 0) & 0xff);
-    enable_int();
+    vga_set_cursor(pos);
 }
 
 static void tty_init(tty_t *tty) {

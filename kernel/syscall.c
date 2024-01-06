@@ -1,6 +1,7 @@
 ﻿#include <unios/syscall.h>
 #include <unios/global.h>
 #include <unios/assert.h>
+#include <unios/proc.h>
 #include <sys/types.h>
 #include <arch/x86.h>
 #include <stdint.h>
@@ -72,8 +73,8 @@ static u32 sys_pthread() {
     return do_pthread(SYSCALL_ARGS1(void *));
 }
 
-static u32 sys_exec() {
-    return do_exec(SYSCALL_ARGS1(char *));
+static u32 sys_execve() {
+    return do_execve(SYSCALL_ARGS3(const char *, char *const *, char *const *));
 }
 
 static u32 sys_fork() {
@@ -155,7 +156,7 @@ static u32 sys_deletedir() {
 syscall_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(get_ticks), SYSCALL_ENTRY(get_pid), SYSCALL_ENTRY(malloc),
     SYSCALL_ENTRY(malloc_4k), SYSCALL_ENTRY(free),    SYSCALL_ENTRY(fork),
-    SYSCALL_ENTRY(pthread),   SYSCALL_ENTRY(exec),    SYSCALL_ENTRY(yield),
+    SYSCALL_ENTRY(pthread),   SYSCALL_ENTRY(execve),  SYSCALL_ENTRY(yield),
     SYSCALL_ENTRY(sleep),     SYSCALL_ENTRY(wakeup),  SYSCALL_ENTRY(open),
     SYSCALL_ENTRY(close),     SYSCALL_ENTRY(read),    SYSCALL_ENTRY(write),
     SYSCALL_ENTRY(lseek),     SYSCALL_ENTRY(unlink),  SYSCALL_ENTRY(create),

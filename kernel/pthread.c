@@ -1,9 +1,10 @@
-﻿#include <unios/const.h>
+﻿
 #include <unios/protect.h>
 #include <unios/proc.h>
 #include <unios/global.h>
 #include <unios/proto.h>
 #include <unios/page.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -18,13 +19,14 @@ int do_pthread(void *entry) {
     char *p_reg;
     p_child = alloc_pcb();
     if (0 == p_child) {
-        vga_write_str_color("PCB NULL,pthread faild!", 0x74);
+        trace_logging("PCB NULL,pthread faild!");
         return -1;
     } else {
         PROCESS *p_parent;
-        if (p_proc_current->pcb.info.type == TYPE_THREAD) {          // 线程
-            p_parent = &(proc_table[p_proc_current->pcb.info.ppid]); // 父进程
-        } else {                                                     // 进程
+        if (p_proc_current->pcb.tree_info.type == TYPE_THREAD) { // 线程
+            p_parent =
+                &(proc_table[p_proc_current->pcb.tree_info.ppid]); // 父进程
+        } else {                                                   // 进程
             p_parent = p_proc_current; // 父进程就是父线程
         }
         /************复制父进程的PCB部分内容（保留了自己的标识信息,但cr3使用的是父进程的）**************/
@@ -43,7 +45,7 @@ int do_pthread(void *entry) {
 
         pthread_update_info(p_child, p_parent);
 
-        strcpy(p_child->pcb.p_name, "pthread"); // 所有的子进程都叫pthread
+        strcpy(p_child->pcb.name, "pthread"); // 所有的子进程都叫pthread
 
         p_child->pcb.regs.eax                   = 0; // return child with 0
         p_reg                                   = (char *)(p_child + 1);
@@ -52,9 +54,9 @@ int do_pthread(void *entry) {
         /****************用户进程数+1****************************/
         u_proc_sum += 1;
 
-        vga_write_str_color("[pthread success:", 0x72);
-        vga_write_str_color(p_proc_current->pcb.p_name, 0x72);
-        vga_write_str_color("]", 0x72);
+        trace_logging("[pthread success:");
+        trace_logging(p_proc_current->pcb.name);
+        trace_logging("]");
 
         // anything child need is prepared now, set its state to ready. added by
         // xw, 17/12/11
@@ -129,36 +131,37 @@ static int pthread_update_info(PROCESS *p_child, PROCESS *p_parent) {
     /************更新父进程的info***************/ // 注意 父进程 父进程 父进程
     if (p_parent != p_proc_current) { // 只有在线程创建线程的时候才会执行
                                       // ，p_parent事实上是父进程
-        p_parent->pcb.info.child_t_num += 1; // 子线程数量
-        p_parent->pcb.info.child_thread[p_parent->pcb.info.child_t_num - 1] =
+        p_parent->pcb.tree_info.child_t_num += 1; // 子线程数量
+        p_parent->pcb.tree_info
+            .child_thread[p_parent->pcb.tree_info.child_t_num - 1] =
             p_child->pcb.pid; // 子线程列表
     }
     /************更新父线程的info**************/
-    // p_proc_current->pcb.info.type;		//当前是进程还是线程
-    // p_proc_current->pcb.info.real_ppid;  //亲父进程，创建它的那个进程
-    // p_proc_current->pcb.info.ppid;		//当前父进程
-    // p_proc_current->pcb.info.child_p_num += 1; //子进程数量
-    // p_proc_current->pcb.info.child_process[p_proc_current->pcb.info.child_p_num-1]
+    // p_proc_current->pcb.tree_info.type;		//当前是进程还是线程
+    // p_proc_current->pcb.tree_info.real_ppid;  //亲父进程，创建它的那个进程
+    // p_proc_current->pcb.tree_info.ppid;		//当前父进程
+    // p_proc_current->pcb.tree_info.child_p_num += 1; //子进程数量
+    // p_proc_current->pcb.tree_info.child_process[p_proc_current->pcb.tree_info.child_p_num-1]
     // = p_child->pcb.pid;//子进程列表
-    p_proc_current->pcb.info.child_t_num += 1; // 子线程数量
-    p_proc_current->pcb.info
-        .child_thread[p_proc_current->pcb.info.child_t_num - 1] =
+    p_proc_current->pcb.tree_info.child_t_num += 1; // 子线程数量
+    p_proc_current->pcb.tree_info
+        .child_thread[p_proc_current->pcb.tree_info.child_t_num - 1] =
         p_child->pcb.pid; // 子线程列表
     // p_proc_current->pcb.text_hold;			//是否拥有代码
     // p_proc_current->pcb.data_hold;			//是否拥有数据
 
     /************更新子线程的info***************/
-    p_child->pcb.info.type = TYPE_THREAD; // 这是一个线程
-    p_child->pcb.info.real_ppid =
+    p_child->pcb.tree_info.type = TYPE_THREAD; // 这是一个线程
+    p_child->pcb.tree_info.real_ppid =
         p_proc_current->pcb
             .pid; // 亲父进程，创建它的那个线程，注意，这个是创建它的那个线程p_proc_current
-    p_child->pcb.info.ppid        = p_parent->pcb.pid; // 当前父进程
-    p_child->pcb.info.child_p_num = 0;                 // 子进程数量
-    // p_child->pcb.info.child_process[NR_CHILD_MAX] = pid;//子进程列表
-    p_child->pcb.info.child_t_num = 0; // 子线程数量
-    // p_child->pcb.info.child_thread[NR_CHILD_MAX];//子线程列表
-    p_child->pcb.info.text_hold = 0; // 是否拥有代码，子进程不拥有代码
-    p_child->pcb.info.data_hold = 0; // 是否拥有数据，子进程拥有数据
+    p_child->pcb.tree_info.ppid        = p_parent->pcb.pid; // 当前父进程
+    p_child->pcb.tree_info.child_p_num = 0;                 // 子进程数量
+    // p_child->pcb.tree_info.child_process[NR_CHILD_MAX] = pid;//子进程列表
+    p_child->pcb.tree_info.child_t_num = 0; // 子线程数量
+    // p_child->pcb.tree_info.child_thread[NR_CHILD_MAX];//子线程列表
+    p_child->pcb.tree_info.text_hold = 0; // 是否拥有代码，子进程不拥有代码
+    p_child->pcb.tree_info.data_hold = 0; // 是否拥有数据，子进程拥有数据
 
     return 0;
 }
@@ -176,7 +179,7 @@ static int pthread_stack_init(PROCESS *p_child, PROCESS *p_parent) {
         p_parent->pcb.memmap.stack_child_limit;       // 子线程的栈界
     p_parent->pcb.memmap.stack_child_limit += 0x4000; // 分配16K
     p_child->pcb.memmap.stack_lin_base =
-        p_parent->pcb.memmap.stack_child_limit - num_4B; // 子线程的基址
+        p_parent->pcb.memmap.stack_child_limit - NUM_4B; // 子线程的基址
 
     pg_map_laddr_range(
         p_child->pcb.cr3,

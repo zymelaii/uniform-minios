@@ -1,5 +1,4 @@
 #include <unios/config.h>
-#include <unios/const.h>
 #include <unios/protect.h>
 #include <unios/proc.h>
 #include <unios/global.h>
@@ -9,6 +8,7 @@
 #include <unios/hd.h>
 #include <unios/fs.h>
 #include <unios/fs_misc.h>
+#include <sys/defs.h>
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
@@ -55,9 +55,8 @@ int get_fs_dev(int drive, int fs_type) {
     return 0;
 }
 
-/// zcr added
 void init_fs() {
-    uart_kprintf("-----initialize filesystem-----\n");
+    trace_logging("-----initialize filesystem-----\n");
     memset(inode_table, 0, sizeof(inode_table));
     superblock_t *sb = superblock_table;
 
@@ -67,11 +66,11 @@ void init_fs() {
     read_orange_superblock(orange_dev);
     superblock_t *sb_root = get_unique_superblock(orange_dev);
 
-    uart_kprintf("Superblock Address: 0x%x\n", sb_root);
+    trace_logging("Superblock Address: 0x%x\n", sb_root);
 
     if (sb_root->magic != MAGIC_V1) {
         mkfs();
-        uart_kprintf("-----make filesystem done-----\n");
+        trace_logging("-----make filesystem done-----\n");
         read_orange_superblock(orange_dev);
     }
 
@@ -108,8 +107,8 @@ static void mkfs() {
     msg.PROC_NR     = proc2pid(p_proc_current);
     hd_ioctl(&msg);
 
-    uart_kprintf("-----make orange filesystem-----\n");
-    uart_kprintf("device size: 0x%x sectors\n", geo.size);
+    trace_logging("-----make orange filesystem-----\n");
+    trace_logging("device size: 0x%x sectors\n", geo.size);
 
     superblock_t sb   = {};
     sb.magic          = MAGIC_V1;
@@ -141,7 +140,7 @@ static void mkfs() {
     memcpy(fsbuf, &sb, SUPER_BLOCK_SIZE);
     WR_SECT(orange_dev, 1, fsbuf);
 
-    uart_kprintf(
+    trace_logging(
         "orange geometry {\n"
         "  device base: 0x%x00,\n"
         "  superbock: 0x%x00,\n"

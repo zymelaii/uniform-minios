@@ -3,16 +3,6 @@
 #include <stdint.h>
 
 /**
- * fs_const.h
- * This file contains consts and macros associated with filesystem.
- * The code is added by zcr, and the file is added by xw. 18/6/17
- */
-
-/* TTY */
-#define NR_CONSOLES 3 /* consoles */
-
-// mainly used in filesystem. added by xw, 18/8/27
-/**
  * MESSAGE mechanism is borrowed from MINIX
  */
 struct mess1 {

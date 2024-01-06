@@ -1,11 +1,12 @@
 #include <unios/syscall.h>
 #include <unios/malloc.h>
 #include <unios/global.h>
-#include <unios/const.h>
 #include <unios/proc.h>
 #include <unios/proto.h>
 #include <unios/fs_const.h>
 #include <unios/hd.h>
+#include <unios/layout.h>
+#include <unios/interrupt.h>
 #include <unios/assert.h>
 #include <arch/x86.h>
 #include <stdlib.h>
@@ -67,7 +68,7 @@ void init_hd() {
 }
 
 void hd_open(int drive) {
-    uart_kprintf("-----read hd information-----\n");
+    trace_logging("-----read hd information-----\n");
 
     /* Get the number of drives from the BIOS data area */
     // u8 * pNrDrives = (u8*)(0x475);
@@ -423,11 +424,11 @@ static void print_hdinfo(struct hd_info *hdi) {
     int i;
     for (i = 0; i < NR_PART_PER_DRIVE + 1; i++) {
         if (i == 0) {
-            uart_kprintf("");
+            trace_logging("");
         } else {
-            uart_kprintf("  ");
+            trace_logging("  ");
         }
-        uart_kprintf(
+        trace_logging(
             "PART_%d: base %d, size: %d (in sector)\n",
             i,
             hdi->primary[i].base,
@@ -435,7 +436,7 @@ static void print_hdinfo(struct hd_info *hdi) {
     }
     for (i = 0; i < NR_SUB_PER_DRIVE; i++) {
         if (hdi->logical[i].size == 0) continue;
-        uart_kprintf(
+        trace_logging(
             "    %d: base %d, size %d (in sector)\n",
             i,
             hdi->logical[i].base,
@@ -489,7 +490,7 @@ static void print_identify_info(u16 *hdinfo) {
         {27, 40, "HD Model"}  /* Model number in ASCII */
     };
 
-    uart_kprintf("HD Identity {\n");
+    trace_logging("HD Identity {\n");
 
     for (k = 0; k < sizeof(iinfo) / sizeof(iinfo[0]); k++) {
         char *p = (char *)&hdinfo[iinfo[k].idx];
@@ -498,14 +499,14 @@ static void print_identify_info(u16 *hdinfo) {
             s[i * 2]     = *p++;
         }
         s[i * 2] = 0;
-        uart_kprintf("  %s: %s\n", iinfo[k].desc, s);
+        trace_logging("  %s: %s\n", iinfo[k].desc, s);
     }
 
     int capabilities      = hdinfo[49];
     int cmd_set_supported = hdinfo[83];
     int sectors           = ((int)hdinfo[61] << 16) + hdinfo[60];
 
-    uart_kprintf(
+    trace_logging(
         "  LBA supported: %s\n"
         "  LBA48 supported: %s\n"
         "  HD size: %d MB\n"

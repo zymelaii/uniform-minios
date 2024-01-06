@@ -35,10 +35,11 @@ typedef struct tty_s {
         int off_y;   //<! offset y till last update
     } mouse;
 
-    struct s_console* console;
+    struct console_s* console;
 } tty_t;
 
 void select_console(int nr_console);
 void init_screen(tty_t* tty);
-void out_char(CONSOLE* con, char ch);
-int  is_current_console(CONSOLE* con);
+int  is_current_console(console_t* con);
+
+extern tty_t tty_table[];

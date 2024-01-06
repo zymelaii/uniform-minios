@@ -1,15 +1,11 @@
 ﻿#include <unios/page.h>
 #include <unios/syscall.h>
 #include <unios/assert.h>
-#include <unios/const.h>
 #include <unios/global.h>
+#include <unios/proc.h>
 #include <arch/x86.h>
 #include <string.h>
 #include <stdio.h>
-
-// to determine if a page fault is reparable
-u32 cr2_save;
-u32 cr2_count = 0;
 
 void switch_pde() {
     //! switch the page directory table after schedule() is called
@@ -69,7 +65,7 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
     if ((*pde_ptr & PG_MASK_P) != PG_P) {
         u32 pde_phyaddr = (u32)do_kmalloc_4k();
         assert(pde_phyaddr == pg_frame_phyaddr(pde_phyaddr));
-        memset((void *)K_PHY2LIN(pde_phyaddr), 0, num_4K);
+        memset((void *)K_PHY2LIN(pde_phyaddr), 0, NUM_4K);
         *pde_ptr = pde_phyaddr | pde_attr;
     }
     u32 pde         = *pde_ptr;
@@ -108,7 +104,7 @@ bool pg_map_laddr_range(
     u32 cr3, u32 laddr_base, u32 laddr_limit, u32 pde_attr, u32 pte_attr) {
     laddr_base  = pg_frame_phyaddr(laddr_base);
     laddr_limit = pg_frame_phyaddr(laddr_limit + 0xfff);
-    for (u32 laddr = laddr_base; laddr < laddr_limit; laddr += num_4K) {
+    for (u32 laddr = laddr_base; laddr < laddr_limit; laddr += NUM_4K) {
         bool ok = pg_map_laddr(cr3, laddr, PG_INVALID, pde_attr, pte_attr);
         if (!ok) { return false; }
     }
@@ -134,13 +130,7 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
         cs,
         eflags);
 
-    bool recovery_failed = false;
-    do {
-        if (kernel_initial) {
-            recovery_failed = true;
-            break;
-        }
-
+    if (!kernel_initial) {
         u32  cr3     = p_proc_current->pcb.cr3;
         u32 *pde_ptr = pg_pde_ptr(cr3, cr2);
         u32  pde     = *pde_ptr;
@@ -164,28 +154,12 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
             flag[0][(pte & PG_MASK_US) == PG_U],
             flag[1][(pte & PG_MASK_RW) == PG_RWX],
             flag[2][(pte & PG_MASK_P) == PG_P]);
-
-        const int MAX_RETRIES = 1;
-        if (cr2 != cr2_save) {
-            cr2_save  = cr2;
-            cr2_count = 0;
-        } else if (++cr2_count >= MAX_RETRIES) {
-            recovery_failed = true;
-            break;
-        } else {
-            trace_logging(
-                "%d times retry available\n", MAX_RETRIES - cr2_count);
-        }
-    } while (0);
-
-    if (recovery_failed) { trace_logging("page fault recovery failed\n"); }
+    }
 
     trace_logging("<--- END\n");
 
-    if (recovery_failed) {
-        if (!kernel_initial) { disable_int(); }
-        halt();
-    }
+    if (!kernel_initial) { disable_int(); }
+    halt();
 }
 
 u32 pg_create_and_init() {
@@ -194,7 +168,7 @@ u32 pg_create_and_init() {
     //! non-zero
     assert(cr3 != 0);
     assert(cr3 == pg_frame_phyaddr(cr3));
-    memset((void *)K_PHY2LIN(cr3), 0, num_4K);
+    memset((void *)K_PHY2LIN(cr3), 0, NUM_4K);
 
     //! init kernel memory space
     u32 laddr   = KernelLinBase;
@@ -203,8 +177,8 @@ u32 pg_create_and_init() {
         bool ok = pg_map_laddr(
             cr3, laddr, phyaddr, PG_P | PG_U | PG_RWX, PG_P | PG_S | PG_RWX);
         assert(ok);
-        laddr   += num_4K;
-        phyaddr += num_4K;
+        laddr   += NUM_4K;
+        phyaddr += NUM_4K;
     }
     pg_refresh();
     return cr3;
@@ -214,6 +188,6 @@ void clear_kernel_pagepte_low() {
     u32 page_num = *(u32 *)PageTblNumAddr;
     u32 phyaddr  = KernelPageTblAddr;
     memset((void *)K_PHY2LIN(phyaddr), 0, sizeof(u32) * page_num);
-    memset((void *)K_PHY2LIN(phyaddr + num_4K), 0, num_4K * page_num);
+    memset((void *)K_PHY2LIN(phyaddr + NUM_4K), 0, NUM_4K * page_num);
     pg_refresh();
 }

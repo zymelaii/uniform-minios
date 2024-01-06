@@ -1,13 +1,10 @@
-#include <unios/syscall.h>
-#include <unios/fat32.h>
-#include <unios/const.h>
 #include <unios/proc.h>
-#include <unios/global.h>
-#include <unios/proto.h>
-#include <unios/fs_const.h>
+#include <unios/syscall.h>
 #include <unios/hd.h>
 #include <unios/fs.h>
 #include <unios/fs_misc.h>
+#include <unios/layout.h>
+#include <unios/proto.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -491,7 +488,7 @@ STATE IsFile(PCHAR path, PUINT tag) {
 }
 
 void init_fs_fat() {
-    uart_kprintf("-----initialize fat32 filesystem-----\n");
+    trace_logging("-----initialize fat32 filesystem-----\n");
 
     buf = (u8 *)K_PHY2LIN(do_kmalloc(FSBUF_SIZE));
 
@@ -551,8 +548,8 @@ static void mkfs_fat() {
     driver_msg.PROC_NR = proc2pid(p_proc_current);
     hd_ioctl(&driver_msg);
 
-    uart_kprintf("-----make fat filesystem-----\n");
-    uart_kprintf("device size: 0x%x sectors\n", geo.size);
+    trace_logging("-----make fat filesystem-----\n");
+    trace_logging("device size: 0x%x sectors\n", geo.size);
 
     TotalSectors = geo.size;
 

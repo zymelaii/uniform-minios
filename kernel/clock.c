@@ -1,4 +1,5 @@
 #include <unios/syscall.h>
+#include <unios/proc.h>
 #include <unios/global.h>
 
 void clock_handler(int irq) {
@@ -10,7 +11,7 @@ void clock_handler(int irq) {
      */
     if (kernel_initial == 1) { return; }
     irq = 0;
-    --p_proc_current->pcb.ticks;
+    --p_proc_current->pcb.live_ticks;
     do_wakeup(&ticks);
 }
 

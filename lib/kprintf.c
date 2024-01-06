@@ -2,10 +2,9 @@
 #include <unios/proto.h>
 #include <unios/uart.h>
 #include <unios/spinlock.h>
+#include <unios/vga.h>
 #include <stdarg.h>
 #include <stdio.h>
-
-static spinlock_t trace_lock;
 
 static void kprintfputch(int ch, void *b) {
     vga_write_char(ch, WHITE_CHAR);
@@ -13,7 +12,6 @@ static void kprintfputch(int ch, void *b) {
 
 int vkprintf(const char *fmt, va_list ap) {
     vprintfmt((void *)kprintfputch, NULL, fmt, ap);
-
     return 0;
 }
 
@@ -60,7 +58,6 @@ int trace_logging(const char *fmt, ...) {
     va_start(ap, fmt);
     uart_kprintf("[tick %5d] ", do_get_ticks());
     rc = v_uart_kprintf(fmt, ap);
-    release(&trace_lock);
     va_end(ap);
 
     return rc;

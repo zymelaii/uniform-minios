@@ -1,8 +1,4 @@
-/**
- * fs_misc.h
- * This file contains miscellaneous defines and declarations associated with
- * filesystem. The code is added by zcr, and the file is added by xw. 18/6/17
- */
+#pragma once
 
 #include <stdint.h>
 #include <limits.h>

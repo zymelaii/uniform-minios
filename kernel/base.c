@@ -1,13 +1,10 @@
-#include <unios/const.h>
-#include <unios/fat32.h>
-#include <unios/proc.h>
-#include <unios/global.h>
-#include <unios/proto.h>
+#include <unios/fs_misc.h>
+#include <unios/fs.h>
 #include <unios/fs_const.h>
 #include <unios/hd.h>
-#include <unios/fs.h>
-#include <unios/fs_misc.h>
+#include <unios/proc.h>
 #include <unios/syscall.h>
+#include <unios/layout.h>
 #include <string.h>
 
 DWORD FAT_END = 268435455; // 文件簇号结束标记

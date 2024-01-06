@@ -1,7 +1,6 @@
 ﻿#include <unios/syscall.h>
 #include <unios/malloc.h>
 #include <unios/page.h>
-#include <unios/const.h>
 #include <unios/proc.h>
 #include <unios/global.h>
 #include <unios/proto.h>
@@ -29,11 +28,11 @@ static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
             pg_pte(pg_pde(cr3_ppid, laddr_share), laddr_share), laddr_share));
         bool ok = pg_map_laddr(cr3_ppid, laddr_share, PG_INVALID, attr, attr);
         pg_refresh();
-        memcpy((void*)laddr_share, (void*)pg_frame_phyaddr(laddr), num_4K);
+        memcpy((void*)laddr_share, (void*)pg_frame_phyaddr(laddr), NUM_4K);
         u32 phyaddr = pg_laddr_phyaddr(cr3_ppid, laddr_share);
         ok          = pg_map_laddr(cr3_pid, laddr, phyaddr, attr, attr);
         assert(ok);
-        laddr = pg_frame_phyaddr(laddr) + num_4K;
+        laddr = pg_frame_phyaddr(laddr) + NUM_4K;
         ok    = pg_unmap_laddr(cr3_ppid, laddr_share, false);
         assert(ok);
     }
@@ -41,30 +40,29 @@ static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
 
 static int fork_update_proc_info(PROCESS* p_child) {
     //! update parent
-    int child_index = p_proc_current->pcb.info.child_p_num;
-    ++p_proc_current->pcb.info.child_p_num;
-    p_proc_current->pcb.info.child_process[child_index] = p_child->pcb.pid;
+    int child_index = p_proc_current->pcb.tree_info.child_p_num;
+    ++p_proc_current->pcb.tree_info.child_p_num;
+    p_proc_current->pcb.tree_info.child_process[child_index] = p_child->pcb.pid;
 
     //! update child
-    p_child->pcb.info.type = p_proc_current->pcb.info.type;
+    p_child->pcb.tree_info.type = p_proc_current->pcb.tree_info.type;
     //! parent creator (may be outdated)
-    p_child->pcb.info.real_ppid   = p_proc_current->pcb.pid;
-    p_child->pcb.info.ppid        = p_proc_current->pcb.pid;
-    p_child->pcb.info.child_p_num = 0;
-    p_child->pcb.info.child_t_num = 0;
-    p_child->pcb.info.text_hold   = false;
-    p_child->pcb.info.data_hold   = true;
+    p_child->pcb.tree_info.real_ppid   = p_proc_current->pcb.pid;
+    p_child->pcb.tree_info.ppid        = p_proc_current->pcb.pid;
+    p_child->pcb.tree_info.child_p_num = 0;
+    p_child->pcb.tree_info.child_t_num = 0;
+    p_child->pcb.tree_info.text_hold   = false;
+    p_child->pcb.tree_info.data_hold   = true;
 
     return 0;
 }
 
 static int fork_memory_clone(u32 ppid, u32 pid) {
-    LIN_MEMMAP* memmap = &p_proc_current->pcb.memmap;
-    PH_INFO*    ph_ptr = memmap->ph_info;
+    lin_memmap_t* memmap = &p_proc_current->pcb.memmap;
+    ph_info_t*    ph_ptr = memmap->ph_info;
     //! clone elf part
     while (ph_ptr != NULL) {
-        fork_clone_part_rwx(
-            ppid, pid, ph_ptr->lin_addr_base, ph_ptr->lin_addr_limit);
+        fork_clone_part_rwx(ppid, pid, ph_ptr->base, ph_ptr->limit);
         ph_ptr = ph_ptr->next;
     }
 
@@ -110,13 +108,14 @@ static int fork_pcb_clone(PROCESS* p_child) {
     p_child->pcb.stat = IDLE;
     memcpy(frame, parent_frame, P_STACKTOP);
 
-    LIN_MEMMAP* memmap = &p_child->pcb.memmap;
-    PH_INFO*    ph_ptr = p_proc_current->pcb.memmap.ph_info;
-    memmap->ph_info    = NULL;
+    lin_memmap_t* memmap = &p_child->pcb.memmap;
+    ph_info_t*    ph_ptr = p_proc_current->pcb.memmap.ph_info;
+    memmap->ph_info      = NULL;
     while (ph_ptr != NULL) {
-        PH_INFO* new_ph_info = (PH_INFO*)K_PHY2LIN(do_kmalloc(sizeof(PH_INFO)));
-        new_ph_info->lin_addr_base  = ph_ptr->lin_addr_base;
-        new_ph_info->lin_addr_limit = ph_ptr->lin_addr_limit;
+        ph_info_t* new_ph_info =
+            (ph_info_t*)K_PHY2LIN(do_kmalloc(sizeof(ph_info_t)));
+        new_ph_info->base  = ph_ptr->base;
+        new_ph_info->limit = ph_ptr->limit;
         if (memmap->ph_info == NULL) {
             new_ph_info->next   = NULL;
             new_ph_info->before = NULL;
@@ -158,7 +157,7 @@ int do_fork() {
     fork_update_proc_info(p_child);
 
     //! TODO: modify forked proc name
-    strcpy(p_child->pcb.p_name, "fork");
+    strcpy(p_child->pcb.name, "fork");
 
     //! first frame point in child stack
     u32* frame            = (void*)(p_child + 1) - P_STACKTOP;

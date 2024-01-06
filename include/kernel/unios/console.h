@@ -1,30 +1,21 @@
 #pragma once
 
-#include "const.h"
+#include <stddef.h>
+#include <stdbool.h>
 
-/* CONSOLE */
-typedef struct s_console {
-    unsigned int crtc_start; /* set CRTC start addr reg */
-    unsigned int orig;       /* start addr of the console */
-    unsigned int con_size;   /* how many words does the console have */
-    unsigned int cursor;
-    int          is_full;
-    unsigned int current_line;
-} CONSOLE;
+#define SCROLL_UP   (+1)
+#define SCROLL_DOWN (-1)
 
-#define SCR_UP 1  /* scroll upward */
-#define SCR_DN -1 /* scroll downward */
+typedef struct console_s {
+    uintptr_t crtc_start; //<! set CRTC start addr reg
+    uintptr_t orig;       //<! start addr of the console
+    size_t    con_size;   //<! how many words does the console have
+    bool      is_full;
+    int       cursor;
+    int       current_line;
+} console_t;
 
-#define SCR_WIDTH   80
-#define SCR_HEIGHT  25
-#define SCR_SIZE    (SCR_HEIGHT * SCR_WIDTH)
-#define SCR_BUFSIZE (2 * SCR_SIZE)
-#define SCR_MAXLINE (SCR_BUFSIZE / SCR_WIDTH)
+extern int       current_console;
+extern console_t console_table[];
 
-#define FLASH_CHAR         0x8000
-#define DEFAULT_CHAR_COLOR ((MAKE_COLOR(BLACK, WHITE | BRIGHT)) << 8)
-#define GRAY_CHAR          (MAKE_COLOR(BLACK, BLACK) | BRIGHT)
-#define RED_CHAR           (MAKE_COLOR(BLUE, RED) | BRIGHT)
-#define WHITE_CHAR         (MAKE_COLOR(BLACK, WHITE | BRIGHT))
-#define MAKE_CELL(clr, ch) (clr | ch)
-#define BLANK              MAKE_CELL(DEFAULT_CHAR_COLOR, ' ')
+void out_char(console_t* con, char ch);

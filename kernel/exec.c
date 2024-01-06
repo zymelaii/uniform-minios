@@ -1,11 +1,9 @@
-﻿#include <unios/syscall.h>
-#include <unios/page.h>
+﻿#include <unios/page.h>
 #include <unios/elf.h>
-#include <unios/assert.h>
 #include <unios/proc.h>
-#include <unios/global.h>
-#include <unios/const.h>
-#include <unios/proto.h>
+#include <unios/syscall.h>
+#include <unios/assert.h>
+#include <unios/layout.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -34,17 +32,17 @@ static u32 exec_load(
     u32 fd, const Elf32_Ehdr* elf_header, const Elf32_Phdr* elf_proghs) {
     assert(elf_header->e_phnum > 0);
 
-    LIN_MEMMAP* memmap = &p_proc_current->pcb.memmap;
-    u32         cr3    = p_proc_current->pcb.cr3;
+    lin_memmap_t* memmap = &p_proc_current->pcb.memmap;
+    u32           cr3    = p_proc_current->pcb.cr3;
     //! cleanup old ph info
-    PH_INFO* ph_info = memmap->ph_info;
+    ph_info_t* ph_info = memmap->ph_info;
     while (ph_info != NULL) {
-        PH_INFO* next  = ph_info->next;
-        u32      laddr = ph_info->lin_addr_base;
-        u32      limit = ph_info->lin_addr_limit;
+        ph_info_t* next  = ph_info->next;
+        u32        laddr = ph_info->base;
+        u32        limit = ph_info->limit;
         while (laddr < limit) {
             pg_unmap_laddr(cr3, laddr, true);
-            laddr = pg_frame_phyaddr(laddr) + num_4K;
+            laddr = pg_frame_phyaddr(laddr) + NUM_4K;
         }
         do_free((void*)K_LIN2PHY((u32)ph_info));
         ph_info = next;
@@ -77,9 +75,9 @@ static u32 exec_load(
 
         //! maintenance ph info list
         //! TODO: integrate linked-list ops
-        PH_INFO* new_ph_info       = K_PHY2LIN(do_kmalloc(sizeof(PH_INFO)));
-        new_ph_info->lin_addr_base = elf_proghs[ph_num].p_vaddr;
-        new_ph_info->lin_addr_limit =
+        ph_info_t* new_ph_info = K_PHY2LIN(do_kmalloc(sizeof(ph_info_t)));
+        new_ph_info->base      = elf_proghs[ph_num].p_vaddr;
+        new_ph_info->limit =
             elf_proghs[ph_num].p_vaddr + elf_proghs[ph_num].p_memsz;
         if (memmap->ph_info == NULL) {
             new_ph_info->next   = NULL;
@@ -96,29 +94,27 @@ static u32 exec_load(
     return 0;
 }
 
-static int exec_pcb_init(char* path) {
+static int exec_pcb_init(const char* path) {
     char* p_regs;
     strncpy(
-        p_proc_current->pcb.p_name,
-        path,
-        sizeof(p_proc_current->pcb.p_name) - 1);
+        p_proc_current->pcb.name, path, sizeof(p_proc_current->pcb.name) - 1);
 
     pcb_t* task         = &p_proc_current->pcb;
     task->stat          = READY;
-    task->ldts[0].attr1 = DA_C | PRIVILEGE_USER << 5;
-    task->ldts[1].attr1 = DA_DRW | PRIVILEGE_USER << 5;
-    task->regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    task->regs.ds = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    task->regs.es = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    task->regs.fs = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    task->regs.ss = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    task->regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
+    task->ldts[0].attr0 = DA_C | RPL_USER << 5;
+    task->ldts[1].attr0 = DA_DRW | RPL_USER << 5;
+    task->regs.cs = ((8 * 0) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    task->regs.ds = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    task->regs.es = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    task->regs.fs = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    task->regs.ss = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    task->regs.gs = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | RPL_USER;
     task->regs.eflags = 0x202; //<! IF=1 bit2 is always 1
 
     u32* frame = (void*)(p_proc_current + 1) - P_STACKTOP;
     memcpy(frame, &task->regs, sizeof(task->regs));
 
-    LIN_MEMMAP* memmap        = &p_proc_current->pcb.memmap;
+    lin_memmap_t* memmap      = &p_proc_current->pcb.memmap;
     memmap->vpage_lin_base    = VpageLinBase;
     memmap->vpage_lin_limit   = VpageLinBase;
     memmap->heap_lin_base     = HeapLinBase;
@@ -131,8 +127,8 @@ static int exec_pcb_init(char* path) {
     memmap->kernel_lin_base   = KernelLinBase;
     memmap->kernel_lin_limit  = KernelLinBase + KernelSize;
 
-    p_proc_current->pcb.info.text_hold = 1;
-    p_proc_current->pcb.info.data_hold = 1;
+    p_proc_current->pcb.tree_info.text_hold = 1;
+    p_proc_current->pcb.tree_info.data_hold = 1;
 
     return 0;
 }
@@ -168,7 +164,7 @@ static int open_first_executable(const char* path) {
     return -1;
 }
 
-int do_exec(char* path) {
+int do_execve(const char* path, char* const* argv, char* const* envp) {
     assert(path != NULL);
     u32 fd = open_first_executable(path);
     if (fd == -1) {
@@ -200,14 +196,8 @@ int do_exec(char* path) {
 
     exec_pcb_init(path);
 
-    LIN_MEMMAP* memmap           = &p_proc_current->pcb.memmap;
-    u32*        frame            = (void*)(p_proc_current + 1) - P_STACKTOP;
-    p_proc_current->pcb.regs.eip = elf_header->e_entry;
-    p_proc_current->pcb.regs.esp = memmap->stack_lin_base;
-    frame[NR_EIPREG]             = p_proc_current->pcb.regs.eip;
-    frame[NR_ESPREG]             = p_proc_current->pcb.regs.esp;
-
-    bool ok = pg_map_laddr_range(
+    lin_memmap_t* memmap = &p_proc_current->pcb.memmap;
+    bool          ok     = pg_map_laddr_range(
         p_proc_current->pcb.cr3,
         memmap->stack_lin_limit,
         memmap->stack_lin_base,
@@ -217,6 +207,16 @@ int do_exec(char* path) {
     pg_refresh();
 
     //! FIXME: head not allocated yet
+
+    u32* frame                   = (void*)(p_proc_current + 1) - P_STACKTOP;
+    u32* callee_stack            = (u32*)memmap->stack_lin_base;
+    callee_stack[-1]             = (u32)0xcafebabe;
+    callee_stack[-2]             = (u32)0xbaadf00d;
+    callee_stack[-3]             = (u32)1;
+    p_proc_current->pcb.regs.esp = (u32)&callee_stack[-3];
+    p_proc_current->pcb.regs.eip = elf_header->e_entry;
+    frame[NR_EIPREG]             = p_proc_current->pcb.regs.eip;
+    frame[NR_ESPREG]             = p_proc_current->pcb.regs.esp;
 
     do_close(fd);
     do_free((void*)K_LIN2PHY((u32)elf_header));
