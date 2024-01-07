@@ -1,4 +1,5 @@
 #include <sys/defs.h>
+#include <sys/types.h>
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
@@ -182,7 +183,13 @@ bool route(int argc, char *argv[]) {
         exit(0);
         assert(false && "unreachable");
     } else if (strcmp(argv[0], "parse-cmd") == 0) {
-        print_exec_info(argc - 1, argv + 1);
+        --argc;
+        ++argv;
+        if (argc > 0) {
+            print_exec_info(argc, argv);
+        } else {
+            printf("error: expect cmdline\n");
+        }
         return true;
     }
     return false;
@@ -203,9 +210,30 @@ int main(int arg, char *argv[]) {
         if (!ok) { continue; }
 
         ok = route(cmd_argc, cmd_argv);
-        if (!ok && exec(buf) != 0) {
-            printf("unknown command: `%s`\n", cmd_argv[0]);
+        while (!ok) {
+            const u32 ENOTFOUND = 114;
+            pid_t     pid       = fork();
+            if (pid < 0) {
+                printf("warn: pcb res not available\n");
+                ok = true;
+                break;
+            }
+            if (pid == 0) {
+                int errno = exec(buf);
+                assert(errno != 0);
+                exit(ENOTFOUND);
+                assert(false && "unreachable");
+            }
+            int   status     = 0;
+            pid_t waited_pid = wait(&status);
+            assert(waited_pid == pid);
+            if (status != ENOTFOUND) {
+                printf("info: `%s` exit with %d\n", cmd_argv[0], status);
+                ok = true;
+            }
+            break;
         }
+        if (!ok) { printf("unknown command: `%s`\n", cmd_argv[0]); }
 
         int n = arg_free(cmd_argv);
         assert(n == cmd_argc);
