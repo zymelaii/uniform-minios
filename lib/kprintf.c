@@ -56,7 +56,7 @@ int trace_logging(const char *fmt, ...) {
     //! where serial io really works to ensure the exclusive access between
     //! kernel and user prog
     va_start(ap, fmt);
-    uart_kprintf("[tick %5d] ", do_get_ticks());
+    uart_kprintf("[tick %d] ", do_get_ticks());
     rc = v_uart_kprintf(fmt, ap);
     va_end(ap);
 

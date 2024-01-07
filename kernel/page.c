@@ -65,7 +65,7 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
     if ((*pde_ptr & PG_MASK_P) != PG_P) {
         u32 pde_phyaddr = (u32)do_kmalloc_4k();
         assert(pde_phyaddr == pg_frame_phyaddr(pde_phyaddr));
-        memset((void *)K_PHY2LIN(pde_phyaddr), 0, NUM_4K);
+        memset(K_PHY2LIN(pde_phyaddr), 0, NUM_4K);
         *pde_ptr = pde_phyaddr | pde_attr;
     }
     u32 pde         = *pde_ptr;
@@ -168,7 +168,7 @@ u32 pg_create_and_init() {
     //! non-zero
     assert(cr3 != 0);
     assert(cr3 == pg_frame_phyaddr(cr3));
-    memset((void *)K_PHY2LIN(cr3), 0, NUM_4K);
+    memset(K_PHY2LIN(cr3), 0, NUM_4K);
 
     //! init kernel memory space
     u32 laddr   = KernelLinBase;
@@ -187,7 +187,7 @@ u32 pg_create_and_init() {
 void clear_kernel_pagepte_low() {
     u32 page_num = *(u32 *)PageTblNumAddr;
     u32 phyaddr  = KernelPageTblAddr;
-    memset((void *)K_PHY2LIN(phyaddr), 0, sizeof(u32) * page_num);
-    memset((void *)K_PHY2LIN(phyaddr + NUM_4K), 0, NUM_4K * page_num);
+    memset(K_PHY2LIN(phyaddr), 0, sizeof(u32) * page_num);
+    memset(K_PHY2LIN(phyaddr + NUM_4K), 0, NUM_4K * page_num);
     pg_refresh();
 }

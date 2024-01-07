@@ -39,7 +39,6 @@ void init_screen(tty_t* tty) {
     }
 
     vga_set_cursor(con->cursor);
-    trace_logging("tty %d cursor: %d\n", nr_tty, con->cursor);
 }
 
 static void clear_screen(int pos, int len) {

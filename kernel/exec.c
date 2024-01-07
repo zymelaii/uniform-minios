@@ -45,7 +45,7 @@ static u32 exec_load(
             pg_unmap_laddr(cr3, laddr, true);
             laddr = pg_frame_phyaddr(laddr) + NUM_4K;
         }
-        do_free((void*)K_LIN2PHY((u32)ph_info));
+        do_free((void*)K_LIN2PHY(ph_info));
         ph_info = next;
     }
     memmap->ph_info = NULL;
@@ -189,8 +189,8 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
 
     if (exec_load(fd, elf_header, elf_proghs) == -1) {
         do_close(fd);
-        do_free((void*)K_LIN2PHY((u32)elf_header));
-        do_free((void*)K_LIN2PHY((u32)elf_proghs));
+        do_free((void*)K_LIN2PHY(elf_header));
+        do_free((void*)K_LIN2PHY(elf_proghs));
         return -1;
     }
 
@@ -219,8 +219,8 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     frame[NR_ESPREG]             = p_proc_current->pcb.regs.esp;
 
     do_close(fd);
-    do_free((void*)K_LIN2PHY((u32)elf_header));
-    do_free((void*)K_LIN2PHY((u32)elf_proghs));
+    do_free((void*)K_LIN2PHY(elf_header));
+    do_free((void*)K_LIN2PHY(elf_proghs));
     release(&p_proc_current->pcb.p_lock);
     return 0;
 }

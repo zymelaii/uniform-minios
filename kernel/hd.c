@@ -194,7 +194,7 @@ void hd_rdwt_sched(MESSAGE *p) {
     int    size = p->CNT;
     void  *buffer;
 
-    buffer      = (void *)K_PHY2LIN(do_kmalloc(size));
+    buffer      = K_PHY2LIN(do_kmalloc(size));
     rwinfo.msg  = p;
     rwinfo.kbuf = buffer;
     rwinfo.proc = p_proc_current;
@@ -213,7 +213,7 @@ void hd_rdwt_sched(MESSAGE *p) {
         sched();
     }
 
-    do_free((void *)K_PHY2LIN((u32)buffer));
+    do_free((void *)K_LIN2PHY(buffer));
 }
 
 void init_hd_queue(HDQueue *hdq) {

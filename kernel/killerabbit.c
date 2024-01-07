@@ -97,7 +97,7 @@ static void killerabbit_recycle_memory(u32 recy_pid) {
         killerabbit_recycle_part(recy_pid, ph_ptr->base, ph_ptr->limit, true);
         ph_info_t* old_ph_ptr = ph_ptr;
         ph_ptr                = ph_ptr->next;
-        do_free((void*)K_LIN2PHY((u32)old_ph_ptr));
+        do_free((void*)K_LIN2PHY(old_ph_ptr));
     }
     memmap->ph_info = NULL;
     killerabbit_recycle_part(

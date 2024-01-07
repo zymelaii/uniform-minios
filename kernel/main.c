@@ -432,7 +432,7 @@ static int initialize_processes() {
 int kernel_main() {
     //! clear screen
     vga_set_disppos(0);
-    for (int i = 0; i < SCR_WIDTH * SCR_HEIGHT; ++i) { kprintf(" "); }
+    for (int i = 0; i < SCR_HEIGHT; ++i) { vga_flush_blankline(i); }
     vga_set_disppos(0);
 
     int error;
@@ -462,7 +462,7 @@ int kernel_main() {
     *************************************************************************/
     /* initialize 8253 PIT */
     outb(TIMER_MODE, RATE_GENERATOR);
-    outb(TIMER0, (u8)(TIMER_FREQ / HZ));
+    outb(TIMER0, (u8)((TIMER_FREQ / HZ) >> 0));
     outb(TIMER0, (u8)((TIMER_FREQ / HZ) >> 8));
 
     /* initialize clock-irq */

@@ -11,6 +11,7 @@ void vga_set_video_start_addr(u32 addr) {
     outb(CRTC_DATA_REG, (addr >> 8) & 0xff);
     outb(CRTC_ADDR_REG, START_ADDR_L);
     outb(CRTC_DATA_REG, (addr >> 0) & 0xff);
+    while ((inb(0x3da) & 0x8) == 0x8) {}
     enable_int();
 }
 
@@ -20,6 +21,7 @@ void vga_enable_cursor(u8 cur_start, u8 cur_end) {
     outb(CRTC_DATA_REG, (inb(CRTC_DATA_REG) & 0xc0) | cur_start);
     outb(CRTC_ADDR_REG, 0x0b);
     outb(CRTC_DATA_REG, (inb(CRTC_DATA_REG) & 0xe0) | cur_end);
+    while ((inb(0x3da) & 0x8) == 0x8) {}
     enable_int();
 }
 
@@ -27,6 +29,7 @@ void vga_disable_cursor() {
     disable_int();
     outb(CRTC_ADDR_REG, 0x0a);
     outb(CRTC_DATA_REG, 0x20);
+    while ((inb(0x3da) & 0x8) == 0x8) {}
     enable_int();
 }
 
@@ -36,6 +39,7 @@ void vga_set_cursor(u32 pos) {
     outb(CRTC_DATA_REG, (pos >> 8) & 0xff);
     outb(CRTC_ADDR_REG, CURSOR_L);
     outb(CRTC_DATA_REG, (pos >> 0) & 0xff);
+    while ((inb(0x3da) & 0x8) == 0x8) {}
     enable_int();
 }
 

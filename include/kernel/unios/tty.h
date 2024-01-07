@@ -35,7 +35,7 @@ typedef struct tty_s {
         int off_y;   //<! offset y till last update
     } mouse;
 
-    struct console_s* console;
+    console_t* console;
 } tty_t;
 
 void select_console(int nr_console);

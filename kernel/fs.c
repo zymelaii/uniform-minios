@@ -806,7 +806,7 @@ static int do_open(MESSAGE *fs_msg) {
     assert(0 <= fd && fd < NR_FILES);
 
     //! find a free slot in file_desc_table
-    int index = -1;
+    int index = 0;
     while (index < NR_FILE_DESC) {
         if (file_desc_table[index].flag == 0) { break; }
         ++index;

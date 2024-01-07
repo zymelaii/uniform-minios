@@ -59,7 +59,7 @@ static void wait_recycle_memory(u32 recy_pid) {
         wait_recycle_part(recy_pid, ph_ptr->base, ph_ptr->limit, true);
         ph_info_t* old_ph_ptr = ph_ptr;
         ph_ptr                = ph_ptr->next;
-        do_free((void*)K_LIN2PHY((u32)old_ph_ptr));
+        do_free((void*)K_LIN2PHY(old_ph_ptr));
     }
     memmap->ph_info = NULL;
     wait_recycle_part(
