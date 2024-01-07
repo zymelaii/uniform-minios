@@ -1,13 +1,13 @@
 #include <unios/syscall.h>
 #include <unios/malloc.h>
-#include <unios/global.h>
 #include <unios/proc.h>
-#include <unios/proto.h>
 #include <unios/fs_const.h>
 #include <unios/hd.h>
 #include <unios/layout.h>
 #include <unios/interrupt.h>
 #include <unios/assert.h>
+#include <unios/kstate.h>
+#include <unios/scedule.h>
 #include <arch/x86.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -16,13 +16,11 @@
 
 struct part_ent PARTITION_ENTRY;
 
-// added by xw, 18/8/28
 static HDQueue      hdque;
 static volatile int hd_int_waiting_flag;
 static u8           hd_status;
 static u8           hdbuf[SECTOR_SIZE * 2];
-// static	struct hd_info hd_info[1];
-struct hd_info hd_info[1]; // modified by mingxuan 2020-10-27
+hd_info_t           hd_info[1];
 
 static void init_hd_queue(HDQueue *hdq);
 static void in_hd_queue(HDQueue *hdq, RWInfo *p);
@@ -31,7 +29,7 @@ static void hd_rdwt_real(RWInfo *p);
 
 static void get_part_table(int drive, int sect_nr, struct part_ent *entry);
 static void partition(int device, int style);
-static void print_hdinfo(struct hd_info *hdi);
+static void print_hdinfo(hd_info_t *hdi);
 static void hd_identify(int drive);
 static void print_identify_info(u16 *hdinfo);
 static void hd_cmd_out(struct hd_cmd *cmd);
@@ -68,7 +66,7 @@ void init_hd() {
 }
 
 void hd_open(int drive) {
-    trace_logging("-----read hd information-----\n");
+    klog("-----read hd information-----\n");
 
     /* Get the number of drives from the BIOS data area */
     // u8 * pNrDrives = (u8*)(0x475);
@@ -203,14 +201,14 @@ void hd_rdwt_sched(MESSAGE *p) {
         in_hd_queue(&hdque, &rwinfo);
         p_proc_current->pcb.channel = &hdque;
         p_proc_current->pcb.stat    = SLEEPING;
-        sched();
+        schedule();
         memcpy(p->BUF, buffer, p->CNT);
     } else {
         memcpy(buffer, p->BUF, p->CNT);
         in_hd_queue(&hdque, &rwinfo);
         p_proc_current->pcb.channel = &hdque;
         p_proc_current->pcb.stat    = SLEEPING;
-        sched();
+        schedule();
     }
 
     do_free((void *)K_LIN2PHY(buffer));
@@ -256,7 +254,7 @@ void hd_ioctl(MESSAGE *p) {
     int device = p->DEVICE;
     int drive  = DRV_OF_DEV(device);
 
-    struct hd_info *hdi = &hd_info[drive];
+    hd_info_t *hdi = &hd_info[drive];
 
     if (p->REQUEST == DIOCTL_GET_GEO) {
         void *dst = va2la(p->PROC_NR, p->BUF);
@@ -336,9 +334,9 @@ static void
  * @param style  P_PRIMARY or P_EXTENDED.
  *****************************************************************************/
 static void partition(int device, int style) {
-    int             i;
-    int             drive = DRV_OF_DEV(device);
-    struct hd_info *hdi   = &hd_info[drive];
+    int        i;
+    int        drive = DRV_OF_DEV(device);
+    hd_info_t *hdi   = &hd_info[drive];
 
     struct part_ent part_tbl[NR_SUB_PER_DRIVE];
 
@@ -418,17 +416,17 @@ static void partition(int device, int style) {
 /**
  * <Ring 1> Print disk info.
  *
- * @param hdi  Ptr to struct hd_info.
+ * @param hdi  Ptr to hd_info_t.
  *****************************************************************************/
-static void print_hdinfo(struct hd_info *hdi) {
+static void print_hdinfo(hd_info_t *hdi) {
     int i;
     for (i = 0; i < NR_PART_PER_DRIVE + 1; i++) {
         if (i == 0) {
-            trace_logging("");
+            klog("");
         } else {
-            trace_logging("  ");
+            klog("  ");
         }
-        trace_logging(
+        klog(
             "PART_%d: base %d, size: %d (in sector)\n",
             i,
             hdi->primary[i].base,
@@ -436,7 +434,7 @@ static void print_hdinfo(struct hd_info *hdi) {
     }
     for (i = 0; i < NR_SUB_PER_DRIVE; i++) {
         if (hdi->logical[i].size == 0) continue;
-        trace_logging(
+        klog(
             "    %d: base %d, size %d (in sector)\n",
             i,
             hdi->logical[i].base,
@@ -490,7 +488,7 @@ static void print_identify_info(u16 *hdinfo) {
         {27, 40, "HD Model"}  /* Model number in ASCII */
     };
 
-    trace_logging("HD Identity {\n");
+    klog("HD Identity {\n");
 
     for (k = 0; k < sizeof(iinfo) / sizeof(iinfo[0]); k++) {
         char *p = (char *)&hdinfo[iinfo[k].idx];
@@ -499,14 +497,14 @@ static void print_identify_info(u16 *hdinfo) {
             s[i * 2]     = *p++;
         }
         s[i * 2] = 0;
-        trace_logging("  %s: %s\n", iinfo[k].desc, s);
+        klog("  %s: %s\n", iinfo[k].desc, s);
     }
 
     int capabilities      = hdinfo[49];
     int cmd_set_supported = hdinfo[83];
     int sectors           = ((int)hdinfo[61] << 16) + hdinfo[60];
 
-    trace_logging(
+    klog(
         "  LBA supported: %s\n"
         "  LBA48 supported: %s\n"
         "  HD size: %d MB\n"
@@ -600,7 +598,7 @@ static void hd_handler(int irq) {
      * Some operation shouldn't be valid in kernel intializing stage.
      * added by xw, 18/6/1
      */
-    if (kernel_initial == 1) { return; }
+    if (kstate_on_init) { return; }
 
     // some operation only for process
 

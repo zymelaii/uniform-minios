@@ -2,8 +2,6 @@
 #include <unios/proc.h>
 #include <unios/tty.h>
 #include <unios/console.h>
-#include <unios/global.h>
-#include <unios/proto.h>
 #include <unios/keyboard.h>
 #include <unios/keymap.h>
 #include <unios/interrupt.h>

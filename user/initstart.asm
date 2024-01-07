@@ -1,12 +1,12 @@
 extern main
 extern exit
-bits 32
+
+[bits 32]
 
 [section .text]
 
-global _start
-
+    global _start
 _start:
-	call	main
-	push 	eax
-	call 	exit
+    call    main
+    push    eax
+    call    exit

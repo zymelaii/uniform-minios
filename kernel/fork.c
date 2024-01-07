@@ -2,8 +2,6 @@
 #include <unios/malloc.h>
 #include <unios/page.h>
 #include <unios/proc.h>
-#include <unios/global.h>
-#include <unios/proto.h>
 #include <unios/assert.h>
 #include <arch/x86.h>
 #include <stdint.h>
@@ -38,7 +36,7 @@ static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
     }
 }
 
-static int fork_update_proc_info(PROCESS* p_child) {
+static int fork_update_proc_info(process_t* p_child) {
     //! update parent
     int child_index = p_proc_current->pcb.tree_info.child_p_num;
     ++p_proc_current->pcb.tree_info.child_p_num;
@@ -88,7 +86,7 @@ static int fork_memory_clone(u32 ppid, u32 pid) {
     return 0;
 }
 
-static int fork_pcb_clone(PROCESS* p_child) {
+static int fork_pcb_clone(process_t* p_child) {
     //! first frame point in stack
     u32* frame        = (void*)(p_child + 1) - P_STACKTOP;
     u32* parent_frame = (void*)(p_proc_current + 1) - P_STACKTOP;
@@ -143,9 +141,9 @@ static int fork_pcb_clone(PROCESS* p_child) {
 int do_fork() {
     //! FIXME: use lock instead
     disable_int();
-    PROCESS* p_child = alloc_pcb();
+    process_t* p_child = alloc_pcb();
     if (p_child == NULL) {
-        trace_logging(
+        klog(
             "fork failed from pid=%d: pcb res is not available\n",
             p_proc_current->pcb.pid);
         return -1;
@@ -163,8 +161,7 @@ int do_fork() {
     u32* frame            = (void*)(p_child + 1) - P_STACKTOP;
     p_child->pcb.regs.eax = 0;
     //! update retval address in stack to be safe
-    frame[NR_EAXREG] = p_child->pcb.regs.eax;
-    ++u_proc_sum;
+    frame[NR_EAXREG]  = p_child->pcb.regs.eax;
     p_child->pcb.stat = READY;
     //! FIXME: use lock instead (see above)
     enable_int();

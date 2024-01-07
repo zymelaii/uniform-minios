@@ -1,10 +1,9 @@
 #include <unios/assert.h>
 #include <unios/proc.h>
-#include <unios/proto.h>
-#include <unios/global.h>
 #include <unios/spinlock.h>
 #include <unios/page.h>
 #include <unios/syscall.h>
+#include <unios/scedule.h>
 #include <arch/x86.h>
 #include <sys/types.h>
 #include <stdlib.h>
@@ -27,7 +26,7 @@ static void remove_zombie_child(u32 pid) {
         pcb_t* exit_child = (pcb_t*)pid2pcb(pcb->tree_info.child_process[i]);
         assert(!(cpyflg && exit_child->pid == pid));
         if (exit_child->pid == pid) { cpyflg = true; }
-        if (cpyflg == true && i < pcb->tree_info.child_p_num - 1) {
+        if (cpyflg && i < pcb->tree_info.child_p_num - 1) {
             pcb->tree_info.child_process[i] =
                 pcb->tree_info.child_process[i + 1];
         }
@@ -107,7 +106,7 @@ static void wait_reset_child(u32 pid) {
     recy_pcb->regs.eflags = 0x0202;
 
     //! FIXME: rewrite antihuman expresssions as below
-    char* p_regs = (char*)((PROCESS*)recy_pcb + 1);
+    char* p_regs = (char*)((process_t*)recy_pcb + 1);
     p_regs       -= P_STACKTOP;
     memcpy(p_regs, &recy_pcb->regs, P_STACKTOP);
     recy_pcb->esp_save_int     = p_regs;
@@ -132,7 +131,7 @@ int do_wait(int* wstatus) {
         if (exit_pcb == NULL) {
             fa_pcb->stat = SLEEPING;
             release(&fa_pcb->p_lock);
-            sched();
+            schedule();
             continue;
         }
         lock_or_schedule(&exit_pcb->p_lock);
@@ -142,7 +141,6 @@ int do_wait(int* wstatus) {
         wait_recycle_memory(exit_pcb->pid);
         wait_reset_child(exit_pcb->pid);
         int pid = exit_pcb->pid;
-        --u_proc_sum;
         release(&exit_pcb->p_lock);
         release(&fa_pcb->p_lock);
         return pid;

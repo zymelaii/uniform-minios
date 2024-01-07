@@ -1,16 +1,11 @@
 ﻿#include <unios/page.h>
 #include <unios/syscall.h>
 #include <unios/assert.h>
-#include <unios/global.h>
 #include <unios/proc.h>
+#include <unios/kstate.h>
 #include <arch/x86.h>
 #include <string.h>
 #include <stdio.h>
-
-void switch_pde() {
-    //! switch the page directory table after schedule() is called
-    cr3_ready = p_proc_current->pcb.cr3;
-}
 
 bool pg_free_pde(u32 cr3) {
     assert(cr3 != 0);
@@ -118,10 +113,10 @@ void pg_refresh() {
 void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
     u32 cr2 = rcr2();
 
-    trace_logging("BEGIN --> trigger page fault\n");
-    if (kernel_initial) { trace_logging("during initializing kernel\n"); }
+    klog("BEGIN --> trigger page fault\n");
+    if (kstate_on_init) { klog("during initializing kernel\n"); }
 
-    trace_logging(
+    klog(
         "pid[%d]: eip=0x%08x cr2=0x%08x code=%x cs=0x%08x eflags=0x%04x\n",
         p_proc_current->pcb.pid,
         eip,
@@ -130,7 +125,7 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
         cs,
         eflags);
 
-    if (!kernel_initial) {
+    if (!kstate_on_init) {
         u32  cr3     = p_proc_current->pcb.cr3;
         u32 *pde_ptr = pg_pde_ptr(cr3, cr2);
         u32  pde     = *pde_ptr;
@@ -142,7 +137,7 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
             {"RX", "RWX"},
             {"S",  "U"  },
         };
-        trace_logging(
+        klog(
             "cr3=0x%08x pde=0x%08x { %s | %s | %s } pte=0x%08x { %s | %s | %s "
             "}\n",
             p_proc_current->pcb.cr3,
@@ -156,9 +151,9 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
             flag[2][(pte & PG_MASK_P) == PG_P]);
     }
 
-    trace_logging("<--- END\n");
+    klog("<--- END\n");
 
-    if (!kernel_initial) { disable_int(); }
+    if (!kstate_on_init) { disable_int(); }
     halt();
 }
 

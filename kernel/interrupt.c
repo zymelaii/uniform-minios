@@ -1,5 +1,4 @@
 #include <unios/interrupt.h>
-#include <unios/global.h>
 #include <unios/proc.h>
 #include <arch/x86.h>
 #include <stdio.h>
@@ -53,7 +52,7 @@ void init_interrupt_controller() {
     outb(INT_S_CTLMASK, 0x1);
 
     //! OCW1: ints barrier
-    //! NOTE: allow all interrupts
+    //! NOTE: barrier all interrupts
     outb(INT_M_CTLMASK, 0xff);
     outb(INT_S_CTLMASK, 0xff);
 
@@ -79,7 +78,7 @@ void disable_irq(int irq) {
 }
 
 void spurious_irq(int irq) {
-    trace_logging("spurious_irq: %d\n", irq);
+    klog("spurious_irq: %d\n", irq);
 }
 
 void put_irq_handler(int irq, irq_handler_t handler) {
@@ -88,7 +87,7 @@ void put_irq_handler(int irq, irq_handler_t handler) {
 }
 
 void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags) {
-    trace_logging(
+    klog(
         "[Exception %s] eip=%08x eflags=0x%x cs=0x%x err_code=%d from "
         "pid=%d\n",
         int_str_table[vec_no],

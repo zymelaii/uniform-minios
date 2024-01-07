@@ -4,9 +4,10 @@
 #include <unios/fs.h>
 #include <unios/fs_misc.h>
 #include <unios/layout.h>
-#include <unios/proto.h>
 #include <stdio.h>
 #include <string.h>
+
+u32 get_arg(void *uesp, int order);
 
 extern DWORD            FAT_END;
 extern DWORD            TotalSectors;
@@ -488,7 +489,7 @@ STATE IsFile(PCHAR path, PUINT tag) {
 }
 
 void init_fs_fat() {
-    trace_logging("-----initialize fat32 filesystem-----\n");
+    klog("-----initialize fat32 filesystem-----\n");
 
     buf = (u8 *)K_PHY2LIN(do_kmalloc(FSBUF_SIZE));
 
@@ -548,8 +549,8 @@ static void mkfs_fat() {
     driver_msg.PROC_NR = proc2pid(p_proc_current);
     hd_ioctl(&driver_msg);
 
-    trace_logging("-----make fat filesystem-----\n");
-    trace_logging("device size: 0x%x sectors\n", geo.size);
+    klog("-----make fat filesystem-----\n");
+    klog("device size: 0x%x sectors\n", geo.size);
 
     TotalSectors = geo.size;
 
@@ -822,18 +823,18 @@ int do_ListDir(void *uesp) {
 
 void DisErrorInfo(STATE state) {
     if (state == SYSERROR) {
-        trace_logging("          system error\n");
+        klog("          system error\n");
     } else if (state == VDISKERROR) {
-        trace_logging("          disk error\n");
+        klog("          disk error\n");
     } else if (state == INSUFFICIENTSPACE) {
-        trace_logging("          no much space\n");
+        klog("          no much space\n");
     } else if (state == WRONGPATH) {
-        trace_logging("          path error\n");
+        klog("          path error\n");
     } else if (state == NAMEEXIST) {
-        trace_logging("          name exists\n");
+        klog("          name exists\n");
     } else if (state == ACCESSDENIED) {
-        trace_logging("          deny access\n");
+        klog("          deny access\n");
     } else {
-        trace_logging("          unknown error\n");
+        klog("          unknown error\n");
     }
 }

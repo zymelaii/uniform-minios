@@ -1,9 +1,11 @@
 #include <unios/vfs.h>
+#include <unios/proc.h>
 #include <unios/fs_const.h>
 #include <unios/fs.h>
+#include <unios/hd.h>
 #include <unios/assert.h>
-#include <unios/global.h>
-#include <unios/proto.h>
+#include <unios/syscall.h>
+#include <unios/layout.h>
 #include <sys/defs.h>
 #include <stdio.h>
 #include <string.h>
@@ -117,16 +119,18 @@ static int get_next_dev_nr() {
 }
 
 static void init_vfs_table() {
-    //! FIXME: minios doesn't support strdup yet, use literal instead
-    //! FIXME: should i use the absolute path or dev name only?
-    const char *tty_name_list[NR_TTY] = {
-        "/dev_tty0",
-        "/dev_tty1",
-        "/dev_tty2",
-    };
+    //! NOTE: init_vfs_table must be called in kernel space
 
+    char buf[PATH_MAX] = {};
     for (int i = 0; i < NR_TTY; ++i) {
-        TTY_VFS(i).name   = tty_name_list[i];
+        snprintf(buf, sizeof(buf), "/dev_tty%d", i);
+        int   n   = strlen(buf);
+        void *ptr = do_kmalloc(n + 1);
+        assert(ptr != NULL);
+        ptr = K_PHY2LIN(ptr);
+        strcpy(ptr, buf);
+        //! FIXME: memory leak
+        TTY_VFS(i).name   = ptr;
         TTY_VFS(i).nr_dev = get_next_dev_nr();
         TTY_VFS(i).ops    = &TTY_FS_OP;
         TTY_VFS(i).sb     = &TTY_SUPERBLOCK(i);
@@ -224,7 +228,7 @@ int do_vopen(const char *path, int flags) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        trace_logging("filesystem error: invalid vfs path: %s\n", path);
+        klog("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
 
@@ -237,7 +241,7 @@ int do_vopen(const char *path, int flags) {
     if (fd != -1) {
         p_proc_current->pcb.filp[fd]->dev_index = index;
     } else {
-        trace_logging("filesystem error: invalid path: %s\n", path);
+        klog("filesystem error: invalid path: %s\n", path);
     }
 
     return fd;
@@ -287,7 +291,7 @@ int do_vunlink(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        trace_logging("filesystem error: invalid vfs path: %s\n", path);
+        klog("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
     return vfs_table[index].ops->unlink(relpath);
@@ -304,7 +308,7 @@ int do_vcreate(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        trace_logging("filesystem error: invalid vfs path: %s\n", path);
+        klog("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
     return vfs_table[index].ops->create(relpath);
@@ -314,7 +318,7 @@ int do_vdelete(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        trace_logging("filesystem error: invalid vfs path: %s\n", path);
+        klog("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
     return vfs_table[index].ops->delete (relpath);
@@ -324,7 +328,7 @@ int do_vopendir(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        trace_logging("filesystem error: invalid vfs path: %s\n", path);
+        klog("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
     return vfs_table[index].ops->opendir(relpath);
@@ -334,7 +338,7 @@ int do_vcreatedir(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        trace_logging("filesystem error: invalid vfs path: %s\n", path);
+        klog("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
     return vfs_table[index].ops->createdir(relpath);
@@ -344,7 +348,7 @@ int do_vdeletedir(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) {
-        trace_logging("filesystem error: invalid vfs path: %s\n", path);
+        klog("filesystem error: invalid vfs path: %s\n", path);
         return -1;
     }
     return vfs_table[index].ops->deletedir(relpath);

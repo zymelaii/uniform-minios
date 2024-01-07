@@ -1,12 +1,14 @@
 #pragma once
 
 #include <unios/fs_misc.h>
+#include <unios/protect.h>
+#include <unios/layout.h>
 #include <sys/types.h>
 #include <stdint.h>
-#include "protect.h"
 
-// new kernel stack is 8kB
-#define INIT_STACK_SIZE 1024 * 8
+// new kernel stack is 8 KB
+#define INIT_STACK_SIZE (8 * NUM_1K)
+#define STACK_SIZE_TASK NUM_4K
 
 #define NR_GSREG        0
 #define NR_FSREG        (NR_GSREG + 1)
@@ -145,8 +147,8 @@ typedef struct pcb_s {
     char* esp_save_context;
 
     //! if non-zero, sleeping on channel, which is a pointer of the target field
-    //! for example, as for syscall sleep(int n), the target field is 'ticks',
-    //! and the channel is a pointer of 'ticks'.
+    //! for example, as for syscall sleep(int n), the target field is
+    //! 'system_ticks', and the channel is a pointer of 'system_ticks'.
     void*        channel;
     lin_memmap_t memmap;
 
@@ -160,31 +162,33 @@ typedef struct pcb_s {
     enum process_stat stat;
     u32               cr3;
 
-    struct file_desc* filp[NR_FILES];
-    u32               p_lock;
-    u32               p_exitcode;
+    file_desc_t* filp[NR_FILES];
+    u32          p_lock;
+    u32          p_exitcode;
 } pcb_t;
 
-// new PROCESS struct with PCB and process's kernel stack
-typedef union task_union {
+// new process_t struct with PCB and process's kernel stack
+typedef union {
     pcb_t pcb;
     char  stack[INIT_STACK_SIZE / sizeof(char)];
-} PROCESS;
+} process_t;
 
 typedef struct task_s {
     task_handler_t initial_eip;
     int            stacksize;
     char           name[32];
-} TASK;
+} task_t;
 
-#define STACK_SIZE_TASK 0x1000
+process_t* alloc_pcb();
+void       free_pcb(process_t* p);
+int        ldt_seg_linear(process_t* p, int idx);
+void*      va2la(int pid, void* va);
+process_t* pid2pcb(int pid);
+int        proc2pid(process_t* proc);
 
-extern tss_t    tss;
-extern PROCESS* p_proc_current;
-extern PROCESS* p_proc_next;
-extern PROCESS  cpu_table[];
-extern PROCESS  proc_table[];
-extern TASK     task_table[];
-
-PROCESS* pid2pcb(int pid);
-int      proc2pid(PROCESS* proc);
+extern tss_t      tss;
+extern process_t* p_proc_current;
+extern process_t* p_proc_next;
+extern process_t  cpu_table[];
+extern process_t  proc_table[];
+extern task_t     task_table[];

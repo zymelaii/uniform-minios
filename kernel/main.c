@@ -1,11 +1,9 @@
 #include <unios/vfs.h>
-#include <unios/proto.h>
 #include <unios/protect.h>
 #include <unios/proc.h>
 #include <unios/page.h>
 #include <unios/malloc.h>
 #include <unios/hd.h>
-#include <unios/global.h>
 #include <unios/fs.h>
 #include <unios/interrupt.h>
 #include <unios/vga.h>
@@ -14,12 +12,18 @@
 #include <unios/keyboard.h>
 #include <unios/console.h>
 #include <unios/assert.h>
+#include <unios/clock.h>
+#include <unios/scedule.h>
+#include <unios/kstate.h>
+#include <arch/x86.h>
 #include <sys/types.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <arch/x86.h>
+
+extern void clear_kernel_pagepte_low();
+extern void initial();
 
 /*************************************************************************
 return 0 if there is no error, or return -1.
@@ -37,11 +41,11 @@ return 0 if there is no error, or return -1.
 moved from kernel_main() by xw, 18/5/26
 ***************************************************************************/
 static int initialize_processes() {
-    TASK*    p_task       = task_table;
-    PROCESS* p_proc       = proc_table;
-    u16      selector_ldt = SELECTOR_LDT_FIRST;
-    char*    p_regs; // point to registers in the new kernel stack, added by xw,
-                     // 17/12/11
+    task_t*    p_task       = task_table;
+    process_t* p_proc       = proc_table;
+    u16        selector_ldt = SELECTOR_LDT_FIRST;
+    char* p_regs; // point to registers in the new kernel stack, added by xw,
+                  // 17/12/11
     task_handler_t eip_context; // a funtion pointer, added by xw, 18/4/18
     /*************************************************************************
      *进程初始化部分 	edit by visual 2016.5.4
@@ -148,7 +152,7 @@ static int initialize_processes() {
         p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
-                      // sched() will fetch value from esp_save_context
+                      // schedule() will fetch value from esp_save_context
         eip_context = restart_restore;
         *(u32*)(p_regs - 4) =
             (u32)eip_context; // initialize EIP in the context, so the process
@@ -216,7 +220,7 @@ static int initialize_processes() {
         p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
-                      // sched() will fetch value from esp_save_context
+                      // schedule() will fetch value from esp_save_context
         eip_context = restart_restore;
         *(u32*)(p_regs - 4) =
             (u32)eip_context; // initialize EIP in the context, so the process
@@ -327,7 +331,7 @@ static int initialize_processes() {
         p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
-                      // sched() will fetch value from esp_save_context
+                      // schedule() will fetch value from esp_save_context
         eip_context = restart_restore;
         *(u32*)(p_regs - 4) =
             (u32)eip_context; // initialize EIP in the context, so the process
@@ -394,7 +398,7 @@ static int initialize_processes() {
         p_proc->pcb.esp_save_context =
             p_regs
             - 10 * 4; // when the process is chosen to run for the first time,
-                      // sched() will fetch value from esp_save_context
+                      // schedule() will fetch value from esp_save_context
         eip_context = restart_restore;
         *(u32*)(p_regs - 4) =
             (u32)eip_context; // initialize EIP in the context, so the process
@@ -426,9 +430,6 @@ static int initialize_processes() {
     return 0;
 }
 
-/*======================================================================*
-                            kernel_main
- *======================================================================*/
 int kernel_main() {
     //! clear screen
     vga_set_disppos(0);
@@ -437,80 +438,40 @@ int kernel_main() {
 
     int error;
     clear_kernel_pagepte_low();
-    trace_logging("-----Kernel Initialization Begins-----\n");
-    kernel_initial = 1; // kernel is in initial state. added by xw, 18/5/31
+    klog("-----Kernel Initialization Begins-----\n");
+    kstate_on_init = true;
 
-    init_mem(); // 内存管理模块的初始化  add by liang
-    trace_logging("-----mem module init done-----\n");
+    init_mem();
+    klog("-----mem module init done-----\n");
 
-    // initialize PCBs, added by xw, 18/5/26
     error = initialize_processes();
-    if (error != 0) return error;
+    if (error != 0) { return error; }
 
-    // initialize CPUs, added by xw, 18/6/2
     error = initialize_cpus();
-    if (error != 0) return error;
+    if (error != 0) { return error; }
 
-    k_reenter = 0; // record nest level of only interruption! it's different
-                   // from Orange's. usage modified by xw
-    ticks          = 0; // initialize system-wide ticks
+    //! record nest level of only interruption
+    kstate_reenter_cntr = 0;
+
+    //! WARNING: important assignment! do not remove this!
     p_proc_current = cpu_table;
 
-    /************************************************************************
-    *device initialization
-    added by xw, 18/6/4
-    *************************************************************************/
-    /* initialize 8253 PIT */
-    outb(TIMER_MODE, RATE_GENERATOR);
-    outb(TIMER0, (u8)((TIMER_FREQ / HZ) >> 0));
-    outb(TIMER0, (u8)((TIMER_FREQ / HZ) >> 8));
+    init_sysclk();   //<! system clock
+    init_keyboard(); //<! keyboard service
+    init_hd();       //<! hd rdwt service
 
-    /* initialize clock-irq */
-    put_irq_handler(CLOCK_IRQ, clock_handler); /* 设定时钟中断处理程序 */
-    enable_irq(CLOCK_IRQ); /* 让8259A可以接收时钟中断 */
-
-    init_keyboard(); // added by mingxuan 2019-5-19
-
-    /* initialize hd-irq and hd rdwt queue */
-    init_hd();
-
-    /* enable interrupt, we should read information of some devices by
-     * interrupt. Note that you must have initialized all devices ready before
-     * you enable interrupt. added by xw
-     */
+    //! enable ints to allow retrive infos from devices
     enable_int();
-
-    /***********************************************************************
-    open hard disk and initialize file system
-    coded by zcr on 2017.6.10. added by xw, 18/5/31
-    ************************************************************************/
-    // hd_open(MINOR(ROOT_DEV));
-    hd_open(PRIMARY_MASTER); // modified by mingxuan 2020-10-27
-
-    vfs_setup_and_init(); // added by mingxuan 2020-10-30
+    hd_open(PRIMARY_MASTER);
+    vfs_setup_and_init();
     init_fs();
-    init_fs_fat(); // added by mingxuan 2019-5-17
-    // init_vfs();	//added by mingxuan 2019-5-17	//deleted by mingxuan
-    // 2020-10-30
-
-    /*************************************************************************
-     *第一个进程开始启动执行
-     **************************************************************************/
-    /* we don't want interrupt happens before processes run.
-     * added by xw, 18/5/31
-     */
+    init_fs_fat();
     disable_int();
 
-    trace_logging("-----Processes Begin-----\n");
-
-    /* linear address 0~8M will no longer be mapped to physical address 0~8M.
-     * note that disp_xx can't work after this function is invoked until
-     * processes runs. add by visual 2016.5.13; moved by xw, 18/5/30
-     */
-
+    klog("-----Processes Begin-----\n");
     p_proc_current = proc_table;
-    kernel_initial = 0; // kernel initialization is done. added by xw, 18/5/31
-    restart_initial();  // modified by xw, 18/4/19
+    kstate_on_init = false;
 
+    restart_initial();
     panic("unreachable");
 }

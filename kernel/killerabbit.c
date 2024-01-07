@@ -1,10 +1,9 @@
 #include <unios/assert.h>
 #include <unios/proc.h>
-#include <unios/proto.h>
 #include <unios/protect.h>
-#include <unios/global.h>
 #include <unios/spinlock.h>
 #include <unios/page.h>
+#include <unios/scedule.h>
 #include <unios/syscall.h>
 #include <arch/x86.h>
 #include <sys/defs.h>
@@ -65,7 +64,7 @@ static void remove_killed_child(u32 ppid, u32 pid) {
         pcb_t* exit_child = (pcb_t*)pid2pcb(fa_pcb->tree_info.child_process[i]);
         assert(!(cpyflg && exit_child->pid == pid));
         if (exit_child->pid == pid) { cpyflg = true; }
-        if (cpyflg == true && i < fa_pcb->tree_info.child_p_num - 1) {
+        if (cpyflg && i < fa_pcb->tree_info.child_p_num - 1) {
             fa_pcb->tree_info.child_process[i] =
                 fa_pcb->tree_info.child_process[i + 1];
         }
@@ -145,7 +144,7 @@ static void killerabbit_reset_killed(u32 pid) {
     recy_pcb->regs.eflags = 0x0202;
 
     //! FIXME: rewrite antihuman expresssions as below
-    char* p_regs = (char*)((PROCESS*)recy_pcb + 1);
+    char* p_regs = (char*)((process_t*)recy_pcb + 1);
     p_regs       -= P_STACKTOP;
     memcpy(p_regs, &recy_pcb->regs, P_STACKTOP);
     recy_pcb->esp_save_int     = p_regs;
@@ -177,17 +176,17 @@ int do_killerabbit(int pid) {
         if (kill_pcb->stat != SLEEPING && kill_pcb->stat != READY) {
             return -1;
         }
-        if (try_lock(&kill_pcb->p_lock) == true) {
+        if (try_lock(&kill_pcb->p_lock)) {
             fa_pcb = (pcb_t*)pid2pcb(kill_pcb->tree_info.ppid);
-            if (try_lock(&fa_pcb->p_lock) == true) {
+            if (try_lock(&fa_pcb->p_lock)) {
                 break;
             } else {
                 release(&kill_pcb->p_lock);
-                sched();
+                schedule();
                 continue;
             }
         } else {
-            sched();
+            schedule();
         }
     }
     assert(fa_pcb->stat == READY || fa_pcb->stat == SLEEPING);
@@ -205,7 +204,6 @@ int do_killerabbit(int pid) {
     killerabbit_recycle_memory(pid);
     killerabbit_reset_killed(pid);
     fa_pcb->stat = READY;
-    --u_proc_sum;
     release(&kill_pcb->p_lock);
     release(&fa_pcb->p_lock);
     return 0;

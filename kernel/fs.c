@@ -1,13 +1,12 @@
 #include <unios/config.h>
 #include <unios/protect.h>
 #include <unios/proc.h>
-#include <unios/global.h>
 #include <unios/assert.h>
-#include <unios/proto.h>
 #include <unios/fs_const.h>
 #include <unios/hd.h>
 #include <unios/fs.h>
 #include <unios/fs_misc.h>
+#include <unios/tty.h>
 #include <sys/defs.h>
 #include <stdio.h>
 #include <string.h>
@@ -56,7 +55,7 @@ int get_fs_dev(int drive, int fs_type) {
 }
 
 void init_fs() {
-    trace_logging("-----initialize filesystem-----\n");
+    klog("-----initialize filesystem-----\n");
     memset(inode_table, 0, sizeof(inode_table));
     superblock_t *sb = superblock_table;
 
@@ -66,29 +65,17 @@ void init_fs() {
     read_orange_superblock(orange_dev);
     superblock_t *sb_root = get_unique_superblock(orange_dev);
 
-    trace_logging("Superblock Address: 0x%x\n", sb_root);
+    klog("Superblock Address: 0x%x\n", sb_root);
 
     if (sb_root->magic != MAGIC_V1) {
         mkfs();
-        trace_logging("-----make filesystem done-----\n");
+        klog("-----make filesystem done-----\n");
         read_orange_superblock(orange_dev);
     }
 
     root_inode = get_inode(orange_dev, ROOT_INODE);
 }
 
-/*****************************************************************************
- *                                mkfs
- *****************************************************************************/
-/**
- * <Ring 1> Make a available Orange'S FS in the disk. It will
- *          - Write a super block to sector 1.
- *          - Create three special files: dev_tty0, dev_tty1, dev_tty2
- *          - Create the inode map
- *          - Create the sector map
- *          - Create the inodes of the files
- *          - Create `/', the root directory
- *****************************************************************************/
 static void mkfs() {
     int bits_per_sect = SECTOR_SIZE * 8; /* 8 bits per byte */
 
@@ -107,8 +94,8 @@ static void mkfs() {
     msg.PROC_NR     = proc2pid(p_proc_current);
     hd_ioctl(&msg);
 
-    trace_logging("-----make orange filesystem-----\n");
-    trace_logging("device size: 0x%x sectors\n", geo.size);
+    klog("-----make orange filesystem-----\n");
+    klog("device size: 0x%x sectors\n", geo.size);
 
     superblock_t sb   = {};
     sb.magic          = MAGIC_V1;
@@ -140,7 +127,7 @@ static void mkfs() {
     memcpy(fsbuf, &sb, SUPER_BLOCK_SIZE);
     WR_SECT(orange_dev, 1, fsbuf);
 
-    trace_logging(
+    klog(
         "orange geometry {\n"
         "  device base: 0x%x00,\n"
         "  superbock: 0x%x00,\n"
@@ -209,16 +196,13 @@ static void mkfs() {
 
     //! 预定义 5 个文件
     //! 1. 当前目录 .
-    //! 2. TTY0 dev_tty0
-    //! 3. TTY1 dev_tty1
-    //! 4. TTY2 dev_tty2
-    //! 5. app.tar
-    pi->i_size = DIR_ENTRY_SIZE * 5;
+    //! 2. app.tar
+    //! 3~. tty
+    pi->i_size = DIR_ENTRY_SIZE * (2 + NR_CONSOLES);
 
     pi->i_start_sect = sb.n_1st_sect;
     pi->i_nr_sects   = NR_DEFAULT_FILE_SECTS;
 
-    /* inode of `/dev_tty0~2' */
     for (int i = 0; i < NR_CONSOLES; ++i) {
         pi               = (struct inode *)(fsbuf + (INODE_SIZE * (i + 1)));
         pi->i_mode       = I_CHAR_SPECIAL;
@@ -248,7 +232,7 @@ static void mkfs() {
     //! assign dir entry for tty
     for (int i = 0; i < NR_CONSOLES; i++) {
         ++pde;
-        pde->inode_nr = i + 2; /* dev_tty0's inode_nr is 2 */
+        pde->inode_nr = i + 2;
         snprintf(pde->name, sizeof(pde->name), "dev_tty%d", i);
     }
 

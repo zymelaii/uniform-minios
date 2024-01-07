@@ -1,7 +1,7 @@
 #pragma once
 
+#include <unios/console.h>
 #include <stdint.h>
-#include "console.h"
 
 #define TTY_BUFSZ 256 //<! tty buffer size
 
@@ -41,5 +41,11 @@ typedef struct tty_s {
 void select_console(int nr_console);
 void init_screen(tty_t* tty);
 int  is_current_console(console_t* con);
+
+void tty_write(tty_t* tty, char* buf, int len);
+int  tty_read(tty_t* tty, char* buf, int len);
+void tty_keyboard_proc(tty_t* tty, u32 key);
+
+void task_tty();
 
 extern tty_t tty_table[];

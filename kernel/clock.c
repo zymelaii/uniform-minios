@@ -1,20 +1,32 @@
+#include <unios/clock.h>
 #include <unios/syscall.h>
 #include <unios/proc.h>
-#include <unios/global.h>
+#include <unios/interrupt.h>
+#include <unios/kstate.h>
+#include <arch/x86.h>
+#include <sys/defs.h>
+
+int system_ticks;
 
 void clock_handler(int irq) {
-    ++ticks;
-
-    /* There is two stages - in kernel intializing or in process running.
-     * Some operation shouldn't be valid in kernel intializing stage.
-     * added by xw, 18/6/1
-     */
-    if (kernel_initial == 1) { return; }
-    irq = 0;
+    ++system_ticks;
+    if (kstate_on_init) { return; }
     --p_proc_current->pcb.live_ticks;
-    do_wakeup(&ticks);
+    do_wakeup(&system_ticks);
+}
+
+void init_sysclk() {
+    //! use 8253 PIT timer0 as system clock
+    outb(TIMER_MODE, RATE_GENERATOR);
+    outb(TIMER0, (u8)((TIMER_FREQ / SYSCLK_FREQ_HZ) >> 0));
+    outb(TIMER0, (u8)((TIMER_FREQ / SYSCLK_FREQ_HZ) >> 8));
+    system_ticks = 0;
+
+    //! enable clock irq for 8259A
+    put_irq_handler(CLOCK_IRQ, clock_handler);
+    enable_irq(CLOCK_IRQ);
 }
 
 int do_get_ticks() {
-    return ticks;
+    return system_ticks;
 }

@@ -1,7 +1,8 @@
 #pragma once
 
+#include <unios/proc.h>
+#include <unios/fs_const.h>
 #include <stdint.h>
-#include "fs_const.h"
 
 /**
  * @struct part_ent
@@ -260,11 +261,11 @@ typedef struct part_info {
 } part_info_t;
 
 /* main drive struct, one entry per drive */
-struct hd_info {
+typedef struct hd_info_s {
     int              open_cnt;
     struct part_info primary[NR_PRIM_PER_DRIVE]; // NR_PRIM_PER_DRIVE = 5
     struct part_info logical[NR_SUB_PER_DRIVE];  // NR_SUB_PER_DRIVE = 16 *4 =64
-};
+} hd_info_t;
 
 /***************/
 /* DEFINITIONS */
@@ -278,15 +279,10 @@ struct hd_info {
 #define MAKE_DEVICE_REG(lba, drv, lba_highest) \
  (((lba) << 6) | ((drv) << 4) | (lba_highest & 0xF) | 0xA0)
 
-//! NOTE: forward declare `union task_union`, aka `PROCESS`, from proc.h
-//! added by zymelaii, 2023/12/25
-union task_union;
-
-// added by xw, 18/8/26
 typedef struct rdwt_info {
     MESSAGE          *msg;
     void             *kbuf;
-    union task_union *proc;
+    process_t        *proc;
     struct rdwt_info *next;
 } RWInfo;
 
@@ -303,3 +299,5 @@ void hd_service();
 void hd_rdwt(MESSAGE *p);
 void hd_rdwt_sched(MESSAGE *p);
 void hd_ioctl(MESSAGE *p);
+
+extern hd_info_t hd_info[1];

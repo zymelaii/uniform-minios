@@ -1,9 +1,8 @@
 #include <unios/assert.h>
 #include <unios/proc.h>
-#include <unios/proto.h>
-#include <unios/global.h>
 #include <unios/spinlock.h>
 #include <unios/page.h>
+#include <unios/scedule.h>
 #include <arch/x86.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -56,20 +55,14 @@ void do_exit(int exit_code) {
     pcb_t* exit_pcb = NULL;
     pcb_t* fa_pcb   = NULL;
     pcb_t* recy_pcb = (pcb_t*)pid2pcb(NR_RECY_PROC);
-    while (1) {
+
+    while (true) {
         exit_pcb = (pcb_t*)pid2pcb(p_proc_current->pcb.pid);
-        if (try_lock(&exit_pcb->p_lock) == true) {
-            fa_pcb = (pcb_t*)pid2pcb(exit_pcb->tree_info.ppid);
-            if (try_lock(&fa_pcb->p_lock) == true) {
-                break;
-            } else {
-                release(&exit_pcb->p_lock);
-                sched();
-                continue;
-            }
-        } else {
-            sched();
-        }
+        if (!try_lock(&exit_pcb->p_lock)) { schedule(); }
+        fa_pcb = (pcb_t*)pid2pcb(exit_pcb->tree_info.ppid);
+        if (try_lock(&fa_pcb->p_lock)) { break; }
+        release(&exit_pcb->p_lock);
+        schedule();
     }
 
     assert(exit_pcb->tree_info.ppid >= 0 && exit_pcb->tree_info.ppid < NR_PCBS);
@@ -90,5 +83,5 @@ void do_exit(int exit_code) {
     p_proc_current->pcb.p_exitcode = exit_code;
     release(&exit_pcb->p_lock);
     release(&fa_pcb->p_lock);
-    sched();
+    schedule();
 }

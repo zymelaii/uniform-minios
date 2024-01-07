@@ -44,7 +44,8 @@ int printf(const char *fmt, ...);
 
 int vkprintf(const char *fmt, va_list ap);
 int kprintf(const char *fmt, ...);
-int trace_logging(const char *fmt, ...);
+int uart_kprintf(const char *fmt, ...);
+int klog(const char *fmt, ...);
 
 char  getchar();
 char *gets(char *str);

@@ -1,5 +1,4 @@
 #include <unios/syscall.h>
-#include <unios/proto.h>
 #include <unios/uart.h>
 #include <unios/spinlock.h>
 #include <unios/vga.h>
@@ -46,7 +45,7 @@ int uart_kprintf(const char *fmt, ...) {
     return rc;
 }
 
-int trace_logging(const char *fmt, ...) {
+int klog(const char *fmt, ...) {
     va_list ap;
     int     rc;
 

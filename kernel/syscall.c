@@ -1,5 +1,4 @@
 ﻿#include <unios/syscall.h>
-#include <unios/global.h>
 #include <unios/assert.h>
 #include <unios/proc.h>
 #include <sys/types.h>

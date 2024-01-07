@@ -1,6 +1,6 @@
 #pragma once
 
-#define PORT            0x3f8 // COM1
+#define PORT_COM1       0x3f8
 #define SERIAL_BUF_SIZE 256
 
 int  init_serial();

@@ -100,9 +100,9 @@ void init_protect_mode() {
     tss.iobase = sizeof(tss); /* 没有I/O许可位图 */
 
     // 填充 GDT 中进程的 LDT 的描述符
-    int      i;
-    PROCESS* p_proc       = proc_table;
-    u16      selector_ldt = INDEX_LDT_FIRST << 3;
+    int        i;
+    process_t* p_proc       = proc_table;
+    u16        selector_ldt = INDEX_LDT_FIRST << 3;
     for (i = 0; i < NR_PCBS; i++) { // edit by visual 2016.4.5
         init_descriptor(
             &gdt[selector_ldt >> 3],

@@ -3,43 +3,44 @@
 #include <arch/x86.h>
 
 int init_serial() {
-    outb(PORT + 1, 0x00); // Disable all interrupts
-    outb(PORT + 3, 0x80); // Enable DLAB (set baud rate divisor)
-    outb(PORT + 0, 0x03); // Set divisor to 3 (lo byte) 38400 baud
-    outb(PORT + 1, 0x00); //                  (hi byte)
-    outb(PORT + 3, 0x03); // 8 bits, no parity, one stop bit
-    outb(PORT + 2, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
-    outb(PORT + 4, 0x0B); // IRQs enabled, RTS/DSR set
-    outb(PORT + 4, 0x1E); // Set in loopback mode, test the serial chip
-    outb(PORT + 0, 0xAE); // Test serial chip (send byte 0xAE and check if
-                          // serial returns same byte)
+    outb(PORT_COM1 + 1, 0x00); // Disable all interrupts
+    outb(PORT_COM1 + 3, 0x80); // Enable DLAB (set baud rate divisor)
+    outb(PORT_COM1 + 0, 0x03); // Set divisor to 3 (lo byte) 38400 baud
+    outb(PORT_COM1 + 1, 0x00); //                  (hi byte)
+    outb(PORT_COM1 + 3, 0x03); // 8 bits, no parity, one stop bit
+    outb(
+        PORT_COM1 + 2, 0xc7); // Enable FIFO, clear them, with 14-byte threshold
+    outb(PORT_COM1 + 4, 0x0b); // IRQs enabled, RTS/DSR set
+    outb(PORT_COM1 + 4, 0x1e); // Set in loopback mode, test the serial chip
+    outb(PORT_COM1 + 0, 0xae); // Test serial chip (send byte 0xAE and check if
+                               // serial returns same byte)
 
     // Check if serial is faulty (i.e: not same byte as sent)
-    if (inb(PORT + 0) != 0xAE) {
+    if (inb(PORT_COM1 + 0) != 0xae) {
         assert(0);
         return 1;
     }
 
     // If serial is not faulty set it in normal operation mode
     // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
-    outb(PORT + 4, 0x0f);
+    outb(PORT_COM1 + 4, 0x0f);
     return 0;
 }
 
 static inline int is_transmit_empty() {
-    return inb(PORT + 5) & 0x20;
+    return inb(PORT_COM1 + 5) & 0x20;
 }
 
 static inline int serial_received() {
-    return inb(PORT + 5) & 1;
+    return inb(PORT_COM1 + 5) & 1;
 }
 
 char read_serial() {
     while (serial_received() == 0) {}
-    return inb(PORT);
+    return inb(PORT_COM1);
 }
 
 void write_serial(char a) {
     while (is_transmit_empty() == 0) {}
-    outb(PORT, a);
+    outb(PORT_COM1, a);
 }

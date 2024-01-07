@@ -34,28 +34,23 @@
 
 extern cstart
 extern kernel_main
-extern spurious_irq
-extern clock_handler
-extern disp_str
-extern irq_table
-extern schedule
-extern halt
+extern cherry_pick_next_ready_proc
 extern switch_pde
 
 extern gdt_ptr
 extern idt_ptr
 extern p_proc_current
 extern tss
-extern k_reenter
 extern syscall_table
 extern cr3_ready
-extern p_proc_current
 extern p_proc_next
-extern kernel_initial
+extern kstate_reenter_cntr
+extern kstate_on_init
 
 [bits 32]
 
 [section .bss]
+
 StackSpace resb 2 * 1024
 StackTop:       ; used only as irq-stack in minios
 
@@ -63,10 +58,6 @@ KernelStackSpace resb 2 * 1024
 KernelStackTop: ; used as stack of kernel itself
 
 [section .text]
-
-global restart_initial
-global restart_restore
-global sched
 
     global _start
 _start:
@@ -107,7 +98,7 @@ save_exception:
     jmp     [esi + RETADR - P_STACKBASE]
 
 restart_exception:
-    call    sched
+    call    schedule
     pop     gs
     pop     fs
     pop     es
@@ -124,7 +115,7 @@ save_int:
     push    es      ;
     push    fs      ;
     push    gs      ; <--
-    cmp     dword [k_reenter], 0
+    cmp     dword [kstate_reenter_cntr], 0
     jnz     instack ; already in the irq-stack
     mov     ebx,  [p_proc_current]
     mov     dword [ebx + ESP_SAVE_INT], esp
@@ -162,14 +153,14 @@ save_syscall:
     push    restart_syscall
     jmp     [esi + RETADR - P_STACKBASE]
 
-    global sched
-sched:
+    global schedule
+schedule:
     pushfd
     pushad
     cli
     mov     ebx,  [p_proc_current]
     mov     dword [ebx + ESP_SAVE_CONTEXT], esp
-    call    schedule
+    call    cherry_pick_next_ready_proc
     mov     ebx,  [p_proc_next]
     mov     dword [p_proc_current], ebx
     call    renew_env
@@ -203,15 +194,15 @@ syscall_handler:
 restart_int:
     mov     eax, [p_proc_current]
     mov     esp, [eax + ESP_SAVE_INT]
-    cmp     dword [kernel_initial], 0
+    cmp     dword [kstate_on_init], 0
     jnz     restart_restore
-    call    sched
+    call    schedule
     jmp     restart_restore
 
 restart_syscall:
     mov     eax, [p_proc_current]
     mov     esp, [eax + ESP_SAVE_SYSCALL]
-    call    sched
+    call    schedule
     jmp     restart_restore
 
     global restart_restore
@@ -241,8 +232,8 @@ get_arg:
     mov     ebp, esp
     push    esi
     push    edi
-    mov     esi, dword [ebp + 8] ; void *uesp
-    mov     edi, dword [ebp + 12] ; int order
+    mov     esi, dword [ebp + 8]    ; void *uesp
+    mov     edi, dword [ebp + 12]   ; int order
     mov     eax, dword [esi + edi * 4 + 4]
     pop     edi
     pop     esi

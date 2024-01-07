@@ -59,7 +59,7 @@ static u32 exec_load(
         bool flag_read  = elf_proghs[ph_num].p_flags & 0b100;
         bool flag_write = elf_proghs[ph_num].p_flags & 0b010;
         if (!flag_exec && !flag_read && !flag_write) {
-            trace_logging(
+            klog(
                 "exec: exec_load: unknown elf program header flags=0x%x",
                 elf_proghs[ph_num].p_flags);
             return -1;
@@ -168,7 +168,7 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     assert(path != NULL);
     u32 fd = open_first_executable(path);
     if (fd == -1) {
-        trace_logging("exec: executable not found\n");
+        klog("exec: executable not found\n");
         return -1;
     }
     lock_or_schedule(&p_proc_current->pcb.p_lock);

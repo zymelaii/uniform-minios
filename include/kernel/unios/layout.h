@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stddef.h>
 #include <sys/types.h>
+#include <stddef.h>
 
 #define NUM_4B 0x00000004
 #define NUM_1K 0x00000400

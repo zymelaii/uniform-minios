@@ -1,5 +1,5 @@
+#include <unios/keyboard.h>
 #include <stdint.h>
-#include "keyboard.h"
 
 /* Keymap for US MF-2 keyboard. */
 

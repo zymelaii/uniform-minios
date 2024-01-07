@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <unios/tty.h>
+#include <stdint.h>
 
 /*! I/O port for keyboard data
  *	Read : Read Output Buffer
