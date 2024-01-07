@@ -5,6 +5,18 @@
 #define GDT_SIZE 128
 #define IDT_SIZE 256
 
+//! selector
+//! ┏━━┳━━┳━━┳━━┳━━┳━━┳━━┳━━┳━━┳━━┳━━┳━━┳━━┳━━┳━━┳━━┓
+//! ┃15┃14┃13┃12┃11┃10┃09┃08┃07┃06┃05┃04┃03┃02┃01┃00┃
+//! ┣━━┻━━┻━━┻━━┻━━┻━━┻━━┻━━┻━━┻━━┻━━┻━━┻━━╋━━╋━━┻━━┫
+//! ┃ descriptor index                     ┃TI┃ RPL ┃
+//! ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━┻━━━━━┛
+typedef struct selector_s {
+    u16 rpl   : 2;
+    u16 ti    : 1;
+    u16 index : 13;
+} __attribute__((packed)) selector_t;
+
 //! descriptor of GDT & SDT
 typedef struct descriptor_s {
     u16 limit0;

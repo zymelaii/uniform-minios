@@ -171,7 +171,7 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
         klog("exec: executable not found\n");
         return -1;
     }
-    lock_or_schedule(&p_proc_current->pcb.p_lock);
+    lock_or_schedule(&p_proc_current->pcb.lock);
     Elf32_Ehdr* elf_header = NULL;
     Elf32_Phdr* elf_proghs = NULL;
     elf_header             = K_PHY2LIN(do_kmalloc(sizeof(Elf32_Ehdr)));
@@ -221,6 +221,6 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     do_close(fd);
     do_free((void*)K_LIN2PHY(elf_header));
     do_free((void*)K_LIN2PHY(elf_proghs));
-    release(&p_proc_current->pcb.p_lock);
+    release(&p_proc_current->pcb.lock);
     return 0;
 }

@@ -2,7 +2,9 @@
 #include <unios/malloc.h>
 #include <unios/page.h>
 #include <unios/proc.h>
+#include <unios/spinlock.h>
 #include <unios/assert.h>
+#include <unios/schedule.h>
 #include <arch/x86.h>
 #include <stdint.h>
 #include <string.h>
@@ -37,20 +39,19 @@ static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
 }
 
 static int fork_update_proc_info(process_t* p_child) {
-    //! update parent
-    int child_index = p_proc_current->pcb.tree_info.child_p_num;
-    ++p_proc_current->pcb.tree_info.child_p_num;
-    p_proc_current->pcb.tree_info.child_process[child_index] = p_child->pcb.pid;
+    pcb_t* fa = &p_proc_current->pcb;
+    pcb_t* ch = &p_child->pcb;
 
-    //! update child
-    p_child->pcb.tree_info.type = p_proc_current->pcb.tree_info.type;
-    //! parent creator (may be outdated)
-    p_child->pcb.tree_info.real_ppid   = p_proc_current->pcb.pid;
-    p_child->pcb.tree_info.ppid        = p_proc_current->pcb.pid;
-    p_child->pcb.tree_info.child_p_num = 0;
-    p_child->pcb.tree_info.child_t_num = 0;
-    p_child->pcb.tree_info.text_hold   = false;
-    p_child->pcb.tree_info.data_hold   = true;
+    assert(fa->tree_info.child_p_num < NR_CHILD_MAX);
+    fa->tree_info.child_process[fa->tree_info.child_p_num++] = ch->pid;
+
+    ch->tree_info.type        = fa->tree_info.type;
+    ch->tree_info.real_ppid   = fa->pid;
+    ch->tree_info.ppid        = fa->pid;
+    ch->tree_info.child_p_num = 0;
+    ch->tree_info.child_t_num = 0;
+    ch->tree_info.text_hold   = false;
+    ch->tree_info.data_hold   = true;
 
     return 0;
 }
@@ -87,83 +88,74 @@ static int fork_memory_clone(u32 ppid, u32 pid) {
 }
 
 static int fork_pcb_clone(process_t* p_child) {
-    //! first frame point in stack
-    u32* frame        = (void*)(p_child + 1) - P_STACKTOP;
-    u32* parent_frame = (void*)(p_proc_current + 1) - P_STACKTOP;
+    pcb_t* fa = &p_proc_current->pcb;
+    pcb_t* ch = &p_child->pcb;
 
-    //! save status
-    int   pid              = p_child->pcb.pid;
-    u32   eflags           = frame[NR_EFLAGSREG];
-    u32   selector_ldt     = p_child->pcb.ldt_sel;
-    u32   cr3_child        = p_child->pcb.cr3;
-    char* esp_save_int     = p_child->pcb.esp_save_int;
-    char* esp_save_context = p_child->pcb.esp_save_context;
+    u32* ch_frame = (void*)(p_child + 1) - P_STACKTOP;
+    u32* fa_frame = (void*)(p_proc_current + 1) - P_STACKTOP;
 
-    //! FIXME: risky action, here child proc come into READY unexpectedly
-    p_child->pcb        = p_proc_current->pcb;
-    p_child->pcb.p_lock = 0;
-    //! FIXME: IDLE may not represents the complete status
-    p_child->pcb.stat = IDLE;
-    memcpy(frame, parent_frame, P_STACKTOP);
+    //! shared part
+    ch->regs             = fa->regs;
+    ch->esp_save_syscall = fa->esp_save_syscall;
+    ch->channel          = fa->channel;
+    //! FIXME: see `fork_memory_clone`
+    ch->memmap     = fa->memmap;
+    ch->live_ticks = fa->live_ticks;
+    ch->priority   = fa->priority;
+    ch->exit_code  = fa->exit_code;
+    assert(ch->exit_code == 0);
+    strcpy(ch->name, fa->name);
+    memcpy(ch->ldts, fa->ldts, sizeof(fa->ldts));
+    memcpy(ch->filp, fa->filp, sizeof(fa->filp));
+    memcpy(ch_frame, fa_frame, P_STACKTOP);
 
-    lin_memmap_t* memmap = &p_child->pcb.memmap;
-    ph_info_t*    ph_ptr = p_proc_current->pcb.memmap.ph_info;
-    memmap->ph_info      = NULL;
-    while (ph_ptr != NULL) {
-        ph_info_t* new_ph_info =
-            (ph_info_t*)K_PHY2LIN(do_kmalloc(sizeof(ph_info_t)));
-        new_ph_info->base  = ph_ptr->base;
-        new_ph_info->limit = ph_ptr->limit;
-        if (memmap->ph_info == NULL) {
-            new_ph_info->next   = NULL;
-            new_ph_info->before = NULL;
-            memmap->ph_info     = new_ph_info;
-        } else {
-            memmap->ph_info->before = new_ph_info;
-            new_ph_info->next       = memmap->ph_info;
-            new_ph_info->before     = NULL;
-            memmap->ph_info         = new_ph_info;
-        }
-        ph_ptr = ph_ptr->next;
-    }
+    //! unique part
+    assert(ch->cr3 != 0 && ch->cr3 != fa->cr3);
+    ch->memmap.ph_info = clone_ph_info(fa->memmap.ph_info);
 
-    // restore status
-    p_child->pcb.pid              = pid;
-    frame[NR_EFLAGSREG]           = eflags;
-    p_child->pcb.ldt_sel          = selector_ldt;
-    p_child->pcb.cr3              = cr3_child;
-    p_child->pcb.esp_save_int     = esp_save_int;
-    p_child->pcb.esp_save_context = esp_save_context;
-    p_child->pcb.tree_info.type   = TYPE_PROCESS;
+    //! TODO: better pid assignment method
+    ch->pid = proc2pid(p_child);
+
+    //! TODO: better ldt selector assignment method
+    ch->ldt_sel = SELECTOR_LDT_FIRST + (ch->pid << 3);
+
+    //! NOTE: forked child proc should start at user space, see `init_proc_pcb`
+    //! for more details
+    ch->esp_save_int     = (void*)ch_frame;
+    ch->esp_save_context = (void*)(ch_frame - 10);
+    memset(ch->esp_save_context, 0, sizeof(u32) * 10);
+    ch_frame[-1] = (u32)restart_restore;
+    ch_frame[-2] = ch_frame[NR_EFLAGSREG];
+
+    //! NOTE: proc family tree will be maintained later
+
     return 0;
 }
 
 int do_fork() {
-    //! FIXME: use lock instead
-    disable_int();
-    process_t* p_child = alloc_pcb();
-    if (p_child == NULL) {
-        klog(
-            "fork failed from pid=%d: pcb res is not available\n",
-            p_proc_current->pcb.pid);
+    process_t* fa = p_proc_current;
+    lock_or_schedule(&fa->pcb.lock);
+
+    process_t* ch = try_lock_free_pcb();
+    if (ch == NULL) {
+        klog("fork %d: pcb res is not available\n", fa->pcb.pid);
+        release(&fa->pcb.lock);
         return -1;
     }
 
-    p_child->pcb.cr3 = pg_create_and_init();
-    fork_pcb_clone(p_child);
-    fork_memory_clone(p_proc_current->pcb.pid, p_child->pcb.pid);
-    fork_update_proc_info(p_child);
+    ch->pcb.cr3 = pg_create_and_init();
+    fork_pcb_clone(ch);
+    fork_memory_clone(fa->pcb.pid, ch->pcb.pid);
+    fork_update_proc_info(ch);
 
-    //! TODO: modify forked proc name
-    strcpy(p_child->pcb.name, "fork");
-
-    //! first frame point in child stack
-    u32* frame            = (void*)(p_child + 1) - P_STACKTOP;
-    p_child->pcb.regs.eax = 0;
+    u32* frame       = (void*)(ch + 1) - P_STACKTOP;
+    ch->pcb.regs.eax = 0;
     //! update retval address in stack to be safe
-    frame[NR_EAXREG]  = p_child->pcb.regs.eax;
-    p_child->pcb.stat = READY;
-    //! FIXME: use lock instead (see above)
-    enable_int();
-    return p_child->pcb.pid;
+    frame[NR_EAXREG] = ch->pcb.regs.eax;
+
+    //! done
+    ch->pcb.stat = READY;
+    release(&ch->pcb.lock);
+    release(&fa->pcb.lock);
+    return ch->pcb.pid;
 }

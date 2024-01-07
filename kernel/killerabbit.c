@@ -22,10 +22,10 @@ static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
         dst_pcb->tree_info.child_process[j] =
             src_pcb->tree_info.child_process[i];
         pcb_t* son_pcb = (pcb_t*)pid2pcb(src_pcb->tree_info.child_process[i]);
-        lock_or_schedule(&son_pcb->p_lock);
+        lock_or_schedule(&son_pcb->lock);
         son_pcb->tree_info.ppid = dst_pid;
         ++dst_pcb->tree_info.child_p_num;
-        release(&son_pcb->p_lock);
+        release(&son_pcb->lock);
     }
     src_pcb->tree_info.child_p_num = 0;
 }
@@ -48,9 +48,9 @@ static void killerabbit_handle_child_thread_proc(u32 pid) {
             killerabbit_handle_child_thread_proc(
                 child_pcb->tree_info.child_thread[i]);
         }
-        lock_or_schedule(&recy_pcb->p_lock);
+        lock_or_schedule(&recy_pcb->lock);
         transfer_child_proc(child_pcb->pid, NR_RECY_PROC);
-        release(&recy_pcb->p_lock);
+        release(&recy_pcb->lock);
         child_pcb->stat = IDLE;
     }
     pcb->tree_info.child_t_num = 0;
@@ -118,8 +118,8 @@ static void killerabbit_reset_killed(u32 pid) {
     pcb_t* recy_pcb = (pcb_t*)pid2pcb(pid);
     disable_int();
     strcpy(recy_pcb->name, "USER");
-    recy_pcb->pid    = pid;
-    recy_pcb->p_lock = 0;
+    recy_pcb->pid  = pid;
+    recy_pcb->lock = 0;
     memcpy(
         &recy_pcb->ldts[0],
         &gdt[SELECTOR_KERNEL_CS >> 3],
@@ -176,12 +176,12 @@ int do_killerabbit(int pid) {
         if (kill_pcb->stat != SLEEPING && kill_pcb->stat != READY) {
             return -1;
         }
-        if (try_lock(&kill_pcb->p_lock)) {
+        if (try_lock(&kill_pcb->lock)) {
             fa_pcb = (pcb_t*)pid2pcb(kill_pcb->tree_info.ppid);
-            if (try_lock(&fa_pcb->p_lock)) {
+            if (try_lock(&fa_pcb->lock)) {
                 break;
             } else {
-                release(&kill_pcb->p_lock);
+                release(&kill_pcb->lock);
                 schedule();
                 continue;
             }
@@ -197,14 +197,14 @@ int do_killerabbit(int pid) {
         transfer_child_proc(pid, NR_RECY_PROC);
     } else {
         //! case 1:father isn't recy so need to lock
-        lock_or_schedule(&recy_pcb->p_lock);
+        lock_or_schedule(&recy_pcb->lock);
         transfer_child_proc(pid, NR_RECY_PROC);
-        release(&recy_pcb->p_lock);
+        release(&recy_pcb->lock);
     }
     killerabbit_recycle_memory(pid);
     killerabbit_reset_killed(pid);
     fa_pcb->stat = READY;
-    release(&kill_pcb->p_lock);
-    release(&fa_pcb->p_lock);
+    release(&kill_pcb->lock);
+    release(&fa_pcb->lock);
     return 0;
 }

@@ -17,10 +17,10 @@ static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
         dst_pcb->tree_info.child_process[j] =
             src_pcb->tree_info.child_process[i];
         pcb_t* son_pcb = (pcb_t*)pid2pcb(src_pcb->tree_info.child_process[i]);
-        lock_or_schedule(&son_pcb->p_lock);
+        lock_or_schedule(&son_pcb->lock);
         son_pcb->tree_info.ppid = dst_pid;
         ++dst_pcb->tree_info.child_p_num;
-        release(&son_pcb->p_lock);
+        release(&son_pcb->lock);
     }
     src_pcb->tree_info.child_p_num = 0;
 }
@@ -42,9 +42,9 @@ static void exit_handle_child_thread_proc(u32 pid) {
         for (int i = 0; i < child_pcb->tree_info.child_t_num; ++i) {
             exit_handle_child_thread_proc(child_pcb->tree_info.child_thread[i]);
         }
-        lock_or_schedule(&recy_pcb->p_lock);
+        lock_or_schedule(&recy_pcb->lock);
         transfer_child_proc(child_pcb->pid, NR_RECY_PROC);
-        release(&recy_pcb->p_lock);
+        release(&recy_pcb->lock);
         child_pcb->stat = IDLE;
     }
     pcb->tree_info.child_t_num = 0;
@@ -58,10 +58,10 @@ void do_exit(int exit_code) {
 
     while (true) {
         exit_pcb = (pcb_t*)pid2pcb(p_proc_current->pcb.pid);
-        if (!try_lock(&exit_pcb->p_lock)) { schedule(); }
+        if (!try_lock(&exit_pcb->lock)) { schedule(); }
         fa_pcb = (pcb_t*)pid2pcb(exit_pcb->tree_info.ppid);
-        if (try_lock(&fa_pcb->p_lock)) { break; }
-        release(&exit_pcb->p_lock);
+        if (try_lock(&fa_pcb->lock)) { break; }
+        release(&exit_pcb->lock);
         schedule();
     }
 
@@ -74,14 +74,14 @@ void do_exit(int exit_code) {
         transfer_child_proc(exit_pcb->pid, NR_RECY_PROC);
     } else {
         //! case 1: father isn't recy so need to lock
-        lock_or_schedule(&recy_pcb->p_lock);
+        lock_or_schedule(&recy_pcb->lock);
         transfer_child_proc(exit_pcb->pid, NR_RECY_PROC);
-        release(&recy_pcb->p_lock);
+        release(&recy_pcb->lock);
     }
-    fa_pcb->stat                   = READY;
-    exit_pcb->stat                 = ZOMBIE;
-    p_proc_current->pcb.p_exitcode = exit_code;
-    release(&exit_pcb->p_lock);
-    release(&fa_pcb->p_lock);
+    fa_pcb->stat                  = READY;
+    exit_pcb->stat                = ZOMBIE;
+    p_proc_current->pcb.exit_code = exit_code;
+    release(&exit_pcb->lock);
+    release(&fa_pcb->lock);
     schedule();
 }

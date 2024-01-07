@@ -97,13 +97,12 @@ void init_protect_mode() {
         vir2phys(seg2phys(SELECTOR_KERNEL_DS), &tss),
         sizeof(tss) - 1,
         DA_386TSS);
-    tss.iobase = sizeof(tss); /* 没有I/O许可位图 */
+    tss.iobase = sizeof(tss);
 
-    // 填充 GDT 中进程的 LDT 的描述符
     int        i;
     process_t* p_proc       = proc_table;
     u16        selector_ldt = INDEX_LDT_FIRST << 3;
-    for (i = 0; i < NR_PCBS; i++) { // edit by visual 2016.4.5
+    for (int i = 0; i < NR_PCBS; i++) {
         init_descriptor(
             &gdt[selector_ldt >> 3],
             vir2phys(seg2phys(SELECTOR_KERNEL_DS), proc_table[i].pcb.ldts),

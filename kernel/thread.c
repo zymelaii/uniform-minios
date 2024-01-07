@@ -2,6 +2,7 @@
 #include <unios/protect.h>
 #include <unios/proc.h>
 #include <unios/page.h>
+#include <unios/spinlock.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -12,41 +13,37 @@ static int pthread_stack_init(process_t *p_child, process_t *p_parent);
 static int pthread_heap_init(process_t *p_child, process_t *p_parent);
 
 int do_pthread_create(void *entry) {
-    process_t *p_child;
-
-    char *p_reg;
-    p_child = alloc_pcb();
-    if (0 == p_child) {
+    process_t *p_child = try_lock_free_pcb();
+    if (p_child == NULL) {
         klog("PCB NULL,pthread faild!");
         return -1;
-    } else {
-        process_t *p_parent;
-        if (p_proc_current->pcb.tree_info.type == TYPE_THREAD) { // 线程
-            p_parent = pid2pcb(p_proc_current->pcb.tree_info.real_ppid);
-            p_parent =
-                &(proc_table[p_proc_current->pcb.tree_info.ppid]); // 父进程
-        } else {                                                   // 进程
-            p_parent = p_proc_current; // 父进程就是父线程
-        }
-        pthread_pcb_cpy(p_child, p_parent);
-        pthread_stack_init(p_child, p_parent);
-        pthread_heap_init(p_child, p_parent);
-
-        /********************设置线程的执行入口**********************************************/
-        p_child->pcb.regs.eip                   = (u32)entry;
-        p_reg                                   = (char *)(p_child + 1);
-        *((u32 *)(p_reg + EIPREG - P_STACKTOP)) = p_child->pcb.regs.eip;
-
-        pthread_update_info(p_child, p_parent);
-
-        strcpy(p_child->pcb.name, "pthread"); // 所有的子进程都叫pthread
-
-        p_child->pcb.regs.eax                   = 0; // return child with 0
-        p_reg                                   = (char *)(p_child + 1);
-        *((u32 *)(p_reg + EAXREG - P_STACKTOP)) = p_child->pcb.regs.eax;
-
-        p_child->pcb.stat = READY;
     }
+
+    process_t *p_parent;
+    if (p_proc_current->pcb.tree_info.type == TYPE_THREAD) {
+        p_parent = pid2pcb(p_proc_current->pcb.tree_info.real_ppid);
+        p_parent = &(proc_table[p_proc_current->pcb.tree_info.ppid]);
+    } else {
+        p_parent = p_proc_current;
+    }
+    pthread_pcb_cpy(p_child, p_parent);
+    pthread_stack_init(p_child, p_parent);
+    pthread_heap_init(p_child, p_parent);
+
+    p_child->pcb.regs.eip                   = (u32)entry;
+    char *p_reg                             = (char *)(p_child + 1);
+    *((u32 *)(p_reg + EIPREG - P_STACKTOP)) = p_child->pcb.regs.eip;
+
+    pthread_update_info(p_child, p_parent);
+
+    strcpy(p_child->pcb.name, "pthread"); // 所有的子进程都叫pthread
+
+    p_child->pcb.regs.eax                   = 0; // return child with 0
+    p_reg                                   = (char *)(p_child + 1);
+    *((u32 *)(p_reg + EAXREG - P_STACKTOP)) = p_child->pcb.regs.eax;
+    p_child->pcb.stat                       = READY;
+
+    release(&p_child->pcb);
     return p_child->pcb.pid;
 }
 

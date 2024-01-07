@@ -50,6 +50,11 @@
 #define SSREG        (NR_SSREG * 4)
 #define P_STACKTOP   (SSREG + 4)
 
+//! see https://en.wikipedia.org/wiki/FLAGS_register
+#define EFLAGS_RESERVED 0x0002              //<! always 1 in eflags
+#define EFLAGS_IF       0x0200              //<! interrupt enable flag
+#define EFLAGS_IOPL(pl) (((pl)&0b11) << 12) //<! I/O privilege level
+
 #define NR_PCBS      20
 #define NR_TASKS     3
 #define NR_K_PCBS    5
@@ -64,11 +69,7 @@ enum process_stat {
     SLEEPING,
     KILLED,
     ZOMBIE
-}; /* add KILLED state. when a process's state is KILLED, the process
-    * won't be scheduled anymore, but all of the resources owned by
-    * it is not freed yet.
-    * added by xw, 18/12/19
-    */
+};
 
 #define NR_CHILD_MAX (NR_PCBS - NR_K_PCBS - 1)
 #define TYPE_PROCESS 0
@@ -114,7 +115,7 @@ typedef struct ph_info_s {
     struct ph_info_s* before;
 } ph_info_t;
 
-typedef struct lin_memmap_s { // 线性地址分布结构体	edit by visual 2016.5.25
+typedef struct lin_memmap_s {
     ph_info_t* ph_info;
     //! stack limit for child thread
     u32 stack_child_limit;
@@ -163,8 +164,8 @@ typedef struct pcb_s {
     u32               cr3;
 
     file_desc_t* filp[NR_FILES];
-    u32          p_lock;
-    u32          p_exitcode;
+    u32          lock;
+    u32          exit_code;
 } pcb_t;
 
 // new process_t struct with PCB and process's kernel stack
@@ -179,8 +180,10 @@ typedef struct task_s {
     char           name[32];
 } task_t;
 
-process_t* alloc_pcb();
-void       free_pcb(process_t* p);
+bool init_proc_pcb(
+    process_t* proc, const char* name, void* entry_point, u32 rpl);
+process_t* try_lock_free_pcb();
+ph_info_t* clone_ph_info(ph_info_t* src);
 int        ldt_seg_linear(process_t* p, int idx);
 void*      va2la(int pid, void* va);
 process_t* pid2pcb(int pid);

@@ -80,8 +80,8 @@ static void wait_reset_child(u32 pid) {
     pcb_t* recy_pcb = (pcb_t*)pid2pcb(pid);
     disable_int();
     strcpy(recy_pcb->name, "USER");
-    recy_pcb->pid    = pid;
-    recy_pcb->p_lock = 0;
+    recy_pcb->pid  = pid;
+    recy_pcb->lock = 0;
     memcpy(
         &recy_pcb->ldts[0],
         &gdt[SELECTOR_KERNEL_CS >> 3],
@@ -120,29 +120,29 @@ static void wait_reset_child(u32 pid) {
 
 int do_wait(int* wstatus) {
     pcb_t* fa_pcb = &p_proc_current->pcb;
-    while (1) {
-        lock_or_schedule(&p_proc_current->pcb.p_lock);
+    while (true) {
+        lock_or_schedule(&p_proc_current->pcb.lock);
         if (fa_pcb->tree_info.child_p_num == 0) {
             if (wstatus != NULL) { *wstatus = 0; }
-            p_proc_current->pcb.p_lock = 0;
+            p_proc_current->pcb.lock = 0;
             return -1;
         }
         pcb_t* exit_pcb = try_get_zombie_child();
         if (exit_pcb == NULL) {
             fa_pcb->stat = SLEEPING;
-            release(&fa_pcb->p_lock);
+            release(&fa_pcb->lock);
             schedule();
             continue;
         }
-        lock_or_schedule(&exit_pcb->p_lock);
+        lock_or_schedule(&exit_pcb->lock);
         remove_zombie_child(exit_pcb->pid);
-        if (wstatus != NULL) { *wstatus = exit_pcb->p_exitcode; }
+        if (wstatus != NULL) { *wstatus = exit_pcb->exit_code; }
         //! FIXME: no thread release here
         wait_recycle_memory(exit_pcb->pid);
         wait_reset_child(exit_pcb->pid);
         int pid = exit_pcb->pid;
-        release(&exit_pcb->p_lock);
-        release(&fa_pcb->p_lock);
+        release(&exit_pcb->lock);
+        release(&fa_pcb->lock);
         return pid;
     }
 }
