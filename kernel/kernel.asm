@@ -62,51 +62,29 @@ KernelStackTop: ; used as stack of kernel itself
     global _start
 _start:
     mov     esp, KernelStackTop
-
     ; load & flush gdt
     sgdt    [gdt_ptr]
     call    cstart
     lgdt    [gdt_ptr]
-
     lidt    [idt_ptr]
-
     ; force to activate the lately inited struct
     jmp     SELECTOR_KERNEL_CS:csinit
 csinit:
     xor     eax, eax
     mov     ax, SELECTOR_TSS
     ltr     ax
-
     jmp     kernel_main
 
-    global save_exception
-save_exception:
-    pushad          ; save regs -->
-    push    ds      ;
-    push    es      ;
-    push    fs      ;
-    push    gs      ; <--
-    mov     dx, ss
-    mov     ds, dx
-    mov     es, dx
-    mov     fs, dx
-    mov     dx, SELECTOR_VIDEO - 2
-    mov     gs, dx
-
-    mov     esi, esp
-    push    restart_exception
-    jmp     [esi + RETADR - P_STACKBASE]
-
-restart_exception:
-    call    schedule
-    pop     gs
-    pop     fs
-    pop     es
-    pop     ds
-    popad
-    ; clear retaddr and error code in stack
-    add     esp, 4 * 2
-    iretd
+    global renew_env
+renew_env:
+    call    switch_pde
+    mov     eax, [cr3_ready]
+    mov     cr3, eax
+    mov     eax, [p_proc_current]
+    lldt    [eax + P_LDT_SEL]
+    lea     ebx, [eax + INIT_STACK_SIZE]
+    mov     dword [tss + TSS3_S_SP0], ebx
+    ret
 
     global save_int
 save_int:
@@ -131,7 +109,7 @@ save_int:
     jmp     [esi + RETADR - P_STACKBASE]
 instack:
     push    restart_restore
-    ; TODO: so why offset 1 dword here? expect comment
+    ; push shifts esp, shift back to get the retaddr in stack frame
     jmp     [esp + 4 + RETADR - P_STACKBASE]
 
     global save_syscall
@@ -153,44 +131,7 @@ save_syscall:
     push    restart_syscall
     jmp     [esi + RETADR - P_STACKBASE]
 
-    global schedule
-schedule:
-    pushfd
-    pushad
-    cli
-    mov     ebx,  [p_proc_current]
-    mov     dword [ebx + ESP_SAVE_CONTEXT], esp
-    call    cherry_pick_next_ready_proc
-    mov     ebx,  [p_proc_next]
-    mov     dword [p_proc_current], ebx
-    call    renew_env
-    mov     ebx, [p_proc_current]
-    mov     esp, [ebx + ESP_SAVE_CONTEXT]
-    popad
-    popfd
-    ret
-
-renew_env:
-    call    switch_pde
-    mov     eax, [cr3_ready]
-    mov     cr3, eax
-    mov     eax, [p_proc_current]
-    lldt    [eax + P_LDT_SEL]
-    lea     ebx, [eax + INIT_STACK_SIZE]
-    mov     dword [tss + TSS3_S_SP0], ebx
-    ret
-
-    global syscall_handler
-syscall_handler:
-    call    save_syscall
-    sti
-    call    [syscall_table + eax * 4]
-    cli
-    mov     edx, [p_proc_current]
-    mov     esi, [edx + ESP_SAVE_SYSCALL]
-    mov     [esi + EAXREG - P_STACKBASE], eax
-    ret
-
+    global restart_int
 restart_int:
     mov     eax, [p_proc_current]
     mov     esp, [eax + ESP_SAVE_INT]
@@ -199,6 +140,7 @@ restart_int:
     call    schedule
     jmp     restart_restore
 
+    global restart_syscall
 restart_syscall:
     mov     eax, [p_proc_current]
     mov     esp, [eax + ESP_SAVE_SYSCALL]
@@ -221,6 +163,34 @@ restart_initial:
     mov     eax, [p_proc_current]
     mov     esp, [eax + ESP_SAVE_INT]
     jmp     restart_restore
+
+    global schedule
+schedule:
+    pushfd
+    pushad
+    cli
+    mov     ebx,  [p_proc_current]
+    mov     dword [ebx + ESP_SAVE_CONTEXT], esp
+    call    cherry_pick_next_ready_proc
+    mov     ebx,  [p_proc_next]
+    mov     dword [p_proc_current], ebx
+    call    renew_env
+    mov     ebx, [p_proc_current]
+    mov     esp, [ebx + ESP_SAVE_CONTEXT]
+    popad
+    popfd
+    ret
+
+    global syscall_handler
+syscall_handler:
+    call    save_syscall
+    sti
+    call    [syscall_table + eax * 4]
+    cli
+    mov     edx, [p_proc_current]
+    mov     esi, [edx + ESP_SAVE_SYSCALL]
+    mov     [esi + EAXREG - P_STACKBASE], eax
+    ret
 
 ; u32 get_arg(void *uesp, int order)
 ; used to get the specified argument of the syscall from user space stack

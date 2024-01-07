@@ -2,13 +2,42 @@
 
 extern kstate_reenter_cntr
 extern irq_table
-extern save_exception
 extern save_int
+extern schedule
 
 extern exception_handler
 extern page_fault_handler
 
 [section .text]
+
+    global save_exception
+save_exception:
+    pushad          ; save regs -->
+    push    ds      ;
+    push    es      ;
+    push    fs      ;
+    push    gs      ; <--
+    mov     dx, ss
+    mov     ds, dx
+    mov     es, dx
+    mov     fs, dx
+    mov     dx, SELECTOR_VIDEO - 2
+    mov     gs, dx
+    mov     esi, esp
+    push    restart_exception
+    jmp     [esi + RETADR - P_STACKBASE]
+
+    global restart_exception
+restart_exception:
+    call    schedule
+    pop     gs
+    pop     fs
+    pop     es
+    pop     ds
+    popad
+    ; clear retaddr and error code in stack
+    add     esp, 4 * 2
+    iretd
 
 ; impl_hwint_master <irq-name>, <irq-id>
 %macro impl_hwint_master 2
