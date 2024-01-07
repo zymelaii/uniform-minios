@@ -1,4 +1,4 @@
-#include <unios/scedule.h>
+#include <unios/schedule.h>
 #include <unios/proc.h>
 #include <stddef.h>
 

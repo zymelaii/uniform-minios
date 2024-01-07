@@ -13,7 +13,7 @@
 #include <unios/console.h>
 #include <unios/assert.h>
 #include <unios/clock.h>
-#include <unios/scedule.h>
+#include <unios/schedule.h>
 #include <unios/kstate.h>
 #include <arch/x86.h>
 #include <sys/types.h>

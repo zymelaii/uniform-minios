@@ -3,7 +3,7 @@
 #include <unios/protect.h>
 #include <unios/spinlock.h>
 #include <unios/page.h>
-#include <unios/scedule.h>
+#include <unios/schedule.h>
 #include <unios/syscall.h>
 #include <arch/x86.h>
 #include <sys/defs.h>

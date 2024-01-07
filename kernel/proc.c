@@ -5,7 +5,7 @@
 #include <unios/tty.h>
 #include <unios/hd.h>
 #include <unios/sweeper.h>
-#include <unios/scedule.h>
+#include <unios/schedule.h>
 #include <unios/kstate.h>
 #include <string.h>
 

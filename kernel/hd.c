@@ -7,7 +7,7 @@
 #include <unios/interrupt.h>
 #include <unios/assert.h>
 #include <unios/kstate.h>
-#include <unios/scedule.h>
+#include <unios/schedule.h>
 #include <arch/x86.h>
 #include <stdlib.h>
 #include <stddef.h>

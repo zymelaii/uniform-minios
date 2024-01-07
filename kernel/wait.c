@@ -3,7 +3,7 @@
 #include <unios/spinlock.h>
 #include <unios/page.h>
 #include <unios/syscall.h>
-#include <unios/scedule.h>
+#include <unios/schedule.h>
 #include <arch/x86.h>
 #include <sys/types.h>
 #include <stdlib.h>

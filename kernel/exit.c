@@ -2,7 +2,7 @@
 #include <unios/proc.h>
 #include <unios/spinlock.h>
 #include <unios/page.h>
-#include <unios/scedule.h>
+#include <unios/schedule.h>
 #include <arch/x86.h>
 #include <stdlib.h>
 #include <stdio.h>

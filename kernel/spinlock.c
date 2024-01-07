@@ -1,5 +1,5 @@
 #include <unios/spinlock.h>
-#include <unios/scedule.h>
+#include <unios/schedule.h>
 #include <stdlib.h>
 #include <atomic.h>
 
