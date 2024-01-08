@@ -1,45 +1,13 @@
 #include <sys/defs.h>
 #include <sys/types.h>
 #include <stddef.h>
+#include <stdbool.h>
+#include <assert.h>
 #include <string.h>
+#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-
-#define assert(expected)                                    \
- do {                                                       \
-  if (expected) { break; }                                  \
-  const char *file = __FILE__;                              \
-  int         line = __LINE__;                              \
-  const char *expr = #expected;                             \
-  printf("assertion failed:%s:%d: %s\n", file, line, expr); \
-  while (true) { sleep(1000); }                             \
- } while (0);
-
-#define CHECK_PTR(p) assert((p) != NULL)
-
-//! NOTE: override ill-implemented memman malloc & free
-#define malloc(size) mman_calloc(size)
-#define free(ptr)    mman_free(ptr)
-
-int __calloc_freep;
-
-void mman_init() {
-    __calloc_freep = 0;
-}
-
-void *mman_calloc(int size) {
-    assert(size > 0);
-    static char memblk[4096];
-    if (__calloc_freep + size > 4096) { return NULL; }
-    void *ptr      = &memblk[__calloc_freep];
-    __calloc_freep += size;
-    return ptr;
-}
-
-void mman_free(void *p) {
-    //! NOTE: just ignore
-}
 
 void setup_for_all_tty() {
     int nr_tty = 0;
@@ -59,9 +27,9 @@ void setup_for_all_tty() {
 }
 
 bool arg_from_cmdline(const char *buf, int *p_argc, char ***p_argv) {
-    CHECK_PTR(buf);
-    CHECK_PTR(p_argc);
-    CHECK_PTR(p_argv);
+    assert(buf != NULL);
+    assert(p_argc != NULL);
+    assert(p_argv != NULL);
 
     char *p    = (char *)buf;
     char *q    = NULL;
@@ -81,7 +49,7 @@ bool arg_from_cmdline(const char *buf, int *p_argc, char ***p_argv) {
     const char CZERO  = '\0';
 
     char *argbuf = (char *)malloc(tail - p + 4);
-    CHECK_PTR(argbuf);
+    assert(argbuf != NULL);
     memcpy(argbuf + 1, p, tail - p + 1);
     tail = &argbuf[tail - p + 1];
     p    = &argbuf[1];
@@ -128,13 +96,13 @@ bool arg_from_cmdline(const char *buf, int *p_argc, char ***p_argv) {
     assert(p[0] != ' ');
 
     *p_argv = (char **)malloc((*p_argc + 1) * sizeof(char *));
-    CHECK_PTR(*p_argv);
+    assert(*p_argv != NULL);
     for (int i = 0; i < *p_argc; ++i) {
         q = p + 1;
         while (*q != CSTART && *q != CZERO) { ++q; }
         int size     = q - p;
         (*p_argv)[i] = (char *)malloc(size + 1);
-        CHECK_PTR((*p_argv)[i]);
+        assert((*p_argv)[i] != NULL);
         (*p_argv)[i][q - p] = 0;
         memcpy((*p_argv)[i], p, size);
         p += size;
@@ -148,7 +116,7 @@ bool arg_from_cmdline(const char *buf, int *p_argc, char ***p_argv) {
 }
 
 int arg_free(char **argv) {
-    CHECK_PTR(argv);
+    assert(argv != NULL);
     char **arg  = argv;
     int    argc = 0;
     while (*arg != NULL) {
@@ -162,7 +130,7 @@ int arg_free(char **argv) {
 
 void print_exec_info(int argc, char **argv) {
     assert(argc > 0);
-    CHECK_PTR(argv);
+    assert(argv != NULL);
     printf("exec {\n");
     printf("  command: \"%s\",\n", argv[0]);
     do {
@@ -196,12 +164,10 @@ bool route(int argc, char *argv[]) {
 }
 
 int main(int arg, char *argv[]) {
-    mman_init();
-
     setup_for_all_tty();
 
     char buf[PATH_MAX] = {};
-    while (1) {
+    while (true) {
         printf("miniOS:/ $ ");
         gets(buf);
         int    cmd_argc = 0;
@@ -238,4 +204,6 @@ int main(int arg, char *argv[]) {
         int n = arg_free(cmd_argv);
         assert(n == cmd_argc);
     }
+
+    return 0;
 }

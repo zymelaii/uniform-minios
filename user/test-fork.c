@@ -19,7 +19,7 @@ int main(int arg, char *argv[]) {
 
     while (1) {
         j++;
-        if (j == 100000000) {
+        if (j == 1000000) {
             j = 0;
             printf("i am %d", i);
         }
@@ -29,7 +29,7 @@ int main(int arg, char *argv[]) {
         printf("init");
         printf("%d", ++global);
         printf(" ");
-        i = 10000000;
+        i = 1000000;
         while (--i) {}
     }
     return 0;

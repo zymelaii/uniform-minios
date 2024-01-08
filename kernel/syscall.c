@@ -99,6 +99,15 @@ static u32 sys_wakeup() {
     return 0;
 }
 
+static u32 sys_malloc(int size) {
+    return (u32)do_malloc(SYSCALL_ARGS1(int));
+}
+
+static u32 sys_free(void *ptr) {
+    do_free(SYSCALL_ARGS1(void *));
+    return 0;
+}
+
 static u32 sys_open() {
     return do_open(SYSCALL_ARGS2(const char *, int));
 }
@@ -147,7 +156,8 @@ syscall_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(get_ticks),   SYSCALL_ENTRY(get_pid),
     SYSCALL_ENTRY(fork),        SYSCALL_ENTRY(execve),
     SYSCALL_ENTRY(yield),       SYSCALL_ENTRY(sleep),
-    SYSCALL_ENTRY(wakeup),      SYSCALL_ENTRY(open),
+    SYSCALL_ENTRY(wakeup),      SYSCALL_ENTRY(malloc),
+    SYSCALL_ENTRY(free),        SYSCALL_ENTRY(open),
     SYSCALL_ENTRY(close),       SYSCALL_ENTRY(read),
     SYSCALL_ENTRY(write),       SYSCALL_ENTRY(lseek),
     SYSCALL_ENTRY(unlink),      SYSCALL_ENTRY(create),

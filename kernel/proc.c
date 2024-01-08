@@ -1,4 +1,3 @@
-
 #include <unios/protect.h>
 #include <unios/proc.h>
 #include <unios/clock.h>
@@ -156,6 +155,10 @@ bool init_proc_pcb(
         PG_P | PG_U | PG_RWX,
         PG_P | PG_U | PG_RWX);
     assert(ok);
+    //! FIXME: better heap manager
+    pcb->allocator = mballoc_create(
+        kmalloc, NUM_4K, (void*)mmap->heap_lin_base, (void*)HeapLinLimitMAX);
+    pcb->heap_lock = 0;
 
     //! user space context
     memset(&pcb->regs, 0, P_STACKTOP);

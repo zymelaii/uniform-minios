@@ -104,6 +104,7 @@ static int fork_pcb_clone(process_t* p_child) {
     ch->live_ticks = fa->live_ticks;
     ch->priority   = fa->priority;
     ch->exit_code  = fa->exit_code;
+    ch->allocator  = fa->allocator;
     assert(ch->exit_code == 0);
     strcpy(ch->name, fa->name);
     memcpy(ch->ldts, fa->ldts, sizeof(fa->ldts));
@@ -120,8 +121,20 @@ static int fork_pcb_clone(process_t* p_child) {
     //! TODO: better ldt selector assignment method
     ch->ldt_sel = SELECTOR_LDT_FIRST + (ch->pid << 3);
 
-    //! NOTE: forked child proc should start at user space, see `init_proc_pcb`
-    //! for more details
+    ch->allocator = mballoc_create(
+        kmalloc,
+        NUM_4K,
+        (void*)ch->memmap.heap_lin_base,
+        (void*)HeapLinLimitMAX);
+    memcpy(
+        ch->allocator,
+        fa->allocator,
+        sizeof(memblk_allocator_t)
+            + fa->allocator->total_free_slots * sizeof(memblk_t));
+    ch->heap_lock = 0;
+
+    //! NOTE: forked child proc should start at user space, see
+    //! `init_proc_pcb` for more details
     ch->esp_save_int     = (void*)ch_frame;
     ch->esp_save_context = (void*)(ch_frame - 10);
     memset(ch->esp_save_context, 0, sizeof(u32) * 10);

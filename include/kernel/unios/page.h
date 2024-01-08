@@ -110,7 +110,7 @@ static u32  pg_laddr_phyaddr(u32 cr3, u32 laddr);
 static u32  pg_pde_attr(u32 cr3, u32 laddr, u32 mask);
 static u32  pg_pte_attr(u32 pde, u32 laddr, u32 mask);
 static bool pg_pde_exist(u32 cr3, u32 laddr);
-static bool pg_pte_exist(u32 pte, u32 laddr);
+static bool pg_pte_exist(u32 pde, u32 laddr);
 
 static inline u32 pg_offset(u32 laddr) {
     return laddr & 0xfff;
@@ -162,6 +162,6 @@ static inline bool pg_pde_exist(u32 cr3, u32 laddr) {
     return pg_pde_attr(cr3, laddr, PG_MASK_P) == PG_P;
 }
 
-static inline bool pg_pte_exist(u32 pte, u32 laddr) {
-    return pg_pte_attr(pte, laddr, PG_MASK_P) == PG_P;
+static inline bool pg_pte_exist(u32 pde, u32 laddr) {
+    return pg_pte_attr(pde, laddr, PG_MASK_P) == PG_P;
 }

@@ -105,7 +105,9 @@ static void killerabbit_recycle_memory(u32 recy_pid) {
     pcb_t*        recy_pcb = (pcb_t*)pid2proc(recy_pid);
     lin_memmap_t* memmap   = &recy_pcb->memmap;
     ph_info_t*    ph_ptr   = memmap->ph_info;
+
     disable_int();
+
     while (ph_ptr != NULL) {
         killerabbit_recycle_part(recy_pid, ph_ptr->base, ph_ptr->limit, true);
         ph_info_t* old_ph_ptr = ph_ptr;
@@ -125,6 +127,10 @@ static void killerabbit_recycle_memory(u32 recy_pid) {
         recy_pid, memmap->stack_lin_limit, memmap->stack_lin_base, true);
     pg_unmap_pte(recy_pcb->cr3, true);
     pg_free_pde(recy_pcb->cr3);
+
+    kfree(recy_pcb->allocator);
+    recy_pcb->allocator = NULL;
+
     enable_int();
 }
 

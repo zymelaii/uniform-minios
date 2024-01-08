@@ -3,6 +3,7 @@
 #include <unios/fs_misc.h>
 #include <unios/protect.h>
 #include <unios/layout.h>
+#include <unios/memory.h>
 #include <sys/types.h>
 #include <stdint.h>
 
@@ -162,8 +163,10 @@ typedef struct pcb_s {
     u32  pid;
     char name[16];
 
-    enum process_stat stat;
-    u32               cr3;
+    enum process_stat   stat;
+    u32                 cr3;
+    memblk_allocator_t* allocator;
+    u32                 heap_lock;
 
     file_desc_t* filp[NR_FILES];
     u32          lock;

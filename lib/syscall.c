@@ -1,5 +1,6 @@
 #include <unios/syscall.h>
 #include <stdint.h>
+#include <stddef.h>
 
 static int syscall0(u32 NR_syscall) {
     int ret = 0;
@@ -98,6 +99,14 @@ void sleep(int n) {
 
 void wakeup(void *channel) {
     syscall1(NR_wakeup, (u32)channel);
+}
+
+void *malloc(int size) {
+    return size <= 0 ? NULL : (void *)syscall1(NR_malloc, size);
+}
+
+void free(void *ptr) {
+    syscall1(NR_free, (u32)ptr);
 }
 
 int open(const char *path, int flags) {

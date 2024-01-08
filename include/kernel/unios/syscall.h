@@ -9,6 +9,8 @@ enum {
     NR_yield,
     NR_sleep,
     NR_wakeup,
+    NR_malloc,
+    NR_free,
     NR_open,
     NR_close,
     NR_read,
@@ -45,6 +47,10 @@ void do_exit(int exit_code);
 
 //! from wait.c
 int do_wait(int *wstatus);
+
+//! from malloc.c
+void *do_malloc(int size);
+void  do_free(void *ptr);
 
 //! from proc.c
 int  do_get_pid();
