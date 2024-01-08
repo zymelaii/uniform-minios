@@ -100,20 +100,20 @@ static int exec_pcb_init(const char* path) {
     strncpy(
         p_proc_current->pcb.name, path, sizeof(p_proc_current->pcb.name) - 1);
 
-    pcb_t* task         = &p_proc_current->pcb;
-    task->stat          = READY;
-    task->ldts[0].attr0 = DA_C | RPL_USER << 5;
-    task->ldts[1].attr0 = DA_DRW | RPL_USER << 5;
-    task->regs.cs = ((8 * 0) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    task->regs.ds = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    task->regs.es = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    task->regs.fs = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    task->regs.ss = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    task->regs.gs = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | RPL_USER;
-    task->regs.eflags = 0x202; //<! IF=1 bit2 is always 1
+    pcb_t* pcb = &p_proc_current->pcb;
+
+    pcb->ldts[0].attr0 = DA_C | RPL_USER << 5;
+    pcb->ldts[1].attr0 = DA_DRW | RPL_USER << 5;
+    pcb->regs.cs     = ((8 * 0) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    pcb->regs.ds     = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    pcb->regs.es     = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    pcb->regs.fs     = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    pcb->regs.ss     = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
+    pcb->regs.gs     = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | RPL_USER;
+    pcb->regs.eflags = 0x202; //<! IF=1 bit2 is always 1
 
     u32* frame = (void*)(p_proc_current + 1) - P_STACKTOP;
-    memcpy(frame, &task->regs, sizeof(task->regs));
+    memcpy(frame, &pcb->regs, sizeof(pcb->regs));
 
     lin_memmap_t* memmap     = &p_proc_current->pcb.memmap;
     memmap->vpage_lin_base   = VpageLinBase;
@@ -127,8 +127,8 @@ static int exec_pcb_init(const char* path) {
     memmap->kernel_lin_base  = KernelLinBase;
     memmap->kernel_lin_limit = KernelLinBase + KernelSize;
 
-    p_proc_current->pcb.tree_info.text_hold = 1;
-    p_proc_current->pcb.tree_info.data_hold = 1;
+    p_proc_current->pcb.tree_info.text_hold = true;
+    p_proc_current->pcb.tree_info.data_hold = true;
 
     return 0;
 }
@@ -166,16 +166,24 @@ static int open_first_executable(const char* path) {
 
 int do_execve(const char* path, char* const* argv, char* const* envp) {
     assert(path != NULL);
+
+    //! FIXME: concurrent issue about io, only lock the whole io ops with one
+    //! lock can the execve run safely with multiple instances
+    static int io_lock = 0;
+    lock_or_schedule(&io_lock);
     u32 fd = open_first_executable(path);
     if (fd == -1) {
         klog("exec: executable not found\n");
+        release(&io_lock);
         return -1;
     }
+
     lock_or_schedule(&p_proc_current->pcb.lock);
     Elf32_Ehdr* elf_header = NULL;
     Elf32_Phdr* elf_proghs = NULL;
     elf_header             = K_PHY2LIN(do_kmalloc(sizeof(Elf32_Ehdr)));
     assert(elf_header != NULL);
+
     read_Ehdr(fd, elf_header, 0);
     elf_proghs =
         K_PHY2LIN(do_kmalloc(sizeof(Elf32_Phdr) * elf_header->e_phnum));
@@ -185,14 +193,14 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
         read_Phdr(fd, elf_proghs + i, offset);
     }
 
-    //! FIXME: elf_header->e_phnum becomes 0 after some more exec calls
-
     if (exec_load(fd, elf_header, elf_proghs) == -1) {
         do_close(fd);
         do_free((void*)K_LIN2PHY(elf_header));
         do_free((void*)K_LIN2PHY(elf_proghs));
+        release(&io_lock);
         return -1;
     }
+    release(&io_lock);
 
     exec_pcb_init(path);
 
@@ -217,7 +225,7 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     p_proc_current->pcb.regs.eip = elf_header->e_entry;
     frame[NR_EIPREG]             = p_proc_current->pcb.regs.eip;
     frame[NR_ESPREG]             = p_proc_current->pcb.regs.esp;
-
+    p_proc_current->pcb.stat     = READY;
     do_close(fd);
     do_free((void*)K_LIN2PHY(elf_header));
     do_free((void*)K_LIN2PHY(elf_proghs));

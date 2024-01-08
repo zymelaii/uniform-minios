@@ -14,8 +14,8 @@ static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
     //! FIXME: risky action, this is relevant to current cr3, but ppid may be
     //! not the expected one
     //! FIXME: pid allocation method may changes
-    u32 cr3_ppid = ((pcb_t*)pid2pcb(ppid))->cr3;
-    u32 cr3_pid  = ((pcb_t*)pid2pcb(pid))->cr3;
+    u32 cr3_ppid = ((pcb_t*)pid2proc(ppid))->cr3;
+    u32 cr3_pid  = ((pcb_t*)pid2proc(pid))->cr3;
 
     u32 attr        = PG_P | PG_U | PG_RWX;
     u32 laddr_share = SharePageBase;
@@ -50,6 +50,7 @@ static int fork_update_proc_info(process_t* p_child) {
     ch->tree_info.ppid        = fa->pid;
     ch->tree_info.child_p_num = 0;
     ch->tree_info.child_t_num = 0;
+    ch->tree_info.child_k_num = 0;
     ch->tree_info.text_hold   = false;
     ch->tree_info.data_hold   = true;
 

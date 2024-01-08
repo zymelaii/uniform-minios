@@ -10,20 +10,30 @@
 #include <stdio.h>
 #include <string.h>
 
-static pcb_t* try_get_zombie_child() {
-    pcb_t* pcb = &p_proc_current->pcb;
+static pcb_t* try_get_zombie_child(u32 pid) {
+    pcb_t* pcb = (pcb_t*)pid2proc(pid);
     for (int i = 0; i < pcb->tree_info.child_p_num; ++i) {
-        pcb_t* exit_child = (pcb_t*)pid2pcb(pcb->tree_info.child_process[i]);
+        pcb_t* exit_child = (pcb_t*)pid2proc(pcb->tree_info.child_process[i]);
         if (exit_child->stat == ZOMBIE) { return exit_child; }
     }
     return NULL;
+}
+
+static int try_remove_killed_child(u32 pid) {
+    pcb_t* pcb = (pcb_t*)pid2proc(pid);
+    if (pcb->tree_info.child_k_num == 0) { return -1; }
+    for (int i = pcb->tree_info.child_k_num - 1; i >= 0; --i) {
+        --pcb->tree_info.child_k_num;
+        return (int)pcb->tree_info.child_killed[i];
+    }
+    panic("unreachable");
 }
 
 static void remove_zombie_child(u32 pid) {
     pcb_t* pcb    = &p_proc_current->pcb;
     bool   cpyflg = false;
     for (int i = 0; i < pcb->tree_info.child_p_num; ++i) {
-        pcb_t* exit_child = (pcb_t*)pid2pcb(pcb->tree_info.child_process[i]);
+        pcb_t* exit_child = (pcb_t*)pid2proc(pcb->tree_info.child_process[i]);
         assert(!(cpyflg && exit_child->pid == pid));
         if (exit_child->pid == pid) { cpyflg = true; }
         if (cpyflg && i < pcb->tree_info.child_p_num - 1) {
@@ -37,7 +47,7 @@ static void remove_zombie_child(u32 pid) {
 }
 
 static void wait_recycle_part(u32 pid, u32 base, u32 limit, bool free) {
-    u32 cr3   = ((pcb_t*)pid2pcb(pid))->cr3;
+    u32 cr3   = ((pcb_t*)pid2proc(pid))->cr3;
     u32 laddr = base;
     u32 parts = 0;
     while (laddr < limit) {
@@ -50,7 +60,7 @@ static void wait_recycle_part(u32 pid, u32 base, u32 limit, bool free) {
 
 static void wait_recycle_memory(u32 recy_pid) {
     assert(recy_pid != p_proc_current->pcb.pid);
-    pcb_t*        recy_pcb = (pcb_t*)pid2pcb(recy_pid);
+    pcb_t*        recy_pcb = (pcb_t*)pid2proc(recy_pid);
     lin_memmap_t* memmap   = &recy_pcb->memmap;
     ph_info_t*    ph_ptr   = memmap->ph_info;
     disable_int();
@@ -76,59 +86,23 @@ static void wait_recycle_memory(u32 recy_pid) {
     enable_int();
 }
 
-static void wait_reset_child(u32 pid) {
-    pcb_t* recy_pcb = (pcb_t*)pid2pcb(pid);
-    disable_int();
-    strcpy(recy_pcb->name, "USER");
-    recy_pcb->pid  = pid;
-    recy_pcb->lock = 0;
-    memcpy(
-        &recy_pcb->ldts[0],
-        &gdt[SELECTOR_KERNEL_CS >> 3],
-        sizeof(descriptor_t));
-    recy_pcb->ldts[0].attr0 = DA_C | RPL_USER << 5;
-    memcpy(
-        &recy_pcb->ldts[1],
-        &gdt[SELECTOR_KERNEL_DS >> 3],
-        sizeof(descriptor_t));
-    recy_pcb->ldts[1].attr0 = DA_DRW | RPL_USER << 5;
-    recy_pcb->regs.cs =
-        ((8 * 0) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    recy_pcb->regs.ds =
-        ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    recy_pcb->regs.es =
-        ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    recy_pcb->regs.fs =
-        ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    recy_pcb->regs.ss =
-        ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    recy_pcb->regs.gs     = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | RPL_USER;
-    recy_pcb->regs.eflags = 0x0202;
-
-    //! FIXME: rewrite antihuman expresssions as below
-    char* p_regs = (char*)((process_t*)recy_pcb + 1);
-    p_regs       -= P_STACKTOP;
-    memcpy(p_regs, &recy_pcb->regs, P_STACKTOP);
-    recy_pcb->esp_save_int     = p_regs;
-    recy_pcb->esp_save_context = p_regs - 10 * 4;
-    task_handler_t eip_context = restart_restore;
-    *(u32*)(p_regs - 4)        = (u32)eip_context;
-    *(u32*)(p_regs - 8)        = 0x1202;
-    recy_pcb->stat             = IDLE;
-    enable_int();
-}
-
 int do_wait(int* wstatus) {
     pcb_t* fa_pcb = &p_proc_current->pcb;
     while (true) {
         lock_or_schedule(&p_proc_current->pcb.lock);
-        if (fa_pcb->tree_info.child_p_num == 0) {
+        if (fa_pcb->tree_info.child_p_num == 0
+            && fa_pcb->tree_info.child_k_num == 0) {
             if (wstatus != NULL) { *wstatus = 0; }
             p_proc_current->pcb.lock = 0;
             return -1;
         }
-        pcb_t* exit_pcb = try_get_zombie_child();
+        pcb_t* exit_pcb = try_get_zombie_child(fa_pcb->pid);
         if (exit_pcb == NULL) {
+            int pid = try_remove_killed_child(fa_pcb->pid);
+            if (pid != -1) {
+                release(&fa_pcb->lock);
+                return pid;
+            }
             fa_pcb->stat = SLEEPING;
             release(&fa_pcb->lock);
             schedule();
@@ -139,8 +113,12 @@ int do_wait(int* wstatus) {
         if (wstatus != NULL) { *wstatus = exit_pcb->exit_code; }
         //! FIXME: no thread release here
         wait_recycle_memory(exit_pcb->pid);
-        wait_reset_child(exit_pcb->pid);
         int pid = exit_pcb->pid;
+        //! FIXME: lock also release here
+        memset(exit_pcb, 0, sizeof(process_t));
+        exit_pcb->pid  = -1;
+        exit_pcb->stat = IDLE;
+        exit_pcb->lock = 0;
         release(&exit_pcb->lock);
         release(&fa_pcb->lock);
         return pid;

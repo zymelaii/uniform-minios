@@ -104,6 +104,8 @@ typedef struct tree_info_s {
     u32 child_process[NR_CHILD_MAX]; //<! child proc list
     u32 child_t_num;                 //<! total child thread
     u32 child_thread[NR_CHILD_MAX];  //<! child thread list
+    u32 child_k_num;                 //<! total killed child proc/thread
+    u32 child_killed[NR_CHILD_MAX];  //<! child killed list
     int text_hold;                   //<! owner of text or not
     int data_hold;                   //<! owner of data or not
 } tree_info_t;
@@ -186,7 +188,7 @@ process_t* try_lock_free_pcb();
 ph_info_t* clone_ph_info(ph_info_t* src);
 int        ldt_seg_linear(process_t* p, int idx);
 void*      va2la(int pid, void* va);
-process_t* pid2pcb(int pid);
+process_t* pid2proc(int pid);
 int        proc2pid(process_t* proc);
 
 extern tss_t      tss;

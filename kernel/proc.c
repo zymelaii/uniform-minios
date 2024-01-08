@@ -103,7 +103,7 @@ void* va2la(int pid, void* va) {
     return (void*)la;
 }
 
-process_t* pid2pcb(int pid) {
+process_t* pid2proc(int pid) {
     return &proc_table[pid];
 }
 
@@ -194,6 +194,7 @@ bool init_proc_pcb(
     pcb->tree_info.ppid        = -1;
     pcb->tree_info.child_p_num = 0;
     pcb->tree_info.child_t_num = 0;
+    pcb->tree_info.child_k_num = 0;
     pcb->tree_info.text_hold   = true;
     pcb->tree_info.data_hold   = true;
 
