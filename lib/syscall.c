@@ -60,18 +60,6 @@ int get_ticks() {
     return syscall0(NR_get_ticks);
 }
 
-void *malloc(int size) {
-    return (void *)syscall1(NR_malloc, size);
-}
-
-void *malloc_4k() {
-    return (void *)syscall0(NR_malloc_4k);
-}
-
-int free(void *ptr) {
-    return syscall1(NR_free, (u32)ptr);
-}
-
 int pthread_create(void *entry) {
     return syscall1(NR_pthread_create, (u32)entry);
 }

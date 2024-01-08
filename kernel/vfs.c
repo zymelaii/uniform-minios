@@ -4,6 +4,7 @@
 #include <unios/fs.h>
 #include <unios/hd.h>
 #include <unios/assert.h>
+#include <unios/memory.h>
 #include <unios/syscall.h>
 #include <unios/layout.h>
 #include <sys/defs.h>
@@ -125,9 +126,8 @@ static void init_vfs_table() {
     for (int i = 0; i < NR_TTY; ++i) {
         snprintf(buf, sizeof(buf), "/dev_tty%d", i);
         int   n   = strlen(buf);
-        void *ptr = do_kmalloc(n + 1);
+        void *ptr = kmalloc(n + 1);
         assert(ptr != NULL);
-        ptr = K_PHY2LIN(ptr);
         strcpy(ptr, buf);
         //! FIXME: memory leak
         TTY_VFS(i).name   = ptr;

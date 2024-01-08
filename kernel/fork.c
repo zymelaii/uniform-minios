@@ -1,5 +1,5 @@
 ﻿#include <unios/syscall.h>
-#include <unios/malloc.h>
+#include <unios/memory.h>
 #include <unios/page.h>
 #include <unios/proc.h>
 #include <unios/spinlock.h>

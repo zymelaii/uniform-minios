@@ -5,6 +5,7 @@
 #include <unios/assert.h>
 #include <unios/layout.h>
 #include <unios/spinlock.h>
+#include <unios/memory.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -45,7 +46,7 @@ static u32 exec_load(
             pg_unmap_laddr(cr3, laddr, true);
             laddr = pg_frame_phyaddr(laddr) + NUM_4K;
         }
-        do_free((void*)K_LIN2PHY(ph_info));
+        kfree(ph_info);
         ph_info = next;
     }
     memmap->ph_info = NULL;
@@ -76,7 +77,7 @@ static u32 exec_load(
 
         //! maintenance ph info list
         //! TODO: integrate linked-list ops
-        ph_info_t* new_ph_info = K_PHY2LIN(do_kmalloc(sizeof(ph_info_t)));
+        ph_info_t* new_ph_info = kmalloc(sizeof(ph_info_t));
         new_ph_info->base      = elf_proghs[ph_num].p_vaddr;
         new_ph_info->limit =
             elf_proghs[ph_num].p_vaddr + elf_proghs[ph_num].p_memsz;
@@ -181,12 +182,11 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     lock_or_schedule(&p_proc_current->pcb.lock);
     Elf32_Ehdr* elf_header = NULL;
     Elf32_Phdr* elf_proghs = NULL;
-    elf_header             = K_PHY2LIN(do_kmalloc(sizeof(Elf32_Ehdr)));
+    elf_header             = kmalloc(sizeof(Elf32_Ehdr));
     assert(elf_header != NULL);
 
     read_Ehdr(fd, elf_header, 0);
-    elf_proghs =
-        K_PHY2LIN(do_kmalloc(sizeof(Elf32_Phdr) * elf_header->e_phnum));
+    elf_proghs = kmalloc(sizeof(Elf32_Phdr) * elf_header->e_phnum);
     assert(elf_proghs != NULL);
     for (int i = 0; i < elf_header->e_phnum; i++) {
         u32 offset = elf_header->e_phoff + i * sizeof(Elf32_Phdr);
@@ -195,8 +195,8 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
 
     if (exec_load(fd, elf_header, elf_proghs) == -1) {
         do_close(fd);
-        do_free((void*)K_LIN2PHY(elf_header));
-        do_free((void*)K_LIN2PHY(elf_proghs));
+        kfree(elf_header);
+        kfree(elf_proghs);
         release(&io_lock);
         return -1;
     }
@@ -227,8 +227,8 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     frame[NR_ESPREG]             = p_proc_current->pcb.regs.esp;
     p_proc_current->pcb.stat     = READY;
     do_close(fd);
-    do_free((void*)K_LIN2PHY(elf_header));
-    do_free((void*)K_LIN2PHY(elf_proghs));
+    kfree(elf_header);
+    kfree(elf_proghs);
     release(&p_proc_current->pcb.lock);
     return 0;
 }

@@ -2,7 +2,7 @@
 #include <unios/proc.h>
 #include <unios/vga.h>
 #include <unios/kstate.h>
-#include <unios/malloc.h>
+#include <unios/memory.h>
 #include <unios/clock.h>
 #include <unios/keyboard.h>
 #include <unios/hd.h>
@@ -56,7 +56,7 @@ int kernel_main() {
     klog("-----Kernel Initialization Begins-----\n");
     kstate_on_init = true;
 
-    init_mem();
+    init_memory();
     klog("-----mem module init done-----\n");
 
     init_startup_proc();

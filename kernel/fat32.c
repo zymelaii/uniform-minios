@@ -4,6 +4,7 @@
 #include <unios/fs.h>
 #include <unios/fs_misc.h>
 #include <unios/layout.h>
+#include <unios/memory.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -146,7 +147,7 @@ STATE ReadFile(int fd, void *buf, int length) {
 
     kprintf("read:");
     if (pfile->off >= pfile->size) { return 0; }
-    sector = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    sector = (PBYTE)kmalloc(Bytes_Per_Sector * sizeof(BYTE));
     if (sector == NULL) { return SYSERROR; }
     GetFileOffset(pfile, &curSectorIndex, &off_in_sector, &isLastSector);
     do {
@@ -183,7 +184,7 @@ STATE ReadFile(int fd, void *buf, int length) {
             off_in_sector  = 0;
         }
     } while (1);
-    do_free(sector);
+    kfree(sector);
     // pfile->off = 0;
     return size;
 }
@@ -205,20 +206,20 @@ STATE WriteFile(int fd, const void *buf, int length) {
         return ACCESSDENIED;
     }
 
-    sector = (PBYTE)K_PHY2LIN(do_kmalloc(Bytes_Per_Sector * sizeof(BYTE)));
+    sector = (PBYTE)kmalloc(Bytes_Per_Sector * sizeof(BYTE));
     if (sector == NULL) { return SYSERROR; }
     if (pfile->start == 0) // 此文件是个空文件原来没有分配簇
     {
         state = AllotClustersForEmptyFile(pfile, length); // 空间不足无法分配
         if (state != OK) {
-            do_free(sector);
+            kfree(sector);
             return state; // 虚拟磁盘空间不足
         }
     } else {
         if (NeedMoreCluster(pfile, length, &clusterNum)) {
             state = AddCluster(pfile->start, clusterNum); // 空间不足
             if (state != OK) {
-                do_free(sector);
+                kfree(sector);
                 return state; // 虚拟磁盘空间不足
             }
         }
@@ -244,7 +245,7 @@ STATE WriteFile(int fd, const void *buf, int length) {
         sector + off_in_sector, (void *)buf + off_in_buf, length - off_in_buf);
     WriteSector(sector, curSectorIndex);
     pfile->off += length - off_in_buf;
-    do_free(sector);
+    kfree(sector);
     // fflush(fp);
     return OK;
 }
@@ -491,7 +492,7 @@ STATE IsFile(PCHAR path, PUINT tag) {
 void init_fs_fat() {
     klog("-----initialize fat32 filesystem-----\n");
 
-    buf = (u8 *)K_PHY2LIN(do_kmalloc(FSBUF_SIZE));
+    buf = (u8 *)kmalloc(FSBUF_SIZE);
 
     int fat32_dev =
         get_fs_dev(PRIMARY_MASTER, FAT32_TYPE); // added by mingxuan 2020-10-27

@@ -1,5 +1,5 @@
 #include <unios/syscall.h>
-#include <unios/malloc.h>
+#include <unios/memory.h>
 #include <unios/proc.h>
 #include <unios/fs_const.h>
 #include <unios/hd.h>
@@ -192,7 +192,7 @@ void hd_rdwt_sched(MESSAGE *p) {
     int    size = p->CNT;
     void  *buffer;
 
-    buffer      = K_PHY2LIN(do_kmalloc(size));
+    buffer      = kmalloc(size);
     rwinfo.msg  = p;
     rwinfo.kbuf = buffer;
     rwinfo.proc = p_proc_current;
@@ -211,7 +211,7 @@ void hd_rdwt_sched(MESSAGE *p) {
         schedule();
     }
 
-    do_free((void *)K_LIN2PHY(buffer));
+    kfree(buffer);
 }
 
 void init_hd_queue(HDQueue *hdq) {

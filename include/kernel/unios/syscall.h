@@ -3,9 +3,6 @@
 enum {
     NR_get_ticks = 0,
     NR_get_pid,
-    NR_malloc,
-    NR_malloc_4k,
-    NR_free,
     NR_fork,
     NR_pthread_create,
     NR_execve,
@@ -48,13 +45,6 @@ void do_exit(int exit_code);
 
 //! from wait.c
 int do_wait(int *wstatus);
-
-//! from malloc.c
-void *do_kmalloc(int size);
-void *do_kmalloc_4k();
-void *do_malloc(int size);
-void *do_malloc_4k();
-void  do_free(void *ptr);
 
 //! from proc.c
 int  do_get_pid();

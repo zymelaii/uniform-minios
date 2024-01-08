@@ -8,6 +8,7 @@
 #include <unios/schedule.h>
 #include <unios/kstate.h>
 #include <unios/spinlock.h>
+#include <unios/memory.h>
 #include <unios/layout.h>
 #include <unios/syscall.h>
 #include <unios/assert.h>
@@ -45,7 +46,7 @@ process_t* try_lock_free_pcb() {
 ph_info_t* clone_ph_info(ph_info_t* src) {
     ph_info_t* dst = NULL;
     while (src != NULL) {
-        ph_info_t* node = K_PHY2LIN(do_kmalloc(sizeof(ph_info_t)));
+        ph_info_t* node = kmalloc(sizeof(ph_info_t));
         assert(node != NULL);
         node->base  = src->base;
         node->limit = src->limit;

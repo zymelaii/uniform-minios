@@ -3,6 +3,7 @@
 #include <unios/assert.h>
 #include <unios/proc.h>
 #include <unios/kstate.h>
+#include <unios/memory.h>
 #include <arch/x86.h>
 #include <string.h>
 #include <stdio.h>
@@ -11,7 +12,7 @@ bool pg_free_pde(u32 cr3) {
     assert(cr3 != 0);
     assert(cr3 == pg_frame_phyaddr(cr3));
     assert(cr3 != p_proc_current->pcb.cr3);
-    do_free((void *)pg_frame_phyaddr(cr3));
+    free_phypage(pg_frame_phyaddr(cr3));
     return true;
 }
 
@@ -25,7 +26,7 @@ bool pg_unmap_pte(u32 cr3, bool free) {
         if ((pde & PG_MASK_P) != PG_P) { continue; }
         //! case 1: unmap the pde
         u32 pde_phyaddr = pg_frame_phyaddr(pde);
-        if (free) { do_free((void *)pde_phyaddr); }
+        if (free) { free_phypage(pde_phyaddr); }
         *pde_ptr = 0;
     }
     pg_refresh();
@@ -43,7 +44,7 @@ bool pg_unmap_laddr(u32 cr3, u32 laddr, bool free) {
     if ((pte & PG_MASK_P) != PG_P) { return true; }
     u32 phyaddr = pg_frame_phyaddr(pte);
     //! case 2: pte present, reset then
-    if (free) { do_free((void *)phyaddr); }
+    if (free) { free_phypage(phyaddr); }
     *pte_ptr = 0;
     pg_refresh();
     return true;
@@ -58,7 +59,7 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
     assert((pte_attr & PG_MASK_P) == PG_P);
     u32 *pde_ptr = pg_pde_ptr(cr3, laddr);
     if ((*pde_ptr & PG_MASK_P) != PG_P) {
-        u32 pde_phyaddr = (u32)do_kmalloc_4k();
+        u32 pde_phyaddr = (u32)kmalloc_phypage();
         assert(pde_phyaddr == pg_frame_phyaddr(pde_phyaddr));
         memset(K_PHY2LIN(pde_phyaddr), 0, NUM_4K);
         *pde_ptr = pde_phyaddr | pde_attr;
@@ -69,7 +70,7 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
     if (phyaddr == PG_INVALID) {
         if ((old_pte & PG_MASK_P) != PG_P) {
             bool in_kernel = laddr >= KernelLinBase;
-            phyaddr = (u32)(in_kernel ? do_kmalloc_4k() : do_malloc_4k());
+            phyaddr = (u32)(in_kernel ? kmalloc_phypage() : malloc_phypage());
         } else {
             phyaddr = old_phyaddr;
         }
@@ -158,7 +159,7 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
 }
 
 u32 pg_create_and_init() {
-    u32 cr3 = (u32)do_kmalloc_4k();
+    u32 cr3 = kmalloc_phypage();
     //! NOTE: cr3 should only comes from pg_create_and_init and is always
     //! non-zero
     assert(cr3 != 0);

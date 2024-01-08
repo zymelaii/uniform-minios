@@ -108,7 +108,7 @@ void out_char(console_t* con, char ch) {
         } break;
     }
 
-    if (con->cursor - con->orig >= con->con_size) {
+    if (con->cursor - con->orig >= con->con_size - 1) {
         cursor_x    = (con->cursor - con->orig) % SCR_WIDTH;
         cursor_y    = (con->cursor - con->orig) / SCR_WIDTH;
         int cp_orig = con->orig + (cursor_y + 1) * SCR_WIDTH - SCR_SIZE;
