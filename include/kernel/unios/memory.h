@@ -37,10 +37,6 @@ typedef struct memblk_allocator_s {
     memblk_t free_slots[0];
 } memblk_allocator_t;
 
-extern memblk_allocator_t *kmem_allocator;
-extern memblk_allocator_t *kpage_allocator;
-extern memblk_allocator_t *upage_allocator;
-
 enum mballoc_free_state {
     MBALLOC_OK,
     MBALLOC_NOSLOTS,
