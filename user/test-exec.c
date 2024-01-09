@@ -14,6 +14,5 @@ int main(int argc, char *argv[], char *envp[]) {
         argv,
         envp);
     int resp = exec("test-exec");
-    assert(false && "unreachable");
-    return 0;
+    unreachable();
 }

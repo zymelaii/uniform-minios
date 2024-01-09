@@ -12,6 +12,5 @@ int main(int argc, char *argv[]) {
     }
     printf("start exec worker pid=%d\n", get_pid());
     int resp = exec("test-exec");
-    assert(false && "unreachable");
-    return 0;
+    unreachable();
 }

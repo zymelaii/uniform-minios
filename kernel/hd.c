@@ -5,10 +5,10 @@
 #include <unios/hd.h>
 #include <unios/layout.h>
 #include <unios/interrupt.h>
-#include <unios/assert.h>
 #include <unios/kstate.h>
 #include <unios/schedule.h>
 #include <arch/x86.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -116,7 +116,7 @@ void hd_rdwt(MESSAGE *p) {
             memcpy(la, hdbuf, bytes);
         } else {
             if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT)) {
-                assert(false && "hd writing error.");
+                abort("hd writing error.");
             }
 
             memcpy(hdbuf, la, bytes);
@@ -175,9 +175,9 @@ static void hd_rdwt_real(RWInfo *p) {
             insw(REG_DATA, hdbuf, SECTOR_SIZE);
             memcpy(la, hdbuf, bytes);
         } else {
-            if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT))
-                panic("hd writing error.");
-
+            if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT)) {
+                abort("hd writing error.");
+            }
             memcpy(hdbuf, la, bytes);
             outsw(REG_DATA, hdbuf, SECTOR_SIZE);
             interrupt_wait();
@@ -266,7 +266,7 @@ void hd_ioctl(MESSAGE *p) {
 
         memcpy(dst, src, sizeof(struct part_info));
     } else {
-        // assert(0);
+        unreachable();
     }
 }
 
@@ -406,7 +406,7 @@ static void partition(int device, int style) {
             if (part_tbl[1].sys_id == NO_PART) break;
         }
     } else {
-        // assert(0);
+        unreachable();
     }
 }
 
@@ -522,7 +522,7 @@ static void hd_cmd_out(struct hd_cmd *cmd) {
      * For all commands, the host must first check if BSY=1,
      * and should proceed no further unless and until BSY=0
      */
-    if (!waitfor(STATUS_BSY, 0, HD_TIMEOUT)) panic("hd error.");
+    if (!waitfor(STATUS_BSY, 0, HD_TIMEOUT)) { abort("hd error"); }
 
     /* Activate the Interrupt Enable (nIEN) bit */
     outb(REG_DEV_CTRL, 0);

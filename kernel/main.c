@@ -1,4 +1,3 @@
-#include <unios/assert.h>
 #include <unios/proc.h>
 #include <unios/vga.h>
 #include <unios/kstate.h>
@@ -10,6 +9,7 @@
 #include <unios/vfs.h>
 #include <unios/fs.h>
 #include <arch/x86.h>
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -84,5 +84,5 @@ int kernel_main() {
     kstate_on_init = false;
 
     restart_initial();
-    panic("unreachable");
+    unreachable();
 }

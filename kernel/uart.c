@@ -17,7 +17,7 @@ int init_serial() {
 
     // Check if serial is faulty (i.e: not same byte as sent)
     if (inb(PORT_COM1 + 0) != 0xae) {
-        assert(0);
+        panic("faulty serial");
         return 1;
     }
 

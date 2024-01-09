@@ -1,5 +1,5 @@
 #include <unios/config.h>
-#include <unios/assert.h>
+#include <assert.h>
 #include <tar.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -36,5 +36,5 @@ void initial() {
     close(stderr);
 
     int err = exec("shell_0");
-    panic("unreachable");
+    unreachable();
 }
