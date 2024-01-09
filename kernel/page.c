@@ -96,6 +96,16 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
     return true;
 }
 
+bool pg_unmap_laddr_range(u32 cr3, u32 laddr_base, u32 laddr_limit, bool free) {
+    laddr_base  = pg_frame_phyaddr(laddr_base);
+    laddr_limit = pg_frame_phyaddr(laddr_limit + 0xfff);
+    for (u32 laddr = laddr_base; laddr < laddr_limit; laddr += NUM_4K) {
+        bool ok = pg_unmap_laddr(cr3, laddr, free);
+        if (!ok) { return false; }
+    }
+    return true;
+}
+
 bool pg_map_laddr_range(
     u32 cr3, u32 laddr_base, u32 laddr_limit, u32 pde_attr, u32 pte_attr) {
     laddr_base  = pg_frame_phyaddr(laddr_base);

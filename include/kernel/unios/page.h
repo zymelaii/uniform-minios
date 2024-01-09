@@ -64,6 +64,17 @@ bool pg_unmap_laddr(u32 cr3, u32 laddr, bool free);
 bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr);
 
 /*!
+ * \brief unmap range of laddr in page table
+ *
+ * \param laddr_base base linear address to unmap
+ * \param laddr_limit limit of unmapping range (lower than)
+ * \param free whether to free the phy page held by laddr
+ *
+ * \return succeed or not, always return true currently
+ */
+bool pg_unmap_laddr_range(u32 cr3, u32 laddr_base, u32 laddr_limit, bool free);
+
+/*!
  * \brief map range of laddr in page table
  *
  * \param laddr_base base linear address to map
@@ -111,6 +122,7 @@ static u32  pg_pde_attr(u32 cr3, u32 laddr, u32 mask);
 static u32  pg_pte_attr(u32 pde, u32 laddr, u32 mask);
 static bool pg_pde_exist(u32 cr3, u32 laddr);
 static bool pg_pte_exist(u32 pde, u32 laddr);
+static bool pg_addr_pte_exist(u32 cr3, u32 laddr);
 
 static inline u32 pg_offset(u32 laddr) {
     return laddr & 0xfff;
@@ -164,4 +176,10 @@ static inline bool pg_pde_exist(u32 cr3, u32 laddr) {
 
 static inline bool pg_pte_exist(u32 pde, u32 laddr) {
     return pg_pte_attr(pde, laddr, PG_MASK_P) == PG_P;
+}
+
+static bool pg_addr_pte_exist(u32 cr3, u32 laddr) {
+    u32 pde = pg_pde(cr3, laddr);
+    if ((pde & PG_MASK_P) != PG_P) { return false; }
+    return pg_pte_exist(pde, laddr);
 }

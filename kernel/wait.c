@@ -5,6 +5,7 @@
 #include <unios/syscall.h>
 #include <unios/schedule.h>
 #include <unios/memory.h>
+#include <unios/scavenger.h>
 #include <arch/x86.h>
 #include <sys/types.h>
 #include <stdlib.h>
@@ -47,51 +48,10 @@ static void remove_zombie_child(u32 pid) {
     return;
 }
 
-static void wait_recycle_part(u32 pid, u32 base, u32 limit, bool free) {
-    u32 cr3   = ((pcb_t*)pid2proc(pid))->cr3;
-    u32 laddr = base;
-    u32 parts = 0;
-    while (laddr < limit) {
-        parts++;
-        bool ok = pg_unmap_laddr(cr3, laddr, free);
-        assert(ok);
-        laddr = pg_frame_phyaddr(laddr) + NUM_4K;
-    }
-}
-
 static void wait_recycle_memory(u32 recy_pid) {
     assert(recy_pid != p_proc_current->pcb.pid);
-    pcb_t*        recy_pcb = (pcb_t*)pid2proc(recy_pid);
-    lin_memmap_t* memmap   = &recy_pcb->memmap;
-    ph_info_t*    ph_ptr   = memmap->ph_info;
-
     disable_int();
-
-    while (ph_ptr != NULL) {
-        wait_recycle_part(recy_pid, ph_ptr->base, ph_ptr->limit, true);
-        ph_info_t* old_ph_ptr = ph_ptr;
-        ph_ptr                = ph_ptr->next;
-        kfree(old_ph_ptr);
-    }
-    memmap->ph_info = NULL;
-
-    wait_recycle_part(
-        recy_pid, memmap->vpage_lin_base, memmap->vpage_lin_limit, true);
-    wait_recycle_part(
-        recy_pid, memmap->heap_lin_base, memmap->heap_lin_limit, true);
-    wait_recycle_part(
-        recy_pid, memmap->arg_lin_base, memmap->arg_lin_limit, true);
-    wait_recycle_part(
-        recy_pid, memmap->kernel_lin_base, memmap->kernel_lin_limit, false);
-    wait_recycle_part(
-        recy_pid, memmap->stack_lin_limit, memmap->stack_lin_base, true);
-
-    pg_unmap_pte(recy_pcb->cr3, true);
-    pg_free_pde(recy_pcb->cr3);
-
-    kfree(recy_pcb->allocator);
-    recy_pcb->allocator = NULL;
-
+    recycle_proc_memory(pid2proc(recy_pid));
     enable_int();
 }
 

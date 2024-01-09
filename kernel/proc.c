@@ -3,7 +3,7 @@
 #include <unios/clock.h>
 #include <unios/tty.h>
 #include <unios/hd.h>
-#include <unios/sweeper.h>
+#include <unios/scavenger.h>
 #include <unios/schedule.h>
 #include <unios/kstate.h>
 #include <unios/spinlock.h>
@@ -25,8 +25,8 @@ process_t  proc_table[NR_PCBS];
 
 task_t task_table[NR_TASKS] = {
     TASK_ENTRY(hd_service),
-    TASK_ENTRY(task_tty),
-    TASK_ENTRY(task_sweeper),
+    TASK_ENTRY(tty_handler),
+    TASK_ENTRY(scavenger),
 };
 
 process_t* try_lock_free_pcb() {

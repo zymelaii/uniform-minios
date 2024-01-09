@@ -46,6 +46,6 @@ void tty_write(tty_t* tty, char* buf, int len);
 int  tty_read(tty_t* tty, char* buf, int len);
 void tty_keyboard_proc(tty_t* tty, u32 key);
 
-void task_tty();
+void tty_handler();
 
 extern tty_t tty_table[];
