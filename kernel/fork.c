@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <atomic.h>
 
 static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
     //! FIXME: risky action, this is relevant to current cr3, but ppid may be

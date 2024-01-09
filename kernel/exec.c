@@ -4,9 +4,10 @@
 #include <unios/syscall.h>
 #include <unios/assert.h>
 #include <unios/layout.h>
-#include <unios/spinlock.h>
 #include <unios/memory.h>
+#include <unios/spinlock.h>
 #include <stdio.h>
+#include <atomic.h>
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
@@ -152,6 +153,7 @@ static int open_first_executable(const char* path) {
 
     const char* prefix = env_pwd;
     do {
+        j               = -1;
         const char* ext = "";
         do {
             snprintf(abspath, sizeof(abspath), "%s/%s%s", prefix, path, ext);
@@ -182,6 +184,7 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     lock_or_schedule(&p_proc_current->pcb.lock);
     Elf32_Ehdr* elf_header = NULL;
     Elf32_Phdr* elf_proghs = NULL;
+    void*       entry      = NULL;
     elf_header             = kmalloc(sizeof(Elf32_Ehdr));
     assert(elf_header != NULL);
 
@@ -192,15 +195,15 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
         u32 offset = elf_header->e_phoff + i * sizeof(Elf32_Phdr);
         read_Phdr(fd, elf_proghs + i, offset);
     }
-
-    if (exec_load(fd, elf_header, elf_proghs) == -1) {
+    entry    = (void*)elf_header->e_entry;
+    int resp = exec_load(fd, elf_header, elf_proghs);
+    kfree(elf_header);
+    kfree(elf_proghs);
+    release(&io_lock);
+    if (resp == -1) {
         do_close(fd);
-        kfree(elf_header);
-        kfree(elf_proghs);
-        release(&io_lock);
         return -1;
     }
-    release(&io_lock);
 
     exec_pcb_init(path);
 
@@ -225,10 +228,9 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     p_proc_current->pcb.regs.eip = elf_header->e_entry;
     frame[NR_EIPREG]             = p_proc_current->pcb.regs.eip;
     frame[NR_ESPREG]             = p_proc_current->pcb.regs.esp;
-    p_proc_current->pcb.stat     = READY;
+
+    p_proc_current->pcb.stat = READY;
     do_close(fd);
-    kfree(elf_header);
-    kfree(elf_proghs);
     release(&p_proc_current->pcb.lock);
     return 0;
 }

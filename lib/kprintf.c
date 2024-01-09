@@ -2,8 +2,10 @@
 #include <unios/uart.h>
 #include <unios/spinlock.h>
 #include <unios/vga.h>
+#include <unios/assert.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <time.h>
 
 static void kprintfputch(int ch, void *b) {
     vga_write_char(ch, WHITE_CHAR);
@@ -49,13 +51,14 @@ int klog(const char *fmt, ...) {
     va_list ap;
     int     rc;
 
-    //! FIXME: user program and kernel both hold a copy, this lock action can
-    //! only lock kernel/user-prog itself, while the true critical resource is
-    //! serial device, so the lock action is expected to move into the place
-    //! where serial io really works to ensure the exclusive access between
-    //! kernel and user prog
+    clock_t tm  = clock_from_sysclk(do_get_ticks());
+    int     ms  = tm % 1000;
+    int     sec = tm / 1000 % 60;
+    int     min = tm / 60000 % 60;
+    int     hr  = tm / 3600000 % 60;
+
     va_start(ap, fmt);
-    uart_kprintf("[tick %d] ", do_get_ticks());
+    uart_kprintf("[%02d:%02d:%02d.%03d][INFO] ", hr, min, sec, ms);
     rc = v_uart_kprintf(fmt, ap);
     va_end(ap);
 

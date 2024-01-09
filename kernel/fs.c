@@ -127,21 +127,16 @@ static void mkfs() {
     memcpy(fsbuf, &sb, SUPER_BLOCK_SIZE);
     WR_SECT(orange_dev, 1, fsbuf);
 
+    klog("orange geometry {\n");
+    klog("  device base: 0x%x00,\n", (geo.base + 0) * 2);
+    klog("  superbock: 0x%x00,\n", (geo.base + 1) * 2);
+    klog("  inode map: 0x%x00,\n", (geo.base + 2) * 2);
+    klog("  sector map: 0x%x00,\n", (geo.base + 2 + sb.nr_imap_sects) * 2);
     klog(
-        "orange geometry {\n"
-        "  device base: 0x%x00,\n"
-        "  superbock: 0x%x00,\n"
-        "  inode map: 0x%x00,\n"
-        "  sector map: 0x%x00,\n"
-        "  inodes: 0x%x00,\n"
-        "  first sector: 0x%x00,\n"
-        "}\n",
-        (geo.base + 0) * 2,
-        (geo.base + 1) * 2,
-        (geo.base + 2) * 2,
-        (geo.base + 2 + sb.nr_imap_sects) * 2,
-        (geo.base + 2 + sb.nr_imap_sects + sb.nr_smap_sects) * 2,
-        (geo.base + sb.n_1st_sect) * 2);
+        "  inodes: 0x%x00,\n",
+        (geo.base + 2 + sb.nr_imap_sects + sb.nr_smap_sects) * 2);
+    klog("  first sector: 0x%x00,\n", (geo.base + sb.n_1st_sect) * 2);
+    klog("}\n");
 
     //! resolve inode map
     //! include root, curdir, tty0, tty1, tty2, orange
@@ -348,11 +343,11 @@ static int search_file(char *path) {
                                              */
     int               m = 0;
     struct dir_entry *pde;
-    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
-                             // by xw, 18/12/27
+    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
+                             // added by xw, 18/12/27
     for (i = 0; i < nr_dir_blks; i++) {
-        // RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified
-        // by xw, 18/12/27
+        // RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+        // //modified by xw, 18/12/27
         RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
         pde = (struct dir_entry *)fsbuf;
         for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++, pde++) {
@@ -529,8 +524,8 @@ static struct inode *get_inode_sched(int dev, int num) {
     superblock_t *sb     = get_unique_superblock(dev);
     int           blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
                + ((num - 1) / (SECTOR_SIZE / INODE_SIZE));
-    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
-                             // by xw, 18/12/27
+    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
+                             // added by xw, 18/12/27
     RD_SECT_SCHED(dev, blk_nr, fsbuf);
     struct inode *pinode =
         (struct inode
@@ -571,8 +566,8 @@ static void sync_inode(struct inode *p) {
     superblock_t *sb     = get_unique_superblock(p->i_dev);
     int           blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
                + ((p->i_num - 1) / (SECTOR_SIZE / INODE_SIZE));
-    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
-                             // by xw, 18/12/27
+    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
+                             // added by xw, 18/12/27
     RD_SECT(p->i_dev, blk_nr, fsbuf);
     pinode =
         (struct inode
@@ -597,8 +592,8 @@ static void sync_inode(struct inode *p) {
  * @return  Ptr of the new i-node.
  *****************************************************************************/
 static struct inode *new_inode(int dev, int inode_nr, int start_sect) {
-    // struct inode * new_inode = get_inode_sched(dev, inode_nr);	//modified
-    // by xw, 18/8/28
+    // struct inode * new_inode = get_inode_sched(dev, inode_nr);
+    // //modified by xw, 18/8/28
     struct inode *new_inode = get_inode(dev, inode_nr);
 
     new_inode->i_mode       = I_REGULAR;
@@ -643,8 +638,7 @@ static void
     struct dir_entry *new_de = 0;
 
     int  i, j;
-    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
-                             // by xw, 18/12/27
+    char fsbuf[SECTOR_SIZE];
     for (i = 0; i < nr_dir_blks; i++) {
         RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
 
@@ -682,8 +676,8 @@ static int alloc_imap_bit(int dev) {
     int           imap_blk0_nr = 1 + 1; /* 1 boot sector & 1 super block */
     superblock_t *sb           = get_unique_superblock(dev);
 
-    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
-                             // by xw, 18/12/27
+    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
+                             // added by xw, 18/12/27
 
     for (i = 0; i < sb->nr_imap_sects; i++) {
         RD_SECT(dev, imap_blk0_nr + i, fsbuf);
@@ -725,8 +719,8 @@ static int alloc_smap_bit(int dev, int nr_sects_to_alloc) {
 
     int  smap_blk0_nr = 1 + 1 + sb->nr_imap_sects;
     int  free_sect_nr = 0;
-    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
-                             // by xw, 18/12/27
+    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
+                             // added by xw, 18/12/27
 
     for (i = 0; i < sb->nr_smap_sects; i++) { /* smap_blk0_nr + i :
                              current sect nr. */
@@ -761,8 +755,9 @@ static int alloc_smap_bit(int dev, int nr_sects_to_alloc) {
 }
 
 static int do_open(MESSAGE *fs_msg) {
-    //! FIXME: minios do not recursively setup fs from the stroage, but do_open
-    //! will try to read infomation from sectors, then inconsistency occurs
+    //! FIXME: minios do not recursively setup fs from the stroage, but
+    //! do_open will try to read infomation from sectors, then inconsistency
+    //! occurs
 
     /*caller_nr is the process number of the */
     int fd = -1;
@@ -1007,8 +1002,8 @@ static int do_unlink(MESSAGE *fs_msg) {
     int bit_idx  = inode_nr % 8;
     // assert(byte_idx < SECTOR_SIZE);	/* we have only one i-map sector */
     /* read sector 2 (skip bootsect and superblk): */
-    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added
-                             // by xw, 18/12/27
+    char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
+                             // added by xw, 18/12/27
     RD_SECT_SCHED(pin->i_dev, 2, fsbuf);
     // assert(fsbuf[byte_idx % SECTOR_SIZE] & (1 << bit_idx));
     fsbuf[byte_idx % SECTOR_SIZE] &= ~(1 << bit_idx);

@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <atomic.h>
 
 static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
     assert(src_pid != dst_pid);

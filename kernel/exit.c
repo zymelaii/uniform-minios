@@ -4,6 +4,7 @@
 #include <unios/page.h>
 #include <unios/schedule.h>
 #include <arch/x86.h>
+#include <atomic.h>
 #include <stdlib.h>
 #include <stdio.h>
 

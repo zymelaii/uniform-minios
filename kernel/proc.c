@@ -13,6 +13,7 @@
 #include <unios/assert.h>
 #include <unios/page.h>
 #include <string.h>
+#include <atomic.h>
 
 tss_t      tss;
 process_t* p_proc_current;

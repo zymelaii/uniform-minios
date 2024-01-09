@@ -2,7 +2,10 @@
 #include <stdlib.h>
 #include <time.h>
 
+clock_t clock_from_sysclk(int ticks) {
+    return ticks * 1000 / SYSCLK_FREQ_HZ;
+}
+
 clock_t clock() {
-    u64 sys_tick = get_ticks();
-    return sys_tick * 1000 / SYSCLK_FREQ_HZ;
+    return clock_from_sysclk(get_ticks());
 }

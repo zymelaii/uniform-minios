@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <atomic.h>
 
 static int pthread_pcb_cpy(process_t *p_child, process_t *p_parent);
 static int pthread_update_info(process_t *p_child, process_t *p_parent);

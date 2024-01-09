@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <atomic.h>
 #include <string.h>
 
 static pcb_t* try_get_zombie_child(u32 pid) {

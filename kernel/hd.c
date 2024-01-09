@@ -421,13 +421,10 @@ static void partition(int device, int style) {
 static void print_hdinfo(hd_info_t *hdi) {
     int i;
     for (i = 0; i < NR_PART_PER_DRIVE + 1; i++) {
-        if (i == 0) {
-            klog("");
-        } else {
-            klog("  ");
-        }
         klog(
-            "PART_%d: base %d, size: %d (in sector)\n",
+            "%*sPART_%d: base %d, size: %d (in sector)\n",
+            i == 0 ? 0 : 2,
+            "",
             i,
             hdi->primary[i].base,
             hdi->primary[i].size);
@@ -435,7 +432,9 @@ static void print_hdinfo(hd_info_t *hdi) {
     for (i = 0; i < NR_SUB_PER_DRIVE; i++) {
         if (hdi->logical[i].size == 0) continue;
         klog(
-            "    %d: base %d, size %d (in sector)\n",
+            "%*s%d: base %d, size %d (in sector)\n",
+            4,
+            "",
             i,
             hdi->logical[i].base,
             hdi->logical[i].size);
@@ -504,14 +503,10 @@ static void print_identify_info(u16 *hdinfo) {
     int cmd_set_supported = hdinfo[83];
     int sectors           = ((int)hdinfo[61] << 16) + hdinfo[60];
 
-    klog(
-        "  LBA supported: %s\n"
-        "  LBA48 supported: %s\n"
-        "  HD size: %d MB\n"
-        "}\n",
-        capabilities & 0x0200 ? "YES" : "NO",
-        cmd_set_supported & 0x0400 ? "YES" : "NO",
-        sectors * 512 / 1000000);
+    klog("  LBA supported: %s\n", capabilities & 0x0200 ? "YES" : "NO");
+    klog("  LBA48 supported: %s\n", cmd_set_supported & 0x0400 ? "YES" : "NO");
+    klog("  HD size: %d MB\n", sectors * 512 / 1000000);
+    klog("}\n");
 }
 
 /*****************************************************************************

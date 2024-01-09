@@ -4,6 +4,7 @@
 #include <unios/assert.h>
 #include <unios/spinlock.h>
 #include <stddef.h>
+#include <atomic.h>
 
 void *do_malloc(int size) {
     pcb_t *pcb = &p_proc_current->pcb;
