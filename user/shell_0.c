@@ -168,7 +168,7 @@ int main(int arg, char *argv[]) {
 
     char buf[PATH_MAX] = {};
     while (true) {
-        printf("miniOS:/ $ ");
+        printf("miniOS [%d]:/ $ ", get_pid());
         gets(buf);
         int    cmd_argc = 0;
         char **cmd_argv = NULL;

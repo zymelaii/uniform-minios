@@ -27,6 +27,7 @@ enum {
     NR_wait,
     NR_killerabbit,
     NR_environ,
+    NR_krnlobj_request,
     NR_exit,
 
     //! total syscalls
@@ -82,3 +83,6 @@ int do_killerabbit(int pid);
 
 //! from environ.c
 bool do_environ(int op, char *const **p_envp);
+
+//! from sync.c
+int do_krnlobj_request(int req, void *arg);

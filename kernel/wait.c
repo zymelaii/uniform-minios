@@ -84,11 +84,12 @@ int do_wait(int* wstatus) {
         wait_recycle_memory(exit_pcb->pid);
         int pid = exit_pcb->pid;
         //! FIXME: lock also release here
+        disable_int();
         memset(exit_pcb, 0, sizeof(process_t));
         exit_pcb->pid  = -1;
         exit_pcb->stat = IDLE;
-        exit_pcb->lock = 0;
         release(&exit_pcb->lock);
+        enable_int();
         release(&fa_pcb->lock);
         return pid;
     }

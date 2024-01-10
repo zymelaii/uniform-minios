@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 
-bool pg_free_pde(u32 cr3) {
+bool pg_free_page_table(u32 cr3) {
     assert(cr3 != 0);
     assert(cr3 == pg_frame_phyaddr(cr3));
     assert(cr3 != p_proc_current->pcb.cr3);
@@ -16,7 +16,7 @@ bool pg_free_pde(u32 cr3) {
     return true;
 }
 
-bool pg_unmap_pte(u32 cr3, bool free) {
+bool pg_clear_page_table(u32 cr3, bool free) {
     assert(cr3 != 0);
     u32 laddr = 0;
     for (u32 i = 0; i < 1024; ++i, laddr += 0x400000) {
@@ -71,6 +71,10 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
         if ((old_pte & PG_MASK_P) != PG_P) {
             bool in_kernel = laddr >= KernelLinBase;
             phyaddr = (u32)(in_kernel ? kmalloc_phypage() : malloc_phypage());
+            if (phyaddr == 0) {
+                klog("warn: pg_map_laddr: run out of phy page\n");
+                return false;
+            }
         } else {
             phyaddr = old_phyaddr;
         }
@@ -168,26 +172,37 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
     halt();
 }
 
-u32 pg_create_and_init() {
+bool pg_create_and_init(u32 *p_cr3) {
+    assert(p_cr3 != NULL);
     u32 cr3 = kmalloc_phypage();
     //! NOTE: cr3 should only comes from pg_create_and_init and is always
     //! non-zero
-    assert(cr3 != 0);
+    if (cr3 == 0) { return false; }
     assert(cr3 == pg_frame_phyaddr(cr3));
     memset(K_PHY2LIN(cr3), 0, NUM_4K);
-
+    bool should_rollback = false;
     //! init kernel memory space
     u32 laddr   = KernelLinBase;
     u32 phyaddr = 0;
     while (laddr < KernelLinBase + KernelSize) {
         bool ok = pg_map_laddr(
             cr3, laddr, phyaddr, PG_P | PG_U | PG_RWX, PG_P | PG_S | PG_RWX);
-        assert(ok);
+        if (!ok) {
+            should_rollback = true;
+            break;
+        }
         laddr   += NUM_4K;
         phyaddr += NUM_4K;
     }
-    pg_refresh();
-    return cr3;
+    if (should_rollback) {
+        pg_unmap_laddr_range(
+            cr3, KernelLinBase, KernelLinBase + KernelSize, false);
+        return false;
+    } else {
+        pg_refresh();
+    }
+    *p_cr3 = cr3;
+    return true;
 }
 
 void clear_kernel_pagepte_low() {

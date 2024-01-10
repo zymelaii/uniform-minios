@@ -140,7 +140,8 @@ bool init_proc_pcb(
     pcb->ldts[1].attr0 = DA_DRW | (rpl << 5);
 
     //! memory
-    pcb->cr3                = pg_create_and_init();
+    bool ok = pg_create_and_init(&pcb->cr3);
+    if (!ok) { return false; }
     mmap->kernel_lin_base   = KernelLinBase;
     mmap->kernel_lin_limit  = KernelLinBase + KernelSize;
     mmap->arg_lin_base      = ArgLinBase;
@@ -150,7 +151,7 @@ bool init_proc_pcb(
     mmap->stack_child_limit = StackLinLimitMAX;
     mmap->heap_lin_base     = HeapLinBase;
     mmap->heap_lin_limit    = HeapLinBase;
-    bool ok                 = pg_map_laddr_range(
+    ok                      = pg_map_laddr_range(
         pcb->cr3,
         mmap->stack_lin_limit,
         mmap->stack_lin_base,

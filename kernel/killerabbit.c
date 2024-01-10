@@ -14,6 +14,14 @@
 #include <string.h>
 #include <atomic.h>
 
+static int killerabbit_find_child_proc(u32 pid) {
+    pcb_t* fa_pcb = (pcb_t*)pid2proc(pid);
+    for (int i = 0; i < fa_pcb->tree_info.child_p_num; ++i) {
+        return fa_pcb->tree_info.child_process[i];
+    }
+    return -1;
+}
+
 static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
     assert(src_pid != dst_pid);
     pcb_t* src_pcb = (pcb_t*)pid2proc(src_pid);
@@ -24,10 +32,14 @@ static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
         dst_pcb->tree_info.child_process[j] =
             src_pcb->tree_info.child_process[i];
         pcb_t* son_pcb = (pcb_t*)pid2proc(src_pcb->tree_info.child_process[i]);
-        lock_or(&son_pcb->lock, schedule);
+        if (son_pcb->pid != p_proc_current->pcb.pid) {
+            lock_or(&son_pcb->lock, schedule);
+        }
         son_pcb->tree_info.ppid = dst_pid;
         ++dst_pcb->tree_info.child_p_num;
-        release(&son_pcb->lock);
+        if (son_pcb->pid != p_proc_current->pcb.pid) {
+            release(&son_pcb->lock);
+        }
     }
     src_pcb->tree_info.child_p_num = 0;
 }
@@ -96,6 +108,34 @@ static void killerabbit_recycle_memory(u32 recy_pid) {
     enable_int();
 }
 
+static bool killerabbit_kill_one(u32 kill_pid, u32 fa_pid) {
+    pcb_t* kill_pcb = (pcb_t*)pid2proc(kill_pid);
+    pcb_t* fa_pcb   = (pcb_t*)pid2proc(fa_pid);
+    pcb_t* recy_pcb = (pcb_t*)pid2proc(NR_RECY_PROC);
+    assert(fa_pcb->stat == READY || fa_pcb->stat == SLEEPING);
+    remove_killed_child(fa_pcb->pid, kill_pid);
+    killerabbit_handle_child_thread_proc(kill_pid);
+    if (fa_pcb->pid == NR_RECY_PROC) {
+        //! case 0: father is recy and already locked
+        transfer_child_proc(kill_pid, NR_RECY_PROC);
+    } else {
+        //! case 1: father isn't recy so need to lock
+        lock_or(&recy_pcb->lock, schedule);
+        transfer_child_proc(kill_pid, NR_RECY_PROC);
+        recy_pcb->stat = READY;
+        release(&recy_pcb->lock);
+    }
+    killerabbit_recycle_memory(kill_pid);
+    disable_int();
+    memset(kill_pcb, 0, sizeof(process_t));
+    kill_pcb->pid = -1;
+    assert(try_lock(&kill_pcb->lock));
+    kill_pcb->stat = IDLE;
+    fa_pcb->stat   = READY;
+    enable_int();
+    return true;
+}
+
 /*!
  * \brief kill a thread/process by given pid and wakeup its father
  *
@@ -105,35 +145,75 @@ static void killerabbit_recycle_memory(u32 recy_pid) {
 int do_killerabbit(int pid) {
     // can't kill shell or kernel task or itself (cr3 will boom!)
     //! TODO: bad solution
-    if (pid < NR_TASKS + NR_CONSOLES) { return -1; }
-
-    if (pid == p_proc_current->pcb.pid) { return -1; }
-    pcb_t* kill_pcb = NULL;
-    pcb_t* fa_pcb   = NULL;
-    pcb_t* recy_pcb = (pcb_t*)pid2proc(NR_RECY_PROC);
+    int kill_pid = pid;
+    if (kill_pid < NR_TASKS + NR_CONSOLES && kill_pid >= 0) { return -1; }
+    if (kill_pid == p_proc_current->pcb.pid) { return -1; }
+    int    total_KIA = 0;
+    pcb_t* kill_pcb  = NULL;
+    pcb_t* fa_pcb    = NULL;
+    pcb_t* recy_pcb  = (pcb_t*)pid2proc(NR_RECY_PROC);
 
     while (true) {
-        kill_pcb = (pcb_t*)pid2proc(pid);
-        //! TODO: implement thread killing!
-        if (kill_pcb->tree_info.type == TYPE_THREAD) { return -1; }
-        if (kill_pcb->stat != SLEEPING && kill_pcb->stat != READY) {
-            return -1;
-        }
+        if (try_lock(&p_proc_current->pcb.lock)) {
+            if (pid == -1) {
+                kill_pid = killerabbit_find_child_proc(p_proc_current->pcb.pid);
+                if (kill_pid == -1) {
+                    release(&p_proc_current->pcb.lock);
+                    return total_KIA;
+                }
+            }
+            kill_pcb = (pcb_t*)pid2proc(kill_pid);
+            //! TODO: implement thread killing!
+            if (try_lock(&kill_pcb->lock)) {
+                if (pid == -1) {
+                    assert(kill_pcb->tree_info.ppid == p_proc_current->pcb.pid);
+                }
+                if (kill_pcb->tree_info.type == TYPE_THREAD && pid != -1) {
+                    release(&kill_pcb->lock);
+                    release(&p_proc_current->pcb.lock);
+                    return -1;
+                }
+                if (kill_pcb->stat != SLEEPING && kill_pcb->stat != READY
+                    && kill_pcb->stat != ZOMBIE) {
+                    release(&kill_pcb->lock);
+                    release(&p_proc_current->pcb.lock);
+                    return -1;
+                }
+                fa_pcb = (pcb_t*)pid2proc(kill_pcb->tree_info.ppid);
+                disable_int();
+                bool ok = try_lock(&fa_pcb->lock);
+                if (fa_pcb->pid == p_proc_current->pcb.pid) { ok = true; }
+                if (ok) {
+                    kill_pcb->stat = KILLING;
+                    enable_int();
 
-        if (try_lock(&kill_pcb->lock)) {
-            fa_pcb = (pcb_t*)pid2proc(kill_pcb->tree_info.ppid);
-            if (try_lock(&fa_pcb->lock)) {
-                break;
+                    ok = killerabbit_kill_one(
+                        kill_pid, kill_pcb->tree_info.ppid);
+                    assert(ok);
+                    ++total_KIA;
+                    release(&p_proc_current->pcb.lock);
+                    release(&kill_pcb->lock);
+                    release(&fa_pcb->lock);
+                    if (pid != -1) {
+                        return total_KIA;
+                    } else {
+                        continue;
+                    }
+                } else {
+                    enable_int();
+                    release(&p_proc_current->pcb.lock);
+                    release(&kill_pcb->lock);
+                    schedule();
+                    continue;
+                }
             } else {
-                release(&kill_pcb->lock);
+                release(&p_proc_current->pcb.lock);
                 schedule();
-                continue;
             }
         } else {
             schedule();
         }
     }
-    klog("-----here to kill [%2d]-----\n", pid);
     assert(fa_pcb->stat == READY || fa_pcb->stat == SLEEPING);
     remove_killed_child(fa_pcb->pid, pid);
     killerabbit_handle_child_thread_proc(pid);

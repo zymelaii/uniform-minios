@@ -82,6 +82,7 @@ void do_exit(int exit_code) {
         //! case 1: father isn't recy so need to lock
         lock_or(&recy_pcb->lock, schedule);
         transfer_child_proc(exit_pcb->pid, NR_RECY_PROC);
+        recy_pcb->stat = READY;
         release(&recy_pcb->lock);
     }
     fa_pcb->stat                  = READY;

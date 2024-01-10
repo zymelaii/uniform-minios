@@ -1,5 +1,7 @@
 #include <unios/syscall.h>
 #include <unios/environ.h>
+#include <unios/sync.h>
+#include <sys/types.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -76,6 +78,22 @@ int fork() {
 
 int wait(int *wstatus) {
     return syscall1(NR_wait, (u32)wstatus);
+}
+
+handle_t krnlobj_create(int user_id) {
+    return (handle_t)syscall2(NR_krnlobj_request, KRNLOBJ_CREATE, (u32)user_id);
+}
+
+void krnlobj_destroy(handle_t handle) {
+    syscall2(NR_krnlobj_request, KRNLOBJ_DESTROY, (u32)handle);
+}
+
+void krnlobj_lock(int user_id) {
+    syscall2(NR_krnlobj_request, KRNLOBJ_LOCK, (u32)user_id);
+}
+
+void krnlobj_unlock(int user_id) {
+    syscall2(NR_krnlobj_request, KRNLOBJ_UNLOCK, (u32)user_id);
 }
 
 void exit(int exit_code) {

@@ -4,27 +4,16 @@
 #include <stdint.h>
 #include <atomic.h>
 
-typedef struct spinlock_s {
-    //! NOTE: keep &locked the same with &spinlock_t to make spinlock method
-    //! compatible
-    u32 locked;
-
-    //! for debug use
-    char *name;
-    int   cpu;     //<! number of the cpu holding the lock
-    u32   pcs[10]; //<! call stack that locked the lock
-} spinlock_t;
-
+typedef i32 spinlock_t;
 typedef i32 rwlock_t;
 
-enum rwlock_request {
-    RWLOCK_RD,
-    RWLOCK_WR,
+enum krnlobj_req_type {
+    KRNLOBJ_CREATE,
+    KRNLOBJ_DESTROY,
+    KRNLOBJ_LOCK,
+    KRNLOBJ_UNLOCK,
 };
 
-void init_spinlock(spinlock_t *lock, char *name);
-
-void init_rwlock(rwlock_t *lock);
 void rwlock_wait_rd(rwlock_t *lock);
 void rwlock_wait_wr(rwlock_t *lock);
 void rwlock_wait_rd_or(rwlock_t *lock, void (*callback)());

@@ -1,20 +1,136 @@
 #include <unios/sync.h>
+#include <unios/memory.h>
+#include <unios/schedule.h>
 #include <unios/assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <atomic.h>
 #include <stddef.h>
 
-void init_spinlock(spinlock_t *lock, char *name) {
-    assert(lock != NULL);
-    lock->name   = name;
-    lock->locked = 0;
-    lock->cpu    = 0xffffffff;
+#define NR_KRNL_OBJS 16
+
+enum krnl_obj_status {
+    FLAG_USED = 0x80000000,
+    FLAG_LOCK = 0x40000000,
+    FLAG_BUSY = 0x20000000,
+};
+
+typedef struct krnl_obj_s {
+    u32   id;
+    int   user_id;
+    int   status;
+    void *func;
+} krnl_obj_t;
+
+//! NOTE: only support spin lock currently
+static krnl_obj_t krnl_obj_table[NR_KRNL_OBJS];
+
+static handle_t krnlobj_lookup(int user_id) {
+    for (int i = 0; i < NR_KRNL_OBJS; ++i) {
+        if (krnl_obj_table[i].user_id == user_id) {
+            return (handle_t)krnl_obj_table[i].id;
+        }
+    }
+    return (handle_t)-1;
 }
 
-void init_rwlock(rwlock_t *lock) {
-    assert(lock != NULL);
-    *(int *)lock = 0;
+static handle_t krnlobj_create(int user_id) {
+    int index = 0;
+    while (index < NR_KRNL_OBJS) {
+        if (krnl_obj_table[index].user_id == user_id) { return (handle_t)-1; }
+        if (compare_exchange_strong(&krnl_obj_table[index].status, 0, FLAG_USED)
+            == 0) {
+            break;
+        }
+        ++index;
+    }
+
+    if (index == NR_KRNL_OBJS) { return (handle_t)-1; }
+
+    krnl_obj_table[index].id      = index;
+    krnl_obj_table[index].func    = kmalloc(sizeof(u32));
+    krnl_obj_table[index].user_id = user_id;
+    return (handle_t)krnl_obj_table[index].id;
+}
+
+static void krnlobj_destroy(handle_t handle) {
+    u32 id = (u32)handle;
+    assert(id >= 0 && id < NR_KRNL_OBJS);
+
+    int old = 0;
+    while (true) {
+        old = compare_exchange_strong(
+            &krnl_obj_table[id].status, FLAG_USED, FLAG_BUSY);
+        assert(old & FLAG_USED);
+        if (old == FLAG_USED) { break; }
+    }
+
+    kfree(krnl_obj_table[id].func);
+    krnl_obj_table[id].user_id = 0;
+    old = compare_exchange_strong(&krnl_obj_table[id].status, FLAG_BUSY, 0);
+    assert(old == FLAG_BUSY);
+}
+
+static void krnlobj_lock(int user_id) {
+    u32 id = (u32)krnlobj_lookup(user_id);
+    assert(id >= 0 && id < NR_KRNL_OBJS);
+
+    int old = 0;
+    while (true) {
+        old = compare_exchange_strong(
+            &krnl_obj_table[id].status, FLAG_USED, FLAG_USED | FLAG_BUSY);
+        assert(old & FLAG_USED);
+        if (old == FLAG_USED) { break; }
+    }
+
+    while (compare_exchange_strong(
+               &krnl_obj_table[id].status,
+               FLAG_USED | FLAG_BUSY,
+               FLAG_USED | FLAG_BUSY | FLAG_LOCK)
+           != (FLAG_USED | FLAG_BUSY)) {
+        schedule();
+    }
+}
+
+static void krnlobj_unlock(int user_id) {
+    u32 id = (u32)krnlobj_lookup(user_id);
+    assert(id >= 0 && id < NR_KRNL_OBJS);
+    int old = 0;
+    while (true) {
+        old = compare_exchange_strong(
+            &krnl_obj_table[id].status,
+            FLAG_USED | FLAG_BUSY | FLAG_LOCK,
+            FLAG_USED);
+        assert(old & FLAG_USED);
+        if (old != (FLAG_USED | FLAG_BUSY | FLAG_LOCK)) {
+            schedule();
+        } else {
+            break;
+        }
+    }
+}
+
+int do_krnlobj_request(int req, void *arg) {
+    switch (req) {
+        case KRNLOBJ_CREATE: {
+            return (u32)krnlobj_create((int)arg);
+        } break;
+        case KRNLOBJ_DESTROY: {
+            krnlobj_destroy((handle_t)arg);
+            return 0;
+        } break;
+        case KRNLOBJ_LOCK: {
+            krnlobj_lock((int)arg);
+            return 0;
+        } break;
+        case KRNLOBJ_UNLOCK: {
+            krnlobj_unlock((int)arg);
+            return 0;
+        } break;
+        default: {
+            unreachable();
+        } break;
+    }
 }
 
 void rwlock_wait_rd(rwlock_t *lock) {

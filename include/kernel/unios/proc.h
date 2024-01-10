@@ -69,7 +69,8 @@ enum process_stat {
     READY,
     SLEEPING,
     KILLED,
-    ZOMBIE
+    ZOMBIE,
+    KILLING,
 };
 
 #define NR_CHILD_MAX (NR_PCBS - NR_K_PCBS - 1)
@@ -143,8 +144,8 @@ typedef struct pcb_s {
     //! WARNING: offset 0 is reserved for user context regs
     stack_frame_t regs;
 
-    u16          ldt_sel;        /* gdt selector giving ldt base and limit */
-    descriptor_t ldts[LDT_SIZE]; /* local descriptors for code and data */
+    u16          ldt_sel;
+    descriptor_t ldts[LDT_SIZE];
 
     char* esp_save_int;
     char* esp_save_syscall;

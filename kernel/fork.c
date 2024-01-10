@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <atomic.h>
 
-static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
+static bool fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
     //! FIXME: risky action, this is relevant to current cr3, but ppid may be
     //! not the expected one
     //! FIXME: pid allocation method may changes
@@ -24,18 +24,19 @@ static void fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
     u32  laddr = base;
     bool ok    = false;
     while (laddr < limit) {
-        assert(!pg_pte_exist(
-            pg_pte(pg_pde(cr3_ppid, laddr_share), laddr_share), laddr_share));
+        assert(!pg_addr_pte_exist(cr3_ppid, laddr_share));
         bool ok = pg_map_laddr(cr3_ppid, laddr_share, PG_INVALID, attr, attr);
+        if (!ok) { return false; }
         pg_refresh();
         memcpy((void*)laddr_share, (void*)pg_frame_phyaddr(laddr), NUM_4K);
         u32 phyaddr = pg_laddr_phyaddr(cr3_ppid, laddr_share);
         ok          = pg_map_laddr(cr3_pid, laddr, phyaddr, attr, attr);
-        assert(ok);
+        if (!ok) { return false; }
         laddr = pg_frame_phyaddr(laddr) + NUM_4K;
         ok    = pg_unmap_laddr(cr3_ppid, laddr_share, false);
-        assert(ok);
+        if (!ok) { return false; }
     }
+    return true;
 }
 
 static int fork_update_proc_info(process_t* p_child) {
@@ -57,12 +58,14 @@ static int fork_update_proc_info(process_t* p_child) {
     return 0;
 }
 
-static int fork_memory_clone(u32 ppid, u32 pid) {
+static bool fork_memory_clone(u32 ppid, u32 pid) {
     lin_memmap_t* memmap = &p_proc_current->pcb.memmap;
     ph_info_t*    ph_ptr = memmap->ph_info;
     //! clone elf part
+    bool ok = false;
     while (ph_ptr != NULL) {
-        fork_clone_part_rwx(ppid, pid, ph_ptr->base, ph_ptr->limit);
+        ok = fork_clone_part_rwx(ppid, pid, ph_ptr->base, ph_ptr->limit);
+        if (!ok) { return false; }
         ph_ptr = ph_ptr->next;
     }
 
@@ -71,21 +74,25 @@ static int fork_memory_clone(u32 ppid, u32 pid) {
     //! cases are like that, e.g. heap limit reduction, thread clone, etc.
 
     //! clone vpage
-    fork_clone_part_rwx(
+    ok = fork_clone_part_rwx(
         ppid, pid, memmap->vpage_lin_base, memmap->vpage_lin_limit);
+    if (!ok) { return false; }
 
     //! clone heap
-    fork_clone_part_rwx(
+    ok = fork_clone_part_rwx(
         ppid, pid, memmap->heap_lin_base, memmap->heap_lin_limit);
+    if (!ok) { return false; }
 
     //! clone stack
     //! NOTE: inverse grow
-    fork_clone_part_rwx(
+    ok = fork_clone_part_rwx(
         ppid, pid, memmap->stack_lin_limit, memmap->stack_lin_base);
+    if (!ok) { return false; }
     //! clone args
-    fork_clone_part_rwx(ppid, pid, memmap->arg_lin_base, memmap->arg_lin_limit);
-
-    return 0;
+    ok = fork_clone_part_rwx(
+        ppid, pid, memmap->arg_lin_base, memmap->arg_lin_limit);
+    if (!ok) { return false; }
+    return true;
 }
 
 static int fork_pcb_clone(process_t* p_child) {
@@ -126,6 +133,7 @@ static int fork_pcb_clone(process_t* p_child) {
         NUM_4K,
         (void*)ch->memmap.heap_lin_base,
         (void*)HeapLinLimitMAX);
+    assert(ch->allocator != NULL);
     memcpy(
         ch->allocator,
         fa->allocator,
@@ -156,10 +164,20 @@ int do_fork() {
         release(&fa->pcb.lock);
         return -1;
     }
+    bool ok = pg_create_and_init(&ch->pcb.cr3);
+    if (!ok) {
+        klog("warn: fork %d: low memory\n", fa->pcb.pid);
+        release(&ch->pcb.lock);
+        release(&fa->pcb.lock);
+        return -1;
+    }
 
-    ch->pcb.cr3 = pg_create_and_init();
     fork_pcb_clone(ch);
-    fork_memory_clone(fa->pcb.pid, ch->pcb.pid);
+    ok = fork_memory_clone(fa->pcb.pid, ch->pcb.pid);
+    if (!ok) {
+        //! TODO: put ch on scavenger
+        todo("fxxked up!");
+    }
     fork_update_proc_info(ch);
 
     u32* frame       = (void*)(ch + 1) - P_STACKTOP;

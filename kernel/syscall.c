@@ -156,6 +156,10 @@ static u32 sys_environ() {
     return do_environ(SYSCALL_ARGS2(int, char *const **));
 }
 
+static u32 sys_krnlobj_request() {
+    return do_krnlobj_request(SYSCALL_ARGS2(int, void *));
+}
+
 syscall_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(get_ticks),   SYSCALL_ENTRY(get_pid),
     SYSCALL_ENTRY(fork),        SYSCALL_ENTRY(execve),
@@ -169,5 +173,5 @@ syscall_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(createdir),   SYSCALL_ENTRY(deletedir),
     SYSCALL_ENTRY(wait),        SYSCALL_ENTRY(exit),
     SYSCALL_ENTRY(killerabbit), SYSCALL_ENTRY(pthread_create),
-    SYSCALL_ENTRY(environ),
+    SYSCALL_ENTRY(environ),     SYSCALL_ENTRY(krnlobj_request),
 };

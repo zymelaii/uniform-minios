@@ -47,9 +47,9 @@ void recycle_proc_memory(process_t* proc) {
         cr3, memmap->kernel_lin_base, memmap->kernel_lin_limit, false);
     assert(ok);
 
-    ok = pg_unmap_pte(pcb->cr3, true);
+    ok = pg_clear_page_table(pcb->cr3, true);
     assert(ok);
-    ok = pg_free_pde(pcb->cr3);
+    ok = pg_free_page_table(pcb->cr3);
     assert(ok);
 
     kfree(pcb->allocator);
@@ -58,12 +58,26 @@ void recycle_proc_memory(process_t* proc) {
 
 void scavenger() {
     while (true) {
-        int pid = wait(NULL);
-        if (pid == -1) {
+        int number = killerabbit(-1);
+        if (number == 0) {
             p_proc_current->pcb.stat = SLEEPING;
             yield();
+        } else if (number > 0) {
+            klog("---killed orphan! number = [%d]---\n", number);
         } else {
-            klog("---recycled orphan! pid[%d]---\n", pid);
+            klog("---strange things!---\n");
+            for (int i = 0; i < p_proc_current->pcb.tree_info.child_p_num;
+                 ++i) {
+                pcb_t* pcb = (pcb_t*)pid2proc(
+                    p_proc_current->pcb.tree_info.child_process[i]);
+                klog(
+                    "   pid:[%d] state:[%d] (0: I, 1: R, 2: S, 3: K, 4: Z, 5: "
+                    "KILLING)\n",
+                    proc2pid((process_t*)pcb),
+                    pcb->stat);
+            }
+            p_proc_current->pcb.stat = SLEEPING;
+            yield();
         }
     }
 }

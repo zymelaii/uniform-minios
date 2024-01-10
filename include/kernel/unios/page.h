@@ -23,7 +23,7 @@
  *
  * \return succeed or not, always return true currently
  */
-bool pg_free_pde(u32 cr3);
+bool pg_free_page_table(u32 cr3);
 
 /*!
  * \brief unmap all pte table in the given cr3(pde) table
@@ -33,7 +33,7 @@ bool pg_free_pde(u32 cr3);
  *
  * \return succeed or not, always return true currently
  */
-bool pg_unmap_pte(u32 cr3, bool free);
+bool pg_clear_page_table(u32 cr3, bool free);
 
 /*!
  * \brief unmap laddr in page table
@@ -60,6 +60,10 @@ bool pg_unmap_laddr(u32 cr3, u32 laddr, bool free);
  *
  * \note since tlb flush is a slow op, map action will not actively refresh the
  * tlb cache, so remind to flush it at an appropriate time
+ *
+ * \attention no internal rollback supported, that means if run out of phy pages
+ * occurs on the way, the succeeded part will not be cancelled, and you should
+ * explicitly deal with the mess if you need it
  */
 bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr);
 
@@ -100,9 +104,11 @@ void pg_refresh();
 /*!
  * \brief create page table and map the kernel space
  *
- * \return phyaddr of page table (cr3)
+ * \param [out] p_cr3 pointer to phyaddr of page table (cr3)
+ *
+ * \return successful or not
  */
-u32 pg_create_and_init();
+bool pg_create_and_init(u32 *p_cr3);
 
 //! NOTE: address of cr3 pde pte always located in kernel memory space, since we
 //! always mapping it for the program in the initilization stage, access to
