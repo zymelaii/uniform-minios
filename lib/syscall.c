@@ -1,4 +1,5 @@
 #include <unios/syscall.h>
+#include <unios/environ.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -151,4 +152,15 @@ int createdir(const char *path) {
 
 int deletedir(const char *path) {
     return syscall1(NR_deletedir, (u32)path);
+}
+
+bool putenv(char *const *envp) {
+    bool ok = syscall2(NR_environ, ENVIRON_PUT, (u32)&envp);
+    return ok;
+}
+
+char *const *getenv() {
+    char **envp = NULL;
+    bool   ok   = syscall2(NR_environ, ENVIRON_GET, (u32)&envp);
+    return envp;
 }

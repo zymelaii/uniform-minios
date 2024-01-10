@@ -152,6 +152,10 @@ static u32 sys_deletedir() {
     return do_deletedir(SYSCALL_ARGS1(const char *));
 }
 
+static u32 sys_environ() {
+    return do_environ(SYSCALL_ARGS2(int, char *const **));
+}
+
 syscall_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(get_ticks),   SYSCALL_ENTRY(get_pid),
     SYSCALL_ENTRY(fork),        SYSCALL_ENTRY(execve),
@@ -165,4 +169,5 @@ syscall_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(createdir),   SYSCALL_ENTRY(deletedir),
     SYSCALL_ENTRY(wait),        SYSCALL_ENTRY(exit),
     SYSCALL_ENTRY(killerabbit), SYSCALL_ENTRY(pthread_create),
+    SYSCALL_ENTRY(environ),
 };

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 int  get_pid();
 int  get_ticks();
 int  exec(const char *path);
@@ -12,3 +14,6 @@ void yield();
 void sleep(int n);
 void wakeup(void *channel);
 int  pthread_create(void *args);
+
+bool         putenv(char *const *envp);
+char *const *getenv();

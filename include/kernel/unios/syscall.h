@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 enum {
     NR_get_ticks = 0,
     NR_get_pid,
@@ -24,6 +26,7 @@ enum {
     NR_deletedir,
     NR_wait,
     NR_killerabbit,
+    NR_environ,
     NR_exit,
 
     //! total syscalls
@@ -76,3 +79,6 @@ int do_pthread_create(void *arg);
 
 //! from killerabbit.c
 int do_killerabbit(int pid);
+
+//! from environ.c
+bool do_environ(int op, char *const **p_envp);

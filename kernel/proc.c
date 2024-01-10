@@ -143,6 +143,8 @@ bool init_proc_pcb(
     pcb->cr3                = pg_create_and_init();
     mmap->kernel_lin_base   = KernelLinBase;
     mmap->kernel_lin_limit  = KernelLinBase + KernelSize;
+    mmap->arg_lin_base      = ArgLinBase;
+    mmap->arg_lin_limit     = ArgLinLimitMAX;
     mmap->stack_lin_base    = StackLinBase;
     mmap->stack_lin_limit   = StackLinBase - 0x4000;
     mmap->stack_child_limit = StackLinLimitMAX;

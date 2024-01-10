@@ -185,8 +185,7 @@ int main(int arg, char *argv[]) {
                 break;
             }
             if (pid == 0) {
-                int errno = exec(buf);
-                assert(errno != 0);
+                int errno = execve(cmd_argv[0], &cmd_argv[1], NULL);
                 exit(ENOTFOUND);
                 assert(false && "unreachable");
             }
