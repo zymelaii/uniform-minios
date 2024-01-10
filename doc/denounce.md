@@ -599,3 +599,41 @@ loader 的起始地址附近存储了 gdt，该部分将在 kernel 中被拷贝�
 总不能，每次 kernel 大小变了我都要人力瞅一眼再到处爆改常量吧？
 
 那可真是——既怠惰又不优雅。
+
+# 震惊！著名科学家💩某人竟发明了史无前例的完全串行调度算法，这究竟是……，还是……，后面忘了
+
+> from proc.c:schedule
+
+```c
+void schedule() {
+    PROCESS* p;
+    int      greatest_ticks = 0;
+    if (p_proc_current->task.stat == READY && p_proc_current->task.ticks > 0) {
+        p_proc_next = p_proc_current;
+        return;
+    }
+    while (!greatest_ticks) {
+        for (p = proc_table; p < proc_table + NR_PCBS; p++) {
+            if (p->task.stat == READY && p->task.ticks > greatest_ticks) {
+                greatest_ticks = p->task.ticks;
+                p_proc_next    = p;
+            }
+        }
+        if (!greatest_ticks) {
+            for (p = proc_table; p < proc_table + NR_PCBS; p++) {
+                p->task.ticks = p->task.priority;
+            }
+        }
+    }
+}
+```
+
+> 当前版本的 schedule 已经转移为 schedule.c 的 cherry_pick_next_ready_proc，以上原汁原味的 shit 请参考 v0.6.0-rc1 及之前的版本。
+
+yield 的语义是清空时间片并调度，schedule 的语义是不清空时间片并调度。
+
+你这个算法，只要当前进程还有时间片就不调度是什么鬼！！！不要让我纠结了蜗牛爬行九亿亿光年的时间才决定委屈自己觍着脸主动调用 schedule 的心理斗争付诸东流啊喂混蛋！你晓不晓得这年头我这么一个娇弱码字奶萌崽倒追小小代码是多么倒反天罡的事哇！
+
+老娘平时，可是动动手指头就能迷倒一片痞帅 BUG 的存在啊！
+
+他是怎么……他，他他他——他们是怎么敢的呀！！！
