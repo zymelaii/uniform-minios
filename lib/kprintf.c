@@ -1,11 +1,12 @@
 #include <unios/syscall.h>
 #include <unios/uart.h>
-#include <unios/spinlock.h>
 #include <unios/vga.h>
 #include <unios/assert.h>
+#include <unios/schedule.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
+#include <atomic.h>
 
 static void kprintfputch(int ch, void *b) {
     vga_write_char(ch, WHITE_CHAR);
@@ -57,9 +58,12 @@ int klog(const char *fmt, ...) {
     int     min = tm / 60000 % 60;
     int     hr  = tm / 3600000 % 60;
 
+    static u32 lock = 0;
     va_start(ap, fmt);
+    lock_or(&lock, schedule);
     uart_kprintf("[%02d:%02d:%02d.%03d][INFO] ", hr, min, sec, ms);
     rc = v_uart_kprintf(fmt, ap);
+    release(&lock);
     va_end(ap);
 
     return rc;

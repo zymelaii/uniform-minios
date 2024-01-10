@@ -2,7 +2,6 @@
 #include <unios/memory.h>
 #include <unios/page.h>
 #include <unios/proc.h>
-#include <unios/spinlock.h>
 #include <unios/assert.h>
 #include <unios/schedule.h>
 #include <arch/x86.h>
@@ -149,7 +148,7 @@ static int fork_pcb_clone(process_t* p_child) {
 
 int do_fork() {
     process_t* fa = p_proc_current;
-    lock_or_schedule(&fa->pcb.lock);
+    lock_or(&fa->pcb.lock, schedule);
 
     process_t* ch = try_lock_free_pcb();
     if (ch == NULL) {

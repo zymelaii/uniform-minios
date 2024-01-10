@@ -5,7 +5,7 @@
 #include <unios/assert.h>
 #include <unios/layout.h>
 #include <unios/memory.h>
-#include <unios/spinlock.h>
+#include <unios/schedule.h>
 #include <stdio.h>
 #include <atomic.h>
 #include <string.h>
@@ -170,18 +170,13 @@ static int open_first_executable(const char* path) {
 int do_execve(const char* path, char* const* argv, char* const* envp) {
     assert(path != NULL);
 
-    //! FIXME: concurrent issue about io, only lock the whole io ops with one
-    //! lock can the execve run safely with multiple instances
-    static int io_lock = 0;
-    lock_or_schedule(&io_lock);
     u32 fd = open_first_executable(path);
     if (fd == -1) {
         klog("exec: executable not found\n");
-        release(&io_lock);
         return -1;
     }
 
-    lock_or_schedule(&p_proc_current->pcb.lock);
+    lock_or(&p_proc_current->pcb.lock, schedule);
     Elf32_Ehdr* elf_header = NULL;
     Elf32_Phdr* elf_proghs = NULL;
     void*       entry      = NULL;
@@ -199,7 +194,6 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
     int resp = exec_load(fd, elf_header, elf_proghs);
     kfree(elf_header);
     kfree(elf_proghs);
-    release(&io_lock);
     if (resp == -1) {
         do_close(fd);
         return -1;

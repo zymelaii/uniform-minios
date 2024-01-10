@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <atomic.h>
 #include <string.h>
 
 struct part_ent PARTITION_ENTRY;
@@ -84,6 +85,8 @@ void hd_close(int device) {
 }
 
 void hd_rdwt(MESSAGE *p) {
+    static u32 lock = 0;
+    lock_or(&lock, schedule);
     int drive = DRV_OF_DEV(p->DEVICE);
 
     u64 pos = p->POSITION;
@@ -126,6 +129,7 @@ void hd_rdwt(MESSAGE *p) {
         bytes_left -= SECTOR_SIZE;
         la         += SECTOR_SIZE;
     }
+    release(&lock);
 }
 
 // added by xw, 18/8/26

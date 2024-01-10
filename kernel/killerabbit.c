@@ -1,7 +1,6 @@
 #include <unios/assert.h>
 #include <unios/proc.h>
 #include <unios/protect.h>
-#include <unios/spinlock.h>
 #include <unios/page.h>
 #include <unios/memory.h>
 #include <unios/schedule.h>
@@ -25,7 +24,7 @@ static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
         dst_pcb->tree_info.child_process[j] =
             src_pcb->tree_info.child_process[i];
         pcb_t* son_pcb = (pcb_t*)pid2proc(src_pcb->tree_info.child_process[i]);
-        lock_or_schedule(&son_pcb->lock);
+        lock_or(&son_pcb->lock, schedule);
         son_pcb->tree_info.ppid = dst_pid;
         ++dst_pcb->tree_info.child_p_num;
         release(&son_pcb->lock);
@@ -51,7 +50,7 @@ static void killerabbit_handle_child_thread_proc(u32 pid) {
             killerabbit_handle_child_thread_proc(
                 child_pcb->tree_info.child_thread[i]);
         }
-        lock_or_schedule(&recy_pcb->lock);
+        lock_or(&recy_pcb->lock, schedule);
         transfer_child_proc(child_pcb->pid, NR_RECY_PROC);
         release(&recy_pcb->lock);
         child_pcb->stat = IDLE;
@@ -143,7 +142,7 @@ int do_killerabbit(int pid) {
         transfer_child_proc(pid, NR_RECY_PROC);
     } else {
         //! case 1: father isn't recy so need to lock
-        lock_or_schedule(&recy_pcb->lock);
+        lock_or(&recy_pcb->lock, schedule);
         transfer_child_proc(pid, NR_RECY_PROC);
         release(&recy_pcb->lock);
     }

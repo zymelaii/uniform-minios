@@ -7,10 +7,14 @@
 #include <unios/fs.h>
 #include <unios/fs_misc.h>
 #include <unios/tty.h>
+#include <unios/schedule.h>
+#include <unios/sync.h>
 #include <sys/defs.h>
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
+
+static rwlock_t inode_table_rwlock;
 
 extern struct file_desc   file_desc_table[NR_FILE_DESC];
 extern struct super_block superblock_table[NR_SUPER_BLOCK];
@@ -265,6 +269,7 @@ static int rw_sector(
     driver_msg.BUF      = buf;
 
     hd_rdwt(&driver_msg);
+
     return 0;
 }
 
@@ -459,31 +464,33 @@ superblock_t *get_unique_superblock(int dev) {
  * @return The inode ptr requested.
  *****************************************************************************/
 static struct inode *get_inode(int dev, int num) {
-    if (num == 0) return 0;
+    if (num == 0) { return 0; }
 
     struct inode *p;
     struct inode *q = 0;
+    rwlock_wait_wr_or(&inode_table_rwlock, schedule);
     for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++) {
         if (p->i_cnt) { /* not a free slot */
             if ((p->i_dev == dev) && (p->i_num == num)) {
                 /* this is the inode we want */
                 p->i_cnt++;
+                rwlock_leave(&inode_table_rwlock);
                 return p;
             }
-        } else {       /* a free slot */
-            if (!q)    /* q hasn't been assigned yet */
-                q = p; /* q <- the 1st free slot */
+        } else if (q == NULL) {
+            q = p;
         }
     }
 
-    if (!q) panic("the inode table is full");
+    if (!q) { panic("the inode table is full"); }
 
     q->i_dev = dev;
     q->i_num = num;
     q->i_cnt = 1;
 
-    superblock_t *sb     = get_unique_superblock(dev);
-    int           blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
+    superblock_t *sb = get_unique_superblock(dev);
+
+    int blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects
                + ((num - 1) / (SECTOR_SIZE / INODE_SIZE));
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
     RD_SECT(dev, blk_nr, fsbuf);
@@ -494,6 +501,7 @@ static struct inode *get_inode(int dev, int num) {
     q->i_size       = pinode->i_size;
     q->i_start_sect = pinode->i_start_sect;
     q->i_nr_sects   = pinode->i_nr_sects;
+    rwlock_leave(&inode_table_rwlock);
     return q;
 }
 
@@ -502,11 +510,13 @@ static struct inode *get_inode_sched(int dev, int num) {
 
     struct inode *p;
     struct inode *q = 0;
+    rwlock_wait_wr_or(&inode_table_rwlock, schedule);
     for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++) {
         if (p->i_cnt) { /* not a free slot */
             if ((p->i_dev == dev) && (p->i_num == num)) {
                 /* this is the inode we want */
                 p->i_cnt++;
+                rwlock_leave(&inode_table_rwlock);
                 return p;
             }
         } else {       /* a free slot */
@@ -534,6 +544,7 @@ static struct inode *get_inode_sched(int dev, int num) {
     q->i_size       = pinode->i_size;
     q->i_start_sect = pinode->i_start_sect;
     q->i_nr_sects   = pinode->i_nr_sects;
+    rwlock_leave(&inode_table_rwlock);
     return q;
 }
 
@@ -785,54 +796,55 @@ static int do_open(MESSAGE *fs_msg) {
     assert(0 <= fd && fd < NR_FILES);
 
     //! find a free slot in file_desc_table
-    int index = 0;
+    int        index = 0;
+    static u32 lock  = 0;
+    lock_or(&lock, schedule);
     while (index < NR_FILE_DESC) {
         if (file_desc_table[index].flag == 0) { break; }
         ++index;
     }
     assert(index < NR_FILE_DESC);
+    file_desc_table[index].flag = 1;
+    release(&lock);
 
     int           inode_nr = search_file(pathname);
     struct inode *pin      = 0;
-    if (flags & O_CREAT) {
-        if (inode_nr) { return -1; }
-        pin = create_file(pathname, flags);
-    } else {
-        char          filename[PATH_MAX] = {};
-        struct inode *dir_inode          = NULL;
-        if (strip_path(filename, pathname, &dir_inode) != 0) { return -1; }
-        pin = get_inode(dir_inode->i_dev, inode_nr);
-    }
 
-    if (pin) {
+    do {
+        if (flags & O_CREAT) {
+            if (inode_nr) { break; }
+            pin = create_file(pathname, flags);
+        } else {
+            char          filename[PATH_MAX] = {};
+            struct inode *dir_inode          = NULL;
+            if (strip_path(filename, pathname, &dir_inode) != 0) { break; }
+            pin = get_inode(dir_inode->i_dev, inode_nr);
+        }
+
+        if (pin == NULL) { break; }
+
         /* connects proc with file_descriptor */
         p_proc_current->pcb.filp[fd] = &file_desc_table[index];
-
-        file_desc_table[index].flag = 1;
-
         /* connects file_descriptor with inode */
         file_desc_table[index].fd_node.fd_inode = pin;
-
-        file_desc_table[index].fd_mode = flags;
-        file_desc_table[index].fd_pos  = 0;
+        file_desc_table[index].fd_mode          = flags;
+        file_desc_table[index].fd_pos           = 0;
+        // rwlock_leave(&file_desc_table_rwlock, RWLOCK_WR);
 
         int imode = pin->i_mode & I_TYPE_MASK;
-
         if (imode == I_CHAR_SPECIAL) {
             // MESSAGE driver_msg;
             // int dev = pin->i_start_sect;
         } else if (imode == I_DIRECTORY) {
             if (pin->i_num != ROOT_INODE) { panic("pin->i_num != ROOT_INODE"); }
-        } else {
-            if (pin->i_mode != I_REGULAR) {
-                panic("Panic: pin->i_mode != I_REGULAR");
-            }
+        } else if (pin->i_mode != I_REGULAR) {
+            panic("Panic: pin->i_mode != I_REGULAR");
         }
-    } else {
-        return -1;
-    }
+        return fd;
+    } while (0);
 
-    return fd;
+    file_desc_table[index].flag = 0;
+    return -1;
 }
 
 static int do_close(int fd) {
