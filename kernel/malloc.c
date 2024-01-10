@@ -2,7 +2,7 @@
 #include <unios/memory.h>
 #include <unios/page.h>
 #include <unios/assert.h>
-#include <unios/spinlock.h>
+#include <unios/schedule.h>
 #include <stddef.h>
 #include <atomic.h>
 
@@ -10,7 +10,7 @@ void *do_malloc(int size) {
     pcb_t *pcb = &p_proc_current->pcb;
 
     size_t real_size = size + sizeof(size_t);
-    lock_or_schedule(&pcb->heap_lock);
+    lock_or(&pcb->heap_lock, schedule);
     void *ptr = mballoc_alloc(pcb->allocator, real_size);
     release(&pcb->heap_lock);
 
@@ -41,7 +41,7 @@ void do_free(void *ptr) {
     if (!pg_pte_exist(pde, (u32)real_ptr)) { return; }
 
     size_t size = *(size_t *)real_ptr;
-    lock_or_schedule(&pcb->heap_lock);
+    lock_or(&pcb->heap_lock, schedule);
     int resp = mballoc_free(pcb->allocator, real_ptr, size);
     release(&pcb->heap_lock);
 }

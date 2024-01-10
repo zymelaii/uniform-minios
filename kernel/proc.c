@@ -6,7 +6,6 @@
 #include <unios/scavenger.h>
 #include <unios/schedule.h>
 #include <unios/kstate.h>
-#include <unios/spinlock.h>
 #include <unios/memory.h>
 #include <unios/layout.h>
 #include <unios/syscall.h>

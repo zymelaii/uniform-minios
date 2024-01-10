@@ -2,7 +2,6 @@
 #include <unios/protect.h>
 #include <unios/proc.h>
 #include <unios/page.h>
-#include <unios/spinlock.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>

@@ -1,6 +1,5 @@
 #include <unios/assert.h>
 #include <unios/proc.h>
-#include <unios/spinlock.h>
 #include <unios/page.h>
 #include <unios/syscall.h>
 #include <unios/schedule.h>
@@ -59,7 +58,7 @@ static void wait_recycle_memory(u32 recy_pid) {
 int do_wait(int* wstatus) {
     pcb_t* fa_pcb = &p_proc_current->pcb;
     while (true) {
-        lock_or_schedule(&p_proc_current->pcb.lock);
+        lock_or(&p_proc_current->pcb.lock, schedule);
         if (fa_pcb->tree_info.child_p_num == 0
             && fa_pcb->tree_info.child_k_num == 0) {
             if (wstatus != NULL) { *wstatus = 0; }
@@ -78,7 +77,7 @@ int do_wait(int* wstatus) {
             schedule();
             continue;
         }
-        lock_or_schedule(&exit_pcb->lock);
+        lock_or(&exit_pcb->lock, schedule);
         remove_zombie_child(exit_pcb->pid);
         if (wstatus != NULL) { *wstatus = exit_pcb->exit_code; }
         //! FIXME: no thread release here
