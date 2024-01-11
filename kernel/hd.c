@@ -67,7 +67,7 @@ void init_hd() {
 }
 
 void hd_open(int drive) {
-    klog("-----read hd information-----\n");
+    klog("-----read hd information-----");
 
     /* Get the number of drives from the BIOS data area */
     // u8 * pNrDrives = (u8*)(0x475);
@@ -426,7 +426,7 @@ static void print_hdinfo(hd_info_t *hdi) {
     int i;
     for (i = 0; i < NR_PART_PER_DRIVE + 1; i++) {
         klog(
-            "%*sPART_%d: base %d, size: %d (in sector)\n",
+            "%*sPART_%d: base %d, size: %d (in sector)",
             i == 0 ? 0 : 2,
             "",
             i,
@@ -436,7 +436,7 @@ static void print_hdinfo(hd_info_t *hdi) {
     for (i = 0; i < NR_SUB_PER_DRIVE; i++) {
         if (hdi->logical[i].size == 0) continue;
         klog(
-            "%*s%d: base %d, size %d (in sector)\n",
+            "%*s%d: base %d, size %d (in sector)",
             4,
             "",
             i,
@@ -491,7 +491,7 @@ static void print_identify_info(u16 *hdinfo) {
         {27, 40, "HD Model"}  /* Model number in ASCII */
     };
 
-    klog("HD Identity {\n");
+    klog("HD Identity {");
 
     for (k = 0; k < sizeof(iinfo) / sizeof(iinfo[0]); k++) {
         char *p = (char *)&hdinfo[iinfo[k].idx];
@@ -500,17 +500,17 @@ static void print_identify_info(u16 *hdinfo) {
             s[i * 2]     = *p++;
         }
         s[i * 2] = 0;
-        klog("  %s: %s\n", iinfo[k].desc, s);
+        klog("  %s: %s", iinfo[k].desc, s);
     }
 
     int capabilities      = hdinfo[49];
     int cmd_set_supported = hdinfo[83];
     int sectors           = ((int)hdinfo[61] << 16) + hdinfo[60];
 
-    klog("  LBA supported: %s\n", capabilities & 0x0200 ? "YES" : "NO");
-    klog("  LBA48 supported: %s\n", cmd_set_supported & 0x0400 ? "YES" : "NO");
-    klog("  HD size: %d MB\n", sectors * 512 / 1000000);
-    klog("}\n");
+    klog("  LBA supported: %s", capabilities & 0x0200 ? "YES" : "NO");
+    klog("  LBA48 supported: %s", cmd_set_supported & 0x0400 ? "YES" : "NO");
+    klog("  HD size: %d MB", sectors * 512 / 1000000);
+    klog("}");
 }
 
 /*****************************************************************************

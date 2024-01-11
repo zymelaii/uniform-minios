@@ -160,13 +160,13 @@ int do_fork() {
 
     process_t* ch = try_lock_free_pcb();
     if (ch == NULL) {
-        klog("fork %d: pcb res is not available\n", fa->pcb.pid);
+        klog("fork %d: pcb res is not available", fa->pcb.pid);
         release(&fa->pcb.lock);
         return -1;
     }
     bool ok = pg_create_and_init(&ch->pcb.cr3);
     if (!ok) {
-        klog("warn: fork %d: low memory\n", fa->pcb.pid);
+        klog("warn: fork %d: low memory", fa->pcb.pid);
         release(&ch->pcb.lock);
         release(&fa->pcb.lock);
         return -1;

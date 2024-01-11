@@ -490,7 +490,7 @@ STATE IsFile(PCHAR path, PUINT tag) {
 }
 
 void init_fs_fat() {
-    klog("-----initialize fat32 filesystem-----\n");
+    klog("-----initialize fat32 filesystem-----");
 
     buf = (u8 *)kmalloc(FSBUF_SIZE);
 
@@ -550,8 +550,8 @@ static void mkfs_fat() {
     driver_msg.PROC_NR = proc2pid(p_proc_current);
     hd_ioctl(&driver_msg);
 
-    klog("-----make fat filesystem-----\n");
-    klog("device size: 0x%x sectors\n", geo.size);
+    klog("-----make fat filesystem-----");
+    klog("device size: 0x%x sectors", geo.size);
 
     TotalSectors = geo.size;
 
@@ -824,18 +824,18 @@ int do_ListDir(void *uesp) {
 
 void DisErrorInfo(STATE state) {
     if (state == SYSERROR) {
-        klog("          system error\n");
+        klog("          system error");
     } else if (state == VDISKERROR) {
-        klog("          disk error\n");
+        klog("          disk error");
     } else if (state == INSUFFICIENTSPACE) {
-        klog("          no much space\n");
+        klog("          no much space");
     } else if (state == WRONGPATH) {
-        klog("          path error\n");
+        klog("          path error");
     } else if (state == NAMEEXIST) {
-        klog("          name exists\n");
+        klog("          name exists");
     } else if (state == ACCESSDENIED) {
-        klog("          deny access\n");
+        klog("          deny access");
     } else {
-        klog("          unknown error\n");
+        klog("          unknown error");
     }
 }

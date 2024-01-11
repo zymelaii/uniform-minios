@@ -59,7 +59,7 @@ int get_fs_dev(int drive, int fs_type) {
 }
 
 void init_fs() {
-    klog("-----initialize filesystem-----\n");
+    klog("-----initialize filesystem-----");
     memset(inode_table, 0, sizeof(inode_table));
     superblock_t *sb = superblock_table;
 
@@ -69,11 +69,11 @@ void init_fs() {
     read_orange_superblock(orange_dev);
     superblock_t *sb_root = get_unique_superblock(orange_dev);
 
-    klog("Superblock Address: 0x%x\n", sb_root);
+    klog("Superblock Address: 0x%x", sb_root);
 
     if (sb_root->magic != MAGIC_V1) {
         mkfs();
-        klog("-----make filesystem done-----\n");
+        klog("-----make filesystem done-----");
         read_orange_superblock(orange_dev);
     }
 
@@ -98,8 +98,8 @@ static void mkfs() {
     msg.PROC_NR     = proc2pid(p_proc_current);
     hd_ioctl(&msg);
 
-    klog("-----make orange filesystem-----\n");
-    klog("device size: 0x%x sectors\n", geo.size);
+    klog("-----make orange filesystem-----");
+    klog("device size: 0x%x sectors", geo.size);
 
     superblock_t sb   = {};
     sb.magic          = MAGIC_V1;
@@ -131,16 +131,16 @@ static void mkfs() {
     memcpy(fsbuf, &sb, SUPER_BLOCK_SIZE);
     WR_SECT(orange_dev, 1, fsbuf);
 
-    klog("orange geometry {\n");
-    klog("  device base: 0x%x00,\n", (geo.base + 0) * 2);
-    klog("  superbock: 0x%x00,\n", (geo.base + 1) * 2);
-    klog("  inode map: 0x%x00,\n", (geo.base + 2) * 2);
-    klog("  sector map: 0x%x00,\n", (geo.base + 2 + sb.nr_imap_sects) * 2);
+    klog("orange geometry {");
+    klog("  device base: 0x%x00,", (geo.base + 0) * 2);
+    klog("  superbock: 0x%x00,", (geo.base + 1) * 2);
+    klog("  inode map: 0x%x00,", (geo.base + 2) * 2);
+    klog("  sector map: 0x%x00,", (geo.base + 2 + sb.nr_imap_sects) * 2);
     klog(
-        "  inodes: 0x%x00,\n",
+        "  inodes: 0x%x00,",
         (geo.base + 2 + sb.nr_imap_sects + sb.nr_smap_sects) * 2);
-    klog("  first sector: 0x%x00,\n", (geo.base + sb.n_1st_sect) * 2);
-    klog("}\n");
+    klog("  first sector: 0x%x00,", (geo.base + sb.n_1st_sect) * 2);
+    klog("}");
 
     //! resolve inode map
     //! include root, curdir, tty0, tty1, tty2, orange

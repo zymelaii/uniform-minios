@@ -78,7 +78,7 @@ void disable_irq(int irq) {
 }
 
 void spurious_irq(int irq) {
-    klog("spurious_irq: %d\n", irq);
+    klog("spurious_irq: %d", irq);
 }
 
 void put_irq_handler(int irq, irq_handler_t handler) {
@@ -89,7 +89,7 @@ void put_irq_handler(int irq, irq_handler_t handler) {
 void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags) {
     klog(
         "[Exception %s] eip=%08x eflags=0x%x cs=0x%x err_code=%d from "
-        "pid=%d\n",
+        "pid=%d",
         int_str_table[vec_no],
         eip,
         eflags,

@@ -519,6 +519,6 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
 
     p_proc_current->pcb.stat = READY;
     release(&p_proc_current->pcb.lock);
-    if (errno != 0) { klog("exec: caught %s\n", strerrno(errno)); }
+    if (errno != 0) { klog("exec: caught %s", strerrno(errno)); }
     return -errno;
 }

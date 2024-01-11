@@ -3,7 +3,7 @@
 #include <string.h>
 
 void cstart() {
-    klog("-----\"cstart\" begins-----\n");
+    klog("-----\"cstart\" begins-----");
 
     // descriptor(&gdt, 0, 0x00000000, 0x00000, 0);
     // descriptor(&gdt, 1, 0x00000000, 0xfffff, DA_CR | DA_32 | DA_LIMIT_4K);
@@ -19,5 +19,5 @@ void cstart() {
 
     init_protect_mode();
 
-    klog("-----\"cstart\" finished-----\n");
+    klog("-----\"cstart\" finished-----");
 }

@@ -24,7 +24,6 @@ process_t  proc_table[NR_PCBS];
  { handler, STACK_SIZE_TASK, #handler }
 
 task_t task_table[NR_TASKS] = {
-    TASK_ENTRY(hd_service),
     TASK_ENTRY(tty_handler),
     TASK_ENTRY(scavenger),
 };

@@ -72,7 +72,7 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
             bool in_kernel = laddr >= KernelLinBase;
             phyaddr = (u32)(in_kernel ? kmalloc_phypage() : malloc_phypage());
             if (phyaddr == 0) {
-                klog("warn: pg_map_laddr: run out of phy page\n");
+                klog("warn: pg_map_laddr: run out of phy page");
                 return false;
             }
         } else {
@@ -128,8 +128,8 @@ void pg_refresh() {
 void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
     u32 cr2 = rcr2();
 
-    klog("BEGIN --> trigger page fault\n");
-    if (kstate_on_init) { klog("during initializing kernel\n"); }
+    klog("BEGIN --> trigger page fault");
+    if (kstate_on_init) { klog("during initializing kernel"); }
 
     klog(
         "pid[%d]: eip=0x%08x cr2=0x%08x code=%x cs=0x%08x eflags=0x%04x\n",
@@ -166,7 +166,7 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
             flag[2][(pte & PG_MASK_P) == PG_P]);
     }
 
-    klog("<--- END\n");
+    klog("<--- END");
 
     if (!kstate_on_init) { disable_int(); }
     halt();

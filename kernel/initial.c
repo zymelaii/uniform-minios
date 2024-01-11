@@ -52,7 +52,7 @@ void initial() {
         assert(buf != NULL);
         int total_rd = read(fd, buf, len);
         assert(total_rd == len);
-        klog("load initial env from `%s`\n%s\n", path_to_env0, buf);
+        klog("load initial env from `%s`\n%s", path_to_env0, buf);
         int total_envs = 0;
         for (int i = 0; i < len; ++i) {
             if (buf[i] == '=') {
@@ -74,11 +74,9 @@ void initial() {
         }
         envp[total_envs] = NULL;
 
-        klog("expected envp [pid=%d] {\n", get_pid());
-        for (int i = 0; i <= total_envs; ++i) {
-            klog("  [%d] %s\n", i, envp[i]);
-        }
-        klog("}\n");
+        klog("expected envp [pid=%d] {", get_pid());
+        for (int i = 0; i <= total_envs; ++i) { klog("  [%d] %s", i, envp[i]); }
+        klog("}");
 
         bool ok = putenv(envp);
         assert(ok);
@@ -86,11 +84,9 @@ void initial() {
         char *const *new_envp = getenv();
         assert(new_envp != NULL);
         free((void *)new_envp);
-        klog("current envp [pid=%d] {\n", get_pid());
-        for (int i = 0; i <= total_envs; ++i) {
-            klog("  [%d] %s\n", i, envp[i]);
-        }
-        klog("}\n");
+        klog("current envp [pid=%d] {", get_pid());
+        for (int i = 0; i <= total_envs; ++i) { klog("  [%d] %s", i, envp[i]); }
+        klog("}");
 
         kfree(envp);
         kfree(buf);

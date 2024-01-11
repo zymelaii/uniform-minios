@@ -12,23 +12,23 @@
 #define STACK_SIZE_TASK NUM_4K
 
 #define NR_GSREG        0
-#define NR_FSREG        (NR_GSREG + 1)
-#define NR_ESREG        (NR_FSREG + 1)
-#define NR_DSREG        (NR_ESREG + 1)
-#define NR_EDIREG       (NR_DSREG + 1)
-#define NR_ESIREG       (NR_EDIREG + 1)
-#define NR_EBPREG       (NR_ESIREG + 1)
-#define NR_KERNELESPREG (NR_EBPREG + 1)
-#define NR_EBXREG       (NR_KERNELESPREG + 1)
-#define NR_EDXREG       (NR_EBXREG + 1)
-#define NR_ECXREG       (NR_EDXREG + 1)
-#define NR_EAXREG       (NR_ECXREG + 1)
-#define NR_RETADR       (NR_EAXREG + 1)
-#define NR_EIPREG       (NR_RETADR + 1)
-#define NR_CSREG        (NR_EIPREG + 1)
-#define NR_EFLAGSREG    (NR_CSREG + 1)
-#define NR_ESPREG       (NR_EFLAGSREG + 1)
-#define NR_SSREG        (NR_ESPREG + 1)
+#define NR_FSREG        1
+#define NR_ESREG        2
+#define NR_DSREG        3
+#define NR_EDIREG       4
+#define NR_ESIREG       5
+#define NR_EBPREG       6
+#define NR_KERNELESPREG 7
+#define NR_EBXREG       8
+#define NR_EDXREG       9
+#define NR_ECXREG       10
+#define NR_EAXREG       11
+#define NR_RETADR       12
+#define NR_EIPREG       13
+#define NR_CSREG        14
+#define NR_EFLAGSREG    15
+#define NR_ESPREG       16
+#define NR_SSREG        17
 
 #define P_STACKBASE  0
 #define GSREG        (NR_GSREG * 4)
@@ -56,10 +56,10 @@
 #define EFLAGS_IF       0x0200              //<! interrupt enable flag
 #define EFLAGS_IOPL(pl) (((pl)&0b11) << 12) //<! I/O privilege level
 
-#define NR_PCBS      20
-#define NR_TASKS     3
-#define NR_K_PCBS    5
-#define NR_RECY_PROC 2
+#define NR_PCBS      20 //<! total pcbs
+#define NR_TASKS     2  //<! predefined task k-pcbs
+#define NR_K_PCBS    2  //<! reserved k-pcbs, only predefined tasks currently
+#define NR_RECY_PROC 1  //<! no. of recycler proc `scanvenger`
 
 #define NR_CPUS  1
 #define NR_FILES 64
@@ -77,25 +77,25 @@ enum process_stat {
 #define TYPE_PROCESS 0
 #define TYPE_THREAD  1
 
-typedef struct stackframe_s { /*      proc_ptr points here      ↑          Low*/
-    u32 gs;  /* ┓                              │                       */
-    u32 fs;  /* ┃                              │                       */
-    u32 es;  /* ┃                              │                       */
-    u32 ds;  /* ┃                              │                       */
-    u32 edi; /* ┃                              │                       */
-    u32 esi; /* ┣  pushed by save()            │                       */
-    u32 ebp; /* ┃                              │                       */
-    u32 kernel_esp; /* <- popad will ignore it │                       */
-    u32 ebx; /* ┃                              ↑  栈从高地址往低地址增长 */
-    u32 edx; /* ┃                              │                       */
-    u32 ecx; /* ┃                              │                       */
-    u32 eax; /* ┛                              │                       */
-    u32 retaddr; /* return address for assembly code save()     │      */
-    u32 eip;     /*  ┓                                          │      */
-    u32 cs;      /*  ┃                                          │      */
-    u32 eflags;  /*  ┣ these are pushed by CPU during interrupt │      */
-    u32 esp;     /*  ┃                                          │      */
-    u32 ss;      /*  ┛                                          ┷High  */
+typedef struct stack_frame_s {
+    u32 gs;         //<! ━┓
+    u32 fs;         //<!  ┃
+    u32 es;         //<!  ┃
+    u32 ds;         //<!  ┃
+    u32 edi;        //<!  ┃
+    u32 esi;        //<!  ┣━┫ push by `save`
+    u32 ebp;        //<!  ┃
+    u32 kernel_esp; //<!  ┣ ignored by popad
+    u32 ebx;        //<!  ┃
+    u32 edx;        //<!  ┃
+    u32 ecx;        //<!  ┃
+    u32 eax;        //<! ━┫
+    u32 retaddr;    //<!  ┣ retaddr for `save`
+    u32 eip;        //<! ━┫
+    u32 cs;         //<!  ┃
+    u32 eflags;     //<!  ┣━┫ push by interrupt
+    u32 esp;        //<!  ┃
+    u32 ss;         //<! ━┛
 } stack_frame_t;
 
 typedef struct tree_info_s {
@@ -174,7 +174,6 @@ typedef struct pcb_s {
     u32          exit_code;
 } pcb_t;
 
-// new process_t struct with PCB and process's kernel stack
 typedef union {
     pcb_t pcb;
     char  stack[INIT_STACK_SIZE / sizeof(char)];

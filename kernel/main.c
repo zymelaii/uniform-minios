@@ -46,18 +46,14 @@ void init_startup_proc() {
 }
 
 int kernel_main() {
-    //! clear screen
-    vga_set_disppos(0);
-    for (int i = 0; i < SCR_HEIGHT; ++i) { vga_flush_blankline(i); }
-    vga_set_disppos(0);
+    vga_clear_screen();
 
-    int error;
     clear_kernel_pagepte_low();
-    klog("-----Kernel Initialization Begins-----\n");
+    klog("-----Kernel Initialization Begins-----");
     kstate_on_init = true;
 
     init_memory();
-    klog("-----mem module init done-----\n");
+    klog("-----mem module init done-----");
 
     init_startup_proc();
 
@@ -79,7 +75,7 @@ int kernel_main() {
     init_fs_fat();
     disable_int();
 
-    klog("-----Processes Begin-----\n");
+    klog("-----Processes Begin-----");
     p_proc_current = proc_table;
     kstate_on_init = false;
 

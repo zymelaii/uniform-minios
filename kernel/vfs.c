@@ -227,10 +227,7 @@ void vfs_setup_and_init() {
 int do_vopen(const char *path, int flags) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
-    if (index == -1) {
-        klog("filesystem error: invalid vfs path: %s\n", path);
-        return -1;
-    }
+    if (index == -1) { return -1; }
 
     if (relpath[0] == '\0') {
         //! a tty file
@@ -238,11 +235,7 @@ int do_vopen(const char *path, int flags) {
     }
 
     int fd = vfs_table[index].ops->open(relpath, flags);
-    if (fd != -1) {
-        p_proc_current->pcb.filp[fd]->dev_index = index;
-    } else {
-        klog("filesystem error: invalid path: %s\n", path);
-    }
+    if (fd != -1) { p_proc_current->pcb.filp[fd]->dev_index = index; }
 
     return fd;
 }
@@ -265,35 +258,16 @@ int do_vwrite(int fd, const char *buf, int count) {
     assert(fd != -1 && "invalid fd");
     int index = p_proc_current->pcb.filp[fd]->dev_index;
     assert(index != -1 && "invalid vfs index");
-
-    char wrbuf[512] = {};
-    int  left       = count;
-    while (left > 0) {
-        //! copy to kernel buffer
-        //! FIXME: really necessary?
-        int nbytes = MIN(512, left);
-        memcpy(wrbuf, buf, nbytes);
-        buf += nbytes;
-
-        int resp = vfs_table[index].ops->write(fd, wrbuf, nbytes);
-        if (resp != nbytes) {
-            assert(resp < 0);
-            return resp;
-        }
-        left -= nbytes;
-    }
-    assert(left == 0);
-
+    int resp = vfs_table[index].ops->write(fd, buf, count);
+    if (resp < 0) { return resp; }
+    assert(resp == count);
     return count;
 }
 
 int do_vunlink(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
-    if (index == -1) {
-        klog("filesystem error: invalid vfs path: %s\n", path);
-        return -1;
-    }
+    if (index == -1) { return -1; }
     return vfs_table[index].ops->unlink(relpath);
 }
 
@@ -307,50 +281,35 @@ int do_vlseek(int fd, int offset, int whence) {
 int do_vcreate(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
-    if (index == -1) {
-        klog("filesystem error: invalid vfs path: %s\n", path);
-        return -1;
-    }
+    if (index == -1) { return -1; }
     return vfs_table[index].ops->create(relpath);
 }
 
 int do_vdelete(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
-    if (index == -1) {
-        klog("filesystem error: invalid vfs path: %s\n", path);
-        return -1;
-    }
+    if (index == -1) { return -1; }
     return vfs_table[index].ops->delete (relpath);
 }
 
 int do_vopendir(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
-    if (index == -1) {
-        klog("filesystem error: invalid vfs path: %s\n", path);
-        return -1;
-    }
+    if (index == -1) { return -1; }
     return vfs_table[index].ops->opendir(relpath);
 }
 
 int do_vcreatedir(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
-    if (index == -1) {
-        klog("filesystem error: invalid vfs path: %s\n", path);
-        return -1;
-    }
+    if (index == -1) { return -1; }
     return vfs_table[index].ops->createdir(relpath);
 }
 
 int do_vdeletedir(const char *path) {
     const char *relpath = NULL;
     int         index   = get_vfs_index_and_relpath(path, &relpath);
-    if (index == -1) {
-        klog("filesystem error: invalid vfs path: %s\n", path);
-        return -1;
-    }
+    if (index == -1) { return -1; }
     return vfs_table[index].ops->deletedir(relpath);
 }
 

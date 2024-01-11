@@ -63,6 +63,7 @@ int klog(const char *fmt, ...) {
     lock_or(&lock, schedule);
     uart_kprintf("[%02d:%02d:%02d.%03d][INFO] ", hr, min, sec, ms);
     rc = v_uart_kprintf(fmt, ap);
+    uart_putch('\n', NULL);
     release(&lock);
     va_end(ap);
 

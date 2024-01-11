@@ -26,20 +26,26 @@
 #define MAKE_CELL(clr, ch) (clr | ch)
 #define BLANK              MAKE_CELL(DEFAULT_CHAR_COLOR, ' ')
 
-#define CRTC_ADDR_REG 0x3d4   //<! CRT Controller Registers - Addr Register
-#define CRTC_DATA_REG 0x3d5   //<! CRT Controller Registers - Data Register
-#define UNDERLINE_REG 0x14    //<! reg index of underline
-#define START_ADDR_H  0xc     //<! reg index of video mem start addr (MSB)
-#define START_ADDR_L  0xd     //<! reg index of video mem start addr (LSB)
-#define CURSOR_H      0xe     //<! reg index of cursor position (MSB)
-#define CURSOR_L      0xf     //<! reg index of cursor position (LSB)
-#define V_MEM_BASE    0xb8000 //<! base of color video memory
-#define V_MEM_SIZE    0x8000  //<! 32K: B8000H -> BFFFFH
+#define CRTC_ADDR_REG  0x3d4   //<! CRT Controller Registers - Addr Register
+#define CRTC_DATA_REG  0x3d5   //<! CRT Controller Registers - Data Register
+#define UNDERLINE_REG  0x14    //<! reg index of underline
+#define CURSOR_SHAPE_H 0xa     //<! reg index of cursor shape (MSB)
+#define CURSOR_SHAPE_L 0xb     //<! reg index of cursor shape (LSB)
+#define START_ADDR_H   0xc     //<! reg index of video mem start addr (MSB)
+#define START_ADDR_L   0xd     //<! reg index of video mem start addr (LSB)
+#define CURSOR_H       0xe     //<! reg index of cursor position (MSB)
+#define CURSOR_L       0xf     //<! reg index of cursor position (LSB)
+#define V_MEM_BASE     0xb8000 //<! base of color video memory
+#define V_MEM_SIZE     0x8000  //<! 32K: B8000H -> BFFFFH
+
+void vga_wait_for_vrs();
 
 void vga_set_video_start_addr(u32 addr);
 void vga_enable_cursor(u8 cur_start, u8 cur_end);
 void vga_disable_cursor();
 void vga_set_cursor(u32 pos);
+
+void vga_clear_screen();
 
 void vga_set_disppos(int new_pos);
 int  vga_get_disppos();
