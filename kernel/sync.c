@@ -115,6 +115,9 @@ int do_krnlobj_request(int req, void *arg) {
         case KRNLOBJ_CREATE: {
             return (u32)krnlobj_create((int)arg);
         } break;
+        case KRNLOBJ_LOOKUP: {
+            return (u32)krnlobj_lookup((int)arg);
+        } break;
         case KRNLOBJ_DESTROY: {
             krnlobj_destroy((handle_t)arg);
             return 0;

@@ -17,17 +17,23 @@ extern void clear_kernel_pagepte_low();
 extern void initial();
 
 void init_startup_proc() {
-    for (int i = 0; i < NR_PCBS; ++i) {
-        memset(&proc_table[i], 0, sizeof(process_t));
-        proc_table[i].pcb.stat = IDLE;
+    int total_init_pcbs = NR_TASKS + 1;
+    rwlock_wait_wr(&proc_table_rwlock);
+    for (int i = 0; i < total_init_pcbs; ++i) {
+        process_t *proc = kmalloc(sizeof(process_t));
+        assert(proc != NULL);
+        memset(proc, 0, sizeof(process_t));
+        proc->pcb.stat = IDLE;
+        proc_table[i]  = proc;
     }
+    rwlock_leave(&proc_table_rwlock);
 
     int index = 0;
 
     //! init tasks
     while (index < NR_TASKS) {
         bool ok = init_proc_pcb(
-            &proc_table[index],
+            proc_table[index],
             task_table[index].name,
             task_table[index].initial_eip,
             RPL_TASK);
@@ -36,13 +42,14 @@ void init_startup_proc() {
     }
 
     //! init initial program
-    bool ok = init_proc_pcb(&proc_table[index], "initial", initial, RPL_TASK);
+    bool ok = init_proc_pcb(proc_table[index], "initial", initial, RPL_TASK);
     assert(ok);
 
     //! NOTE: clock interrupt might come immediately as soon as the proc runs,
     //! that may lead to a unexpected schedule to the first proc, so add some
     //! more ticks to ensure the first proc run its user code firstly
-    ++proc_table[0].pcb.live_ticks;
+    assert(proc_table[0] != NULL);
+    ++proc_table[0]->pcb.live_ticks;
 }
 
 int kernel_main() {
@@ -76,7 +83,9 @@ int kernel_main() {
     disable_int();
 
     klog("-----Processes Begin-----");
-    p_proc_current = proc_table;
+    p_proc_current = proc_table[0];
+    assert(p_proc_current != NULL);
+    assert(p_proc_current->pcb.stat == READY);
     kstate_on_init = false;
 
     restart_initial();

@@ -4,6 +4,7 @@
 #include <unios/protect.h>
 #include <unios/layout.h>
 #include <unios/memory.h>
+#include <unios/sync.h>
 #include <sys/types.h>
 #include <stdint.h>
 
@@ -56,7 +57,7 @@
 #define EFLAGS_IF       0x0200              //<! interrupt enable flag
 #define EFLAGS_IOPL(pl) (((pl)&0b11) << 12) //<! I/O privilege level
 
-#define NR_PCBS      20 //<! total pcbs
+#define NR_PCBS      64 //<! total pcbs
 #define NR_TASKS     2  //<! predefined task k-pcbs
 #define NR_K_PCBS    2  //<! reserved k-pcbs, only predefined tasks currently
 #define NR_RECY_PROC 1  //<! no. of recycler proc `scanvenger`
@@ -198,5 +199,6 @@ extern tss_t      tss;
 extern process_t* p_proc_current;
 extern process_t* p_proc_next;
 extern process_t  cpu_table[];
-extern process_t  proc_table[];
+extern process_t* proc_table[];
 extern task_t     task_table[];
+extern rwlock_t   proc_table_rwlock;

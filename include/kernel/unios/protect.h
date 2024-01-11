@@ -158,3 +158,5 @@ typedef struct tss_s {
 #define vir2phys(seg_base, vir) (u32)(((u32)seg_base) + (u32)(vir))
 
 void init_protect_mode();
+void init_descriptor(descriptor_t* desc, u32 base, u32 limit, u16 attr);
+u32  seg2phys(u16 seg);

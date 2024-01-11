@@ -9,6 +9,7 @@ typedef i32 rwlock_t;
 
 enum krnlobj_req_type {
     KRNLOBJ_CREATE,
+    KRNLOBJ_LOOKUP,
     KRNLOBJ_DESTROY,
     KRNLOBJ_LOCK,
     KRNLOBJ_UNLOCK,

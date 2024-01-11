@@ -22,7 +22,6 @@ int do_pthread_create(void *entry) {
     process_t *p_parent;
     if (p_proc_current->pcb.tree_info.type == TYPE_THREAD) {
         p_parent = pid2proc(p_proc_current->pcb.tree_info.real_ppid);
-        p_parent = &(proc_table[p_proc_current->pcb.tree_info.ppid]);
     } else {
         p_parent = p_proc_current;
     }

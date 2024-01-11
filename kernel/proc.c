@@ -18,7 +18,8 @@ tss_t      tss;
 process_t* p_proc_current;
 process_t* p_proc_next;
 process_t  cpu_table[NR_CPUS];
-process_t  proc_table[NR_PCBS];
+process_t* proc_table[NR_PCBS];
+rwlock_t   proc_table_rwlock;
 
 #define TASK_ENTRY(handler) \
  { handler, STACK_SIZE_TASK, #handler }
@@ -29,15 +30,38 @@ task_t task_table[NR_TASKS] = {
 };
 
 process_t* try_lock_free_pcb() {
+    bool have_free_slot = false;
+    rwlock_wait_rd(&proc_table_rwlock);
     for (int i = 0; i < NR_PCBS; ++i) {
-        pcb_t* pcb = &proc_table[i].pcb;
+        if (proc_table[i] == NULL) {
+            have_free_slot = true;
+            continue;
+        }
+        pcb_t* pcb = &proc_table[i]->pcb;
         if (!try_lock(&pcb->lock)) { continue; }
         if (pcb->stat != IDLE) {
             release(&pcb->lock);
             continue;
         }
+        rwlock_leave(&proc_table_rwlock);
         return (process_t*)pcb;
     }
+    rwlock_leave(&proc_table_rwlock);
+    if (!have_free_slot) { return NULL; }
+    rwlock_wait_wr(&proc_table_rwlock);
+    process_t* proc = NULL;
+    for (int i = 0; i < NR_PCBS; ++i) {
+        if (proc_table[i] == NULL) {
+            process_t* proc = kmalloc(sizeof(process_t));
+            assert(proc != NULL);
+            memset(proc, 0, sizeof(process_t));
+            proc->pcb.stat = IDLE;
+            proc_table[i]  = proc;
+            rwlock_leave(&proc_table_rwlock);
+            return proc;
+        }
+    }
+    rwlock_leave(&proc_table_rwlock);
     return NULL;
 }
 
@@ -82,11 +106,15 @@ int do_get_pid() {
 }
 
 void do_wakeup(void* channel) {
-    for (process_t* p = proc_table; p < proc_table + NR_PCBS; p++) {
-        if (p->pcb.stat == SLEEPING && p->pcb.channel == channel) {
-            p->pcb.stat = READY;
+    rwlock_wait_rd(&proc_table_rwlock);
+    for (int i = 0; i < NR_PCBS; ++i) {
+        process_t* proc = proc_table[i];
+        if (proc == NULL) { continue; }
+        if (proc->pcb.stat == SLEEPING && proc->pcb.channel == channel) {
+            proc->pcb.stat = READY;
         }
     }
+    rwlock_leave(&proc_table_rwlock);
 }
 
 int ldt_seg_linear(process_t* p, int idx) {
@@ -96,18 +124,30 @@ int ldt_seg_linear(process_t* p, int idx) {
 
 void* va2la(int pid, void* va) {
     if (kstate_on_init) { return va; }
-    process_t* p        = &proc_table[pid];
-    u32        seg_base = ldt_seg_linear(p, INDEX_LDT_RW);
-    u32        la       = seg_base + (u32)va;
+    process_t* proc = proc_table[pid];
+    assert(proc != NULL);
+    u32 seg_base = ldt_seg_linear(proc, INDEX_LDT_RW);
+    u32 la       = seg_base + (u32)va;
     return (void*)la;
 }
 
 process_t* pid2proc(int pid) {
-    return &proc_table[pid];
+    if (pid == -1) { return cpu_table; }
+    return proc_table[pid];
 }
 
 int proc2pid(process_t* proc) {
-    return proc - proc_table;
+    assert(proc != NULL);
+    rwlock_wait_rd(&proc_table_rwlock);
+    for (int i = 0; i < NR_PCBS; ++i) {
+        if (proc == proc_table[i]) {
+            rwlock_leave(&proc_table_rwlock);
+            return i;
+        }
+    }
+    rwlock_leave(&proc_table_rwlock);
+    if (proc == cpu_table) { return -1; }
+    unreachable();
 }
 
 bool init_proc_pcb(
@@ -128,7 +168,7 @@ bool init_proc_pcb(
     strcpy(pcb->name, name);
     pcb->exit_code  = 0;
     pcb->pid        = index;
-    pcb->priority   = 1;
+    pcb->priority   = 4;
     pcb->live_ticks = pcb->priority;
 
     //! ldt selector
@@ -137,6 +177,11 @@ bool init_proc_pcb(
     memcpy(&pcb->ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(descriptor_t));
     pcb->ldts[0].attr0 = DA_C | (rpl << 5);
     pcb->ldts[1].attr0 = DA_DRW | (rpl << 5);
+    init_descriptor(
+        &gdt[pcb->ldt_sel >> 3],
+        vir2phys(seg2phys(SELECTOR_KERNEL_DS), pcb->ldts),
+        LDT_SIZE * sizeof(descriptor_t) - 1,
+        DA_LDT);
 
     //! memory
     bool ok = pg_create_and_init(&pcb->cr3);

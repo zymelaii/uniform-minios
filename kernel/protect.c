@@ -98,17 +98,4 @@ void init_protect_mode() {
         sizeof(tss) - 1,
         DA_386TSS);
     tss.iobase = sizeof(tss);
-
-    int        i;
-    process_t* p_proc       = proc_table;
-    u16        selector_ldt = INDEX_LDT_FIRST << 3;
-    for (int i = 0; i < NR_PCBS; i++) {
-        init_descriptor(
-            &gdt[selector_ldt >> 3],
-            vir2phys(seg2phys(SELECTOR_KERNEL_DS), proc_table[i].pcb.ldts),
-            LDT_SIZE * sizeof(descriptor_t) - 1,
-            DA_LDT);
-        p_proc++;
-        selector_ldt += 1 << 3;
-    }
 }

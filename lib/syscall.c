@@ -80,6 +80,10 @@ int wait(int *wstatus) {
     return syscall1(NR_wait, (u32)wstatus);
 }
 
+handle_t krnlobj_lookup(int user_id) {
+    return (handle_t)syscall2(NR_krnlobj_request, KRNLOBJ_LOOKUP, (u32)user_id);
+}
+
 handle_t krnlobj_create(int user_id) {
     return (handle_t)syscall2(NR_krnlobj_request, KRNLOBJ_CREATE, (u32)user_id);
 }

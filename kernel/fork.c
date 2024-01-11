@@ -4,6 +4,7 @@
 #include <unios/proc.h>
 #include <unios/assert.h>
 #include <unios/schedule.h>
+#include <unios/protect.h>
 #include <arch/x86.h>
 #include <stdint.h>
 #include <string.h>
@@ -127,6 +128,11 @@ static int fork_pcb_clone(process_t* p_child) {
 
     //! TODO: better ldt selector assignment method
     ch->ldt_sel = SELECTOR_LDT_FIRST + (ch->pid << 3);
+    init_descriptor(
+        &gdt[ch->ldt_sel >> 3],
+        vir2phys(seg2phys(SELECTOR_KERNEL_DS), ch->ldts),
+        LDT_SIZE * sizeof(descriptor_t) - 1,
+        DA_LDT);
 
     ch->allocator = mballoc_create(
         kmalloc,

@@ -9,18 +9,21 @@ void switch_pde() {
 }
 
 void cherry_pick_next_ready_proc() {
-    process_t* proc = p_proc_current;
+    int index = proc2pid(p_proc_current);
+    rwlock_wait_rd(&proc_table_rwlock);
     while (true) {
-        ++proc;
-        if (proc >= proc_table + NR_PCBS) { proc = proc_table; }
+        index           = (index + 1) % NR_PCBS;
+        process_t *proc = proc_table[index];
+        if (proc == NULL) { continue; }
         if (proc->pcb.stat == READY && proc->pcb.live_ticks > 0) {
             p_proc_next = proc;
             break;
         }
-        if (proc == p_proc_current && p_proc_current) {
-            for (proc = proc_table; proc < proc_table + NR_PCBS; ++proc) {
-                proc->pcb.live_ticks = proc->pcb.priority;
-            }
+        if (proc != p_proc_current) { continue; }
+        for (int i = 0; i < NR_PCBS; ++i) {
+            if (proc_table[i] == NULL) { continue; }
+            proc_table[i]->pcb.live_ticks = proc_table[i]->pcb.priority;
         }
     }
+    rwlock_leave(&proc_table_rwlock);
 }

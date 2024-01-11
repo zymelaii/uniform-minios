@@ -1,9 +1,29 @@
+#include <sys/sync.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+
+const int screen_lock_uid = 0xcafebabe;
+
+int sync_printf(const char *fmt, ...) {
+    va_list ap;
+    int     rc;
+    va_start(ap, fmt);
+    if (krnlobj_lookup(screen_lock_uid) != INVALID_HANDLE) {
+        krnlobj_lock(screen_lock_uid);
+        rc = vprintf(fmt, ap);
+        krnlobj_unlock(screen_lock_uid);
+    } else {
+        rc = vprintf(fmt, ap);
+    }
+    va_end(ap);
+    return rc;
+}
+
+#define printf sync_printf
 
 int main(int argc, char *argv[], char *envp[]) {
     clock_t time = clock();
