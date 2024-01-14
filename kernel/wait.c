@@ -58,11 +58,11 @@ static void wait_recycle_memory(u32 recy_pid) {
 int do_wait(int* wstatus) {
     pcb_t* fa_pcb = &p_proc_current->pcb;
     while (true) {
-        lock_or(&p_proc_current->pcb.lock, schedule);
+        lock_or(&fa_pcb->lock, schedule);
         if (fa_pcb->tree_info.child_p_num == 0
             && fa_pcb->tree_info.child_k_num == 0) {
             if (wstatus != NULL) { *wstatus = 0; }
-            p_proc_current->pcb.lock = 0;
+            release(&fa_pcb->lock);
             return -1;
         }
         pcb_t* exit_pcb = try_get_zombie_child(fa_pcb->pid);
@@ -72,6 +72,7 @@ int do_wait(int* wstatus) {
                 release(&fa_pcb->lock);
                 return pid;
             }
+            disable_int();
             fa_pcb->stat = SLEEPING;
             release(&fa_pcb->lock);
             schedule();
@@ -86,11 +87,16 @@ int do_wait(int* wstatus) {
         //! FIXME: lock also release here
         disable_int();
         memset(exit_pcb, 0, sizeof(process_t));
+        assert(!exit_pcb->tree_info.child_k_num);
+        assert(!exit_pcb->tree_info.child_p_num);
+        assert(!exit_pcb->tree_info.child_t_num);
+        assert(!exit_pcb->tree_info.ppid);
+        assert(!exit_pcb->tree_info.real_ppid);
         exit_pcb->pid  = -1;
         exit_pcb->stat = IDLE;
         release(&exit_pcb->lock);
-        enable_int();
         release(&fa_pcb->lock);
+        enable_int();
         return pid;
     }
 }

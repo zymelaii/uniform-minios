@@ -10,7 +10,6 @@ void switch_pde() {
 
 void cherry_pick_next_ready_proc() {
     int index = proc2pid(p_proc_current);
-    rwlock_wait_rd(&proc_table_rwlock);
     while (true) {
         index           = (index + 1) % NR_PCBS;
         process_t *proc = proc_table[index];
@@ -25,5 +24,4 @@ void cherry_pick_next_ready_proc() {
             proc_table[i]->pcb.live_ticks = proc_table[i]->pcb.priority;
         }
     }
-    rwlock_leave(&proc_table_rwlock);
 }

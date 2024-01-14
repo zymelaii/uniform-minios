@@ -112,7 +112,6 @@ static int fork_pcb_clone(process_t* p_child) {
     ch->live_ticks = fa->live_ticks;
     ch->priority   = fa->priority;
     ch->exit_code  = fa->exit_code;
-    ch->allocator  = fa->allocator;
     assert(ch->exit_code == 0);
     strcpy(ch->name, fa->name);
     memcpy(ch->ldts, fa->ldts, sizeof(fa->ldts));
@@ -163,14 +162,16 @@ static int fork_pcb_clone(process_t* p_child) {
 int do_fork() {
     process_t* fa = p_proc_current;
     lock_or(&fa->pcb.lock, schedule);
-
+    klog("got lock");
     process_t* ch = try_lock_free_pcb();
     if (ch == NULL) {
         klog("fork %d: pcb res is not available", fa->pcb.pid);
         release(&fa->pcb.lock);
         return -1;
     }
+    disable_int();
     bool ok = pg_create_and_init(&ch->pcb.cr3);
+    enable_int();
     if (!ok) {
         klog("warn: fork %d: low memory", fa->pcb.pid);
         release(&ch->pcb.lock);
@@ -179,10 +180,12 @@ int do_fork() {
     }
 
     fork_pcb_clone(ch);
+    disable_int();
     ok = fork_memory_clone(fa->pcb.pid, ch->pcb.pid);
+    enable_int();
     if (!ok) {
         //! TODO: put ch on scavenger
-        todo("fxxked up!");
+        todo("rollback!!!");
     }
     fork_update_proc_info(ch);
 
@@ -192,8 +195,10 @@ int do_fork() {
     frame[NR_EAXREG] = ch->pcb.regs.eax;
 
     //! done
+    disable_int();
     ch->pcb.stat = READY;
     release(&ch->pcb.lock);
     release(&fa->pcb.lock);
+    enable_int();
     return ch->pcb.pid;
 }

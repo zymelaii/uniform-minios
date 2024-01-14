@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #define SCR_WIDTH   80
-#define SCR_HEIGHT  25
+#define SCR_HEIGHT  24
 #define SCR_SIZE    ((SCR_HEIGHT) * (SCR_WIDTH))
 #define SCR_BUFSIZE (2 * (SCR_SIZE))
 #define SCR_MAXLINE ((SCR_BUFSIZE) / (SCR_WIDTH))

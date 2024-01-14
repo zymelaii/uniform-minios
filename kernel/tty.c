@@ -270,7 +270,7 @@ static void tty_dev_write(tty_t *tty) {
             //! NOTE: '\n' will move the cursor to the newline, but i do not
             //! save the pos history, thus when consume a '\b' following a
             //! '\n', only eat the '\b' and do not remove the previous '\n'
-            if (prev_code == NONE || prev_code == '\n') {
+            if (prev_code == NONE || prev_code == '\n' || prev_code == '\b') {
                 should_output = false;
             } else {
                 ok = tty_wrbuf_rewind_once(tty);
@@ -286,7 +286,7 @@ static void tty_dev_write(tty_t *tty) {
 
 void tty_handler() {
     tty_t *tty = NULL;
-    for (tty = TTY_FIRST; tty < TTY_END; ++tty) { tty_init(tty); }
+        for (tty = TTY_FIRST; tty < TTY_END; ++tty) { tty_init(tty); }
 
     //! select first tty & console
     tty = TTY_FIRST;

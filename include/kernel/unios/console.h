@@ -7,10 +7,11 @@
 #define SCROLL_DOWN (-1)
 
 typedef struct console_s {
-    uintptr_t crtc_start; //<! set CRTC start addr reg
-    uintptr_t orig;       //<! start addr of the console
+    uintptr_t orig;       //<! start addr of the vga memory
+    uintptr_t crtc_start; //<! start addr of the current console origin
     size_t    con_size;   //<! how many words does the console have
     bool      is_full;
+    bool      wrapped;
     int       cursor;
     int       current_line;
 } console_t;
