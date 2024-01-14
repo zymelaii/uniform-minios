@@ -35,6 +35,7 @@ void init_screen(tty_t* tty) {
     if (nr_tty == 0) { con->cursor += vga_get_disppos(); }
     const char prompt[] = "[TTY #?]\n";
     for (const char* p = prompt; *p != '\0'; ++p) {
+        assert(con != NULL);
         out_char(con, *p == '?' ? nr_tty + '0' : *p);
     }
 
@@ -46,12 +47,12 @@ static void clear_screen(int pos, int len) {
     while (--len >= 0) { *p++ = BLANK; }
 }
 
-void scroll_screen(console_t* con, int dir) {
+void scroll_screen(console_t* con, int dir, int next_cur_pos) {
     int oldest;
     int newest;
     int scr_top;
 
-    newest  = (con->cursor - con->orig) / SCR_WIDTH * SCR_WIDTH;
+    newest  = (next_cur_pos - con->orig) / SCR_WIDTH * SCR_WIDTH;
     oldest  = con->is_full ? (newest + SCR_WIDTH) % con->con_size : 0;
     scr_top = con->crtc_start - con->orig;
 
@@ -59,7 +60,7 @@ void scroll_screen(console_t* con, int dir) {
         if (!con->is_full && scr_top > 0) {
             con->crtc_start -= SCR_WIDTH;
         } else if (con->is_full && scr_top != oldest) {
-            if (con->cursor - con->orig >= con->con_size - SCR_SIZE) {
+            if (next_cur_pos - con->orig >= con->con_size - SCR_SIZE) {
                 if (con->crtc_start != con->orig) con->crtc_start -= SCR_WIDTH;
             } else if (con->crtc_start == con->orig) {
                 scr_top         = con->con_size - SCR_SIZE;
@@ -86,47 +87,83 @@ void scroll_screen(console_t* con, int dir) {
 
 void out_char(console_t* con, char ch) {
     //! FIXME: dirty current_line
-    int cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
-    int cursor_y = (con->cursor - con->orig) / SCR_WIDTH;
+    assert(con != NULL);
+    int curr_cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
+    int curr_cursor_y = (con->cursor - con->orig) / SCR_WIDTH;
+    int curr_curs_pos = con->cursor;
+
+    int next_cursor_x = -1;
+    int next_cursor_y = -1;
+    int next_curs_pos = -1;
+
+    char disp_ch = 0;
 
     switch (ch) {
         case '\n': {
-            con->cursor = con->orig + SCR_WIDTH * (cursor_y + 1);
-            vga_set_disppos(con->cursor);
-        } break;
-        case '\b': {
-            if (con->cursor > con->orig) {
-                --con->cursor;
-                vga_set_disppos(con->cursor);
-                vga_write_char(' ', WHITE_CHAR);
+            //! no out char
+            if (con->wrapped) {
+                next_curs_pos = con->orig + SCR_WIDTH * curr_cursor_y;
+            } else {
+                next_curs_pos = con->orig + SCR_WIDTH * (curr_cursor_y + 1);
             }
         } break;
+        case '\r': {
+            if (con->wrapped) {
+                next_curs_pos = con->orig + (curr_cursor_y - 1) * SCR_WIDTH;
+            } else {
+                next_curs_pos = con->orig + curr_cursor_y * SCR_WIDTH;
+            }
+        } break;
+        case '\b': {
+            disp_ch       = ' ';
+            next_curs_pos = curr_curs_pos - 1;
+            --curr_curs_pos;
+        } break;
         default: {
-            vga_set_disppos(con->cursor);
-            vga_write_char(ch, WHITE_CHAR);
-            ++con->cursor;
+            disp_ch       = ch;
+            next_curs_pos = curr_curs_pos + 1;
         } break;
     }
+    next_cursor_x = (next_curs_pos - con->orig) % SCR_WIDTH;
+    next_cursor_y = (next_curs_pos - con->orig) / SCR_WIDTH;
 
-    if (con->cursor - con->orig >= con->con_size - 1) {
-        cursor_x    = (con->cursor - con->orig) % SCR_WIDTH;
-        cursor_y    = (con->cursor - con->orig) / SCR_WIDTH;
-        int cp_orig = con->orig + (cursor_y + 1) * SCR_WIDTH - SCR_SIZE;
+    if (ch == '\r' || ch == '\n') {
+        con->wrapped = false;
+    } else if ((curr_curs_pos + 1 - con->orig) / SCR_WIDTH > curr_cursor_y) {
+        con->wrapped = true;
+    } else if ((next_curs_pos - 1 - con->orig) / SCR_WIDTH < curr_cursor_y) {
+        con->wrapped = true;
+    } else if (ch != '\n' && ch != '\r' && con->wrapped == true) {
+        con->wrapped = false;
+    }
+    assert(next_curs_pos != -1);
+
+    if (next_curs_pos - con->orig >= con->con_size - SCR_WIDTH - 1) {
+        int cp_orig = con->orig + (next_cursor_y + 1) * SCR_WIDTH - SCR_SIZE;
+        disable_int();
         vga_copy(con->orig, cp_orig, SCR_SIZE - SCR_WIDTH);
+        enable_int();
         con->crtc_start = con->orig;
-        con->cursor     = con->orig + (SCR_SIZE - SCR_WIDTH) + cursor_x;
-        clear_screen(con->cursor, SCR_WIDTH);
+        next_curs_pos   = con->orig + (SCR_SIZE - SCR_WIDTH) + next_cursor_x;
+        clear_screen(
+            next_curs_pos, con->con_size - (next_curs_pos - con->orig));
         if (!con->is_full) con->is_full = 1;
     }
 
-    assert(con->cursor - con->orig < con->con_size);
-
-    while (con->cursor >= con->crtc_start + SCR_SIZE
-           || con->cursor < con->crtc_start) {
-        scroll_screen(con, SCROLL_UP);
-        clear_screen(con->cursor, SCR_WIDTH);
+    while (next_curs_pos >= con->crtc_start + SCR_SIZE
+           || next_curs_pos < con->crtc_start) {
+        scroll_screen(con, SCROLL_UP, next_curs_pos);
+        clear_screen(next_curs_pos, SCR_WIDTH);
+    }
+    if (disp_ch != 0) {
+        vga_set_disppos(curr_curs_pos);
+        vga_write_char(disp_ch, WHITE_CHAR);
     }
 
+    con->cursor = next_curs_pos;
+
+    assert(con->cursor - con->orig < con->con_size);
+    assert(con->cursor - con->crtc_start < 1920);
     flush(con);
 }
 

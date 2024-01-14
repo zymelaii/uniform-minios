@@ -57,7 +57,7 @@ void recycle_proc_memory(process_t* proc) {
 }
 
 void scavenger() {
-    while (true) {
+        while (true) {
         int number = killerabbit(-1);
         if (number == 0) {
             p_proc_current->pcb.stat = SLEEPING;
@@ -65,13 +65,13 @@ void scavenger() {
         } else if (number > 0) {
             klog("---killed orphan! number = [%d]---", number);
         } else {
-            klog("---strange things!---");
             for (int i = 0; i < p_proc_current->pcb.tree_info.child_p_num;
                  ++i) {
                 pcb_t* pcb = (pcb_t*)pid2proc(
                     p_proc_current->pcb.tree_info.child_process[i]);
                 klog(
-                    "   pid:[%d] state:[%d] (0: I, 1: R, 2: S, 3: K, 4: Z, 5: "
+                    "------ kill error pid:[%d] state:[%d] (0: I, 1: R, 2: S, "
+                    "3: K, 4: Z, 5: "
                     "KILLING)",
                     proc2pid((process_t*)pcb),
                     pcb->stat);

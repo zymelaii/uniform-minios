@@ -34,6 +34,7 @@ static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
         pcb_t* son_pcb = (pcb_t*)pid2proc(src_pcb->tree_info.child_process[i]);
         if (son_pcb->pid != p_proc_current->pcb.pid) {
             lock_or(&son_pcb->lock, schedule);
+            son_pcb->stat = ZOMBIE;
         }
         son_pcb->tree_info.ppid = dst_pid;
         ++dst_pcb->tree_info.child_p_num;
@@ -148,6 +149,7 @@ int do_killerabbit(int pid) {
     int kill_pid = pid;
     if (kill_pid < NR_TASKS + NR_CONSOLES && kill_pid >= 0) { return -1; }
     if (kill_pid == p_proc_current->pcb.pid) { return -1; }
+    if (kill_pid >= NR_PCBS) { return -1; }
     int    total_KIA = 0;
     pcb_t* kill_pcb  = NULL;
     pcb_t* fa_pcb    = NULL;
@@ -163,6 +165,11 @@ int do_killerabbit(int pid) {
                 }
             }
             kill_pcb = (pcb_t*)pid2proc(kill_pid);
+            if (kill_pcb == NULL) {
+                release(&p_proc_current->pcb.lock);
+                klog("[%d] doesn't exist!", kill_pid);
+                return -1;
+            }
             //! TODO: implement thread killing!
             if (try_lock(&kill_pcb->lock)) {
                 if (pid == -1) {
@@ -186,7 +193,6 @@ int do_killerabbit(int pid) {
                 if (ok) {
                     kill_pcb->stat = KILLING;
                     enable_int();
-
                     ok = killerabbit_kill_one(
                         kill_pid, kill_pcb->tree_info.ppid);
                     assert(ok);
@@ -200,7 +206,6 @@ int do_killerabbit(int pid) {
                         continue;
                     }
                 } else {
-                    enable_int();
                     release(&p_proc_current->pcb.lock);
                     release(&kill_pcb->lock);
                     schedule();
@@ -227,6 +232,7 @@ int do_killerabbit(int pid) {
         release(&recy_pcb->lock);
     }
     killerabbit_recycle_memory(pid);
+    disable_int();
     memset(kill_pcb, 0, sizeof(process_t));
     kill_pcb->pid  = -1;
     kill_pcb->lock = 0;
@@ -234,5 +240,6 @@ int do_killerabbit(int pid) {
     fa_pcb->stat   = READY;
     release(&kill_pcb->lock);
     release(&fa_pcb->lock);
+    enable_int();
     return 0;
 }

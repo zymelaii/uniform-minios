@@ -120,7 +120,6 @@ static int exec_pcb_init(const char* path) {
     memmap->vpage_lin_base   = VpageLinBase;
     memmap->vpage_lin_limit  = VpageLinBase;
     memmap->heap_lin_base    = HeapLinBase;
-    memmap->heap_lin_limit   = HeapLinBase;
     memmap->stack_lin_base   = StackLinBase;
     memmap->stack_lin_limit  = StackLinBase - 0x4000;
     memmap->arg_lin_base     = ArgLinBase;
