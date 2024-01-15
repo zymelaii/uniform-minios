@@ -4,6 +4,7 @@ CACHED_FLAG_LIST  += CFLAGS
 CACHED_FLAG_LIST  += LDFLAGS
 CACHED_FLAG_LIST  += ASFLAGS
 CACHED_FLAG_FILES := $(patsubst %,$(OBJDIR)/.cache/%,$(CACHED_FLAG_LIST))
+CACHED_FILES      += $(CACHED_FLAG_FILES)
 
 $(OBJDIR)/.cache/%: force
 	@mkdir -p $(@D)
@@ -11,7 +12,7 @@ $(OBJDIR)/.cache/%: force
 .PHONY: force
 
 # compile c objects
-$(OBJDIR)/%.c.obj: %.c $(CACHED_FLAG_FILES)
+$(OBJDIR)/%.c.obj: %.c $(filter %.h,$(GENERATED_FILES)) $(CACHED_FLAG_FILES)
 	@echo -ne "[PROC] cc $<\r"
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) -c -o $@ $<

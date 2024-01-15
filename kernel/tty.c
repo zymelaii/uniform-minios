@@ -286,7 +286,7 @@ static void tty_dev_write(tty_t *tty) {
 
 void tty_handler() {
     tty_t *tty = NULL;
-        for (tty = TTY_FIRST; tty < TTY_END; ++tty) { tty_init(tty); }
+    for (tty = TTY_FIRST; tty < TTY_END; ++tty) { tty_init(tty); }
 
     //! select first tty & console
     tty = TTY_FIRST;

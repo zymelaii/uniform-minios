@@ -7,9 +7,6 @@ endif
 # path to project mk files
 PROJMK_PREFIX ?=
 
-# configure output dir
-OBJDIR ?= build
-
 # path to generated headers
 GENERATED_INCDIR := $(OBJDIR)/include
 
@@ -26,6 +23,9 @@ KERNEL_START_ADDR := 0xc0030400
 # standard library for uniform-os
 LIBRT_FILE := $(OBJDIR)/lib/lib$(LIBRT).a
 
+# file name of the user prog archive
+INSTALL_FILENAME := "$(USER_PROG_ARCHIVE)"
+
 # hardcoded image assignment arguments
 OSBOOT_OFFSET          := $(shell echo $$[0x00100000])
 OSBOOT_START_OFFSET    := $(shell echo $$[0x0010005a])
@@ -40,10 +40,6 @@ SUPER_BLOCK_ADDR     := $(shell echo $$[($(PART_START_SECTOR) + 1) * 512])
 
 # configure toolchain
 DEFINES  ?=
-DEFINES  += INSTALL_FILENAME='"$(USER_PROG_ARCHIVE)"'
-DEFINES  += INSTALL_FILENAME='"$(USER_PROG_ARCHIVE)"'
-DEFINES  += INSTALL_NR_SECTORS=$(INSTALL_NR_SECTORS)
-DEFINES  += INSTALL_START_SECTOR=$(INSTALL_START_SECTOR)
 INCDIRS  ?=
 INCDIRS  += include/kernel
 INCDIRS  += include/lib

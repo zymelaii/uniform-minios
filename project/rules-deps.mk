@@ -1,4 +1,5 @@
 SOURCE_DEPS_FILE := $(OBJDIR)/.cache/.deps
+CACHED_FILES     += $(SOURCE_DEPS_FILE)
 
 MERGE_SCRIPT := misc/mergedep.pl
 

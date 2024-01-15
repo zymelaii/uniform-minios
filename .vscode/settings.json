@@ -19,6 +19,7 @@
         "-fno-builtin",
         "-I${workspaceFolder}/include/kernel",
         "-I${workspaceFolder}/include/lib",
+        "-I${workspaceFolder}/build/include",
         "-Wno-unknown-attributes",
     ],
     "clangd.arguments": [

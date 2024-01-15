@@ -1,6 +1,4 @@
-match_asbin_src = $(foreach file,$2,$(if $(filter $1,$(basename $(file))),$(file)))
-
-$(OBJDIR)/%.bin: %.asm $(GENERATED_FILES)
+$(OBJDIR)/%.bin: %.asm $(filter %.inc,$(GENERATED_FILES))
 	@echo -ne "[PROC] as $(notdir $@)\r"
 	@mkdir -p $(@D)
 	@$(AS) $(ASFLAGS) -o $@ $<

@@ -1,4 +1,3 @@
-#include <unios/config.h>
 #include <unios/protect.h>
 #include <unios/proc.h>
 #include <unios/assert.h>
@@ -10,6 +9,7 @@
 #include <unios/schedule.h>
 #include <unios/sync.h>
 #include <sys/defs.h>
+#include <config.h>
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>

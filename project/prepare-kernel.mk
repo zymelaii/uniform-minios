@@ -7,4 +7,5 @@ OUTPUT_DIR := $(OBJDIR)/$(SOURCE_DIR)
 include $(PROJMK_PREFIX)collect-objects.mk
 
 # kernel objects
-KERNEL_OBJECTS := $(patsubst %,$(OBJDIR)/%.obj,$(SOURCE_FILES))
+KERNEL_OBJECTS  := $(patsubst %,$(OBJDIR)/%.obj,$(SOURCE_FILES))
+GENERATED_FILES += $(GENERATED_INCDIR)/config.h

@@ -1,5 +1,5 @@
-#include <unios/config.h>
 #include <unios/proc.h>
+#include <config.h>
 #include <assert.h>
 #include <tar.h>
 #include <stdlib.h>
