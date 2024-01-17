@@ -44,15 +44,16 @@ $(GENERATED_INCDIR)/config.h: include/kernel/config.h.in $(ENVS)
 	@\
 	vars=`cat $< | grep -Po '(?<=@)\w+(?=@)' | tr '\n' ' '`;	\
 	cat $(ENVS) | while IFS= read -r row; do					\
-		key=`echo $${row} | grep -Po '^(\w+)'`;					\
-		value=`echo $${row} | grep -Po "(?<=$${key} = )(.*)"`;	\
+		tuple=($${row});										\
+		key=$${tuple[0]};										\
 		if [[ " $${vars} " =~ " $${key} " ]]; then				\
+			value=$${tuple[@]:2};								\
 			sed -i "s/@$${key}@/$${value}/g" $@.swp;			\
 		fi;														\
 	done;
 	@\
 	if cmp -s $@ $@.swp; then 										\
-		echo -e "\e[1K\r\e[32m[SKIP]\e[0m generate $(notdir $@)";	\
+		echo -e "\e[1K\r\e[33m[SKIP]\e[0m generate $(notdir $@)";	\
 	else															\
 		cp $@.swp $@;												\
 		echo -e "\e[1K\r\e[32m[DONE]\e[0m generate $(notdir $@)";	\

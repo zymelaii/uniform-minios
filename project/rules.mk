@@ -6,7 +6,14 @@ all: $(IMAGE_FILE) $(KERNEL_DEBUG_FILE)
 .PHONY: all
 
 clean:
-	@rm -rf $(OBJDIR)
+	@\
+	if [ ! -d $(OBJDIR) ]; then exit; fi;		\
+	echo -ne "[PROC] clean-up all stuffs\r";	\
+	if rm -rf $(OBJDIR) 2> /dev/null; then						\
+		echo -e "\e[1K\r\e[32m[DONE]\e[0m clean-up all stuffs";	\
+	else														\
+		echo -e "\e[1K\r\e[31m[FAIL]\e[0m clean-up all stuffs";	\
+	fi
 .PHONY: clean
 
 # run & debug rules
@@ -18,9 +25,9 @@ debug: $(IMAGE_FILE)
 	@$(QEMU) $(QEMU_FLAGS) -drive file=$<,format=raw -s -S
 .PHONY: debug
 
-gdb: $(KERNEL_DEBUG_FILE)
+monitor: $(KERNEL_DEBUG_FILE)
 	@$(GDB) $(GDB_FLAGS) -ex 'file $<'
-.PHONY: gdb
+.PHONY: monitor
 
 # unios rules
 include $(PROJMK_PREFIX)rules-gen.mk
@@ -48,11 +55,37 @@ install:
 			cp -t $(OBJDIR) $${file}; 								\
 			echo -e "\e[1K\r\e[32m[DONE]\e[0m install $${target}";	\
 		else														\
-			echo -e "\e[1K\r[SKIP] install $${target}";				\
+			echo -e "\e[1K\r\e[33m[SKIP]\e[0m install $${target}";	\
 		fi;															\
 	done
 .PHONY: install
 
+# compile_commands.json rules
+$(OBJDIR)/compile_commands.json: force
+	@echo -ne "[PROC] dump compile_commands.json\r"
+	@mkdir -p $(@D)
+	@bear --output $(OBJDIR)/compile_commands.json -- $(MAKE) -B > /dev/null 2>&1
+	@echo -e "\e[1K\r\e[32m[DONE]\e[0m dump compile_commands.json"
+.PHONY: force
+
+dup-cc: $(OBJDIR)/compile_commands.json
+
 # extra configures
 .DELETE_ON_ERROR:
 .PRECIOUS: $(OBJECT_FILES) $(CACHED_FILES)
+
+# target aliases
+config: dup-cc
+conf: config
+build: all
+b: build
+r: run
+d: debug
+i: install
+gdb: monitor
+mon: monitor
+lib: $(LIBRT_FILE)
+user: $(USER_TAR_FILE)
+kernel: $(KERNEL_FILE) $(KERNEL_DEBUG_FILE)
+krnl: kernel
+image: $(IMAGE_FILE)
