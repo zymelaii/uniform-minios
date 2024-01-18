@@ -7,7 +7,6 @@ BOOT_FILE   := $(OBJDIR)/boot/boot.bin
 LOADER_FILE := $(OBJDIR)/boot/loader.bin
 
 ORANGE_FS_FLAG_FILE := $(OBJDIR)/fs_flags/orange_flag.bin
-FAT32_FS_FLAG_FILE  := $(OBJDIR)/fs_flags/fat32_flag.bin
 
 $(IMAGE_FILE)p0: $(RAW_HD_IMAGE) $(MBR_FILE) $(BOOT_FILE)
 	@echo -ne "[PROC] pre-build image\r"
@@ -54,14 +53,12 @@ $(IMAGE_FILE)p2: $(IMAGE_FILE)p1 $(USER_TAR_FILE)
 		conv=notrunc > /dev/null 2>&1
 	@echo -e "\e[1K\r\e[32m[DONE]\e[0m install user programs -> $(notdir $@)"
 
-$(IMAGE_FILE)p3: $(IMAGE_FILE)p2 $(ORANGE_FS_FLAG_FILE) $(FAT32_FS_FLAG_FILE)
+$(IMAGE_FILE)p3: $(IMAGE_FILE)p2 $(ORANGE_FS_FLAG_FILE)
 	@echo -ne "[PROC] write fs flags\r"
 	@mkdir -p $(@D)
 	@cp -f $< $@
 	@dd if=$(ORANGE_FS_FLAG_FILE) of=$@ bs=1 count=1	\
 		seek=$(ORANGE_FS_START_OFFSET) conv=notrunc > /dev/null 2>&1
-	@dd if=$(FAT32_FS_FLAG_FILE) of=$@ bs=1 count=11 	\
-		seek=$(FAT32_FS_START_OFFSET) conv=notrunc > /dev/null 2>&1
 	@echo -e "\e[1K\r\e[32m[DONE]\e[0m write fs flags -> $(notdir $@)"
 
 # image sha1sum for outdated detection

@@ -23,24 +23,21 @@ static superblock_op_set_t sb_op_table[NR_SB_OP];
 //! vfs_setup_and_init
 int dev_nr_counter;
 
-//! initial vfs assignment: {tty0, tty1, tty2, orange, fat32}
+//! initial vfs assignment: {tty0, tty1, tty2, orange}
 #define NR_TTY         (NR_CONSOLES)
-#define NR_INITIAL_VFS (NR_TTY + 2)
+#define NR_INITIAL_VFS (NR_TTY + 1)
 
 //! vfs set
 #define TTY_VFS(i) (vfs_table[i])
 #define ORANGE_VFS (vfs_table[NR_TTY + 0])
-#define FAT32_VFS  (vfs_table[NR_TTY + 1])
 
 //! fs op set
 #define TTY_FS_OP    (fs_op_table[0])
 #define ORANGE_FS_OP (fs_op_table[1])
-#define FAT32_FS_OP  (fs_op_table[2])
 
 //! superblock set
 #define TTY_SUPERBLOCK(i) (superblock_table[i])
 #define ORANGE_SUPERBLOCK (superblock_table[NR_TTY + 0])
-#define FAT32_SUPERBLOCK  (superblock_table[NR_TTY + 1])
 
 //! superblock op set
 #define NULL_SB_OP   (sb_op_table[0])
@@ -108,9 +105,6 @@ static void init_superblock_table() {
 
     ORANGE_SUPERBLOCK.sb_dev  = DEV_HD;
     ORANGE_SUPERBLOCK.fs_type = ORANGE_TYPE;
-
-    FAT32_SUPERBLOCK.sb_dev  = DEV_HD;
-    FAT32_SUPERBLOCK.fs_type = FAT32_TYPE;
 }
 
 static int get_next_dev_nr() {
@@ -142,12 +136,6 @@ static void init_vfs_table() {
     ORANGE_VFS.ops    = &ORANGE_FS_OP;
     ORANGE_VFS.sb     = &ORANGE_SUPERBLOCK;
     ORANGE_VFS.sb_ops = &NULL_SB_OP;
-
-    FAT32_VFS.name   = "/fat0";
-    FAT32_VFS.nr_dev = get_next_dev_nr();
-    FAT32_VFS.ops    = &FAT32_FS_OP;
-    FAT32_VFS.sb     = &FAT32_SUPERBLOCK;
-    FAT32_VFS.sb_ops = &NULL_SB_OP;
 }
 
 static void init_fs_op_table() {
@@ -164,16 +152,6 @@ static void init_fs_op_table() {
     ORANGE_FS_OP.lseek  = real_lseek;
     ORANGE_FS_OP.unlink = real_unlink;
     ORANGE_FS_OP.read   = real_read;
-
-    FAT32_FS_OP.create    = CreateFile;
-    FAT32_FS_OP.delete    = DeleteFile;
-    FAT32_FS_OP.open      = OpenFile;
-    FAT32_FS_OP.close     = CloseFile;
-    FAT32_FS_OP.write     = WriteFile;
-    FAT32_FS_OP.read      = ReadFile;
-    FAT32_FS_OP.opendir   = OpenDir;
-    FAT32_FS_OP.createdir = CreateDir;
-    FAT32_FS_OP.deletedir = DeleteDir;
 }
 
 static void _null_sb_op_read(int unused) {}

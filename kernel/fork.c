@@ -162,7 +162,6 @@ static int fork_pcb_clone(process_t* p_child) {
 int do_fork() {
     process_t* fa = p_proc_current;
     lock_or(&fa->pcb.lock, schedule);
-    klog("got lock");
     process_t* ch = try_lock_free_pcb();
     if (ch == NULL) {
         klog("fork %d: pcb res is not available", fa->pcb.pid);

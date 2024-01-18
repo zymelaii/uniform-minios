@@ -79,7 +79,6 @@ int kernel_main() {
     hd_open(PRIMARY_MASTER);
     vfs_setup_and_init();
     init_fs();
-    init_fs_fat();
     disable_int();
 
     klog("-----Processes Begin-----");

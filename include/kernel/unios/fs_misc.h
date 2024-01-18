@@ -1,8 +1,100 @@
 #pragma once
 
-#include <unios/fat32.h>
 #include <stdint.h>
 #include <limits.h>
+
+#define OK                1 // 正常返回
+#define SYSERROR          2 // 系统错误
+#define VDISKERROR        3 // 虚拟磁盘错误
+#define INSUFFICIENTSPACE 4 // 虚拟磁盘空间不足
+#define WRONGPATH         5 // 路径有误
+#define NAMEEXIST         6 // 文件或目录名已存在
+#define ACCESSDENIED      7 // 读写权限不对拒绝访问
+
+#define C  1 // 创建	//added by mingxuan 2019-5-18
+#define R  5 // 读
+#define W  6 // 写
+#define RW 2 // 读写	//added by mingxuan 2019-5-18
+
+#define F 1 // 文件
+#define D 0 // 目录
+
+typedef int STATE; // 函数返回状态
+
+typedef unsigned char  BYTE;  // 字节
+typedef unsigned short WORD;  // 双字节
+typedef unsigned long  DWORD; // 四字节
+typedef unsigned int   UINT;  // 无符号整型
+typedef char           CHAR;  // 字符类型
+
+typedef unsigned char  *PBYTE;
+typedef unsigned short *PWORD;
+typedef unsigned long  *PDWORD; // 四字节指针
+typedef unsigned int   *PUINT;  // 无符号整型指针
+typedef char           *PCHAR;  // 字符指针
+
+typedef struct // 定义目录项：占32个字节
+{
+    BYTE  filename[8];      // 文件名：占8个字节
+    BYTE  extension[3];     // 扩展名：占3个字节
+    BYTE  proByte;          // 属性字节：占1个字节
+    BYTE  sysReserved;      // 系统保留：占1个字节
+    BYTE  createMsecond;    // 创建时间的10毫秒位：占1个字节
+    WORD  createTime;       // 文件创建时间：占2个字节
+    WORD  createDate;       // 文件创建日期：占2个字节
+    WORD  lastAccessDate;   // 文件最后访问日期：占2个字节
+    WORD  highClusterNum;   // 文件的起始簇号的高16位：占2个字节
+    WORD  lastModifiedTime; // 文件的最近修改时间
+    WORD  lastModifiedDate; // 文件的最近修改日期
+    WORD  lowClusterNum;    // 文件的起始簇号的低16位：占2个字节
+    DWORD filelength;       // 文件的长度：占4个字节
+} Record, *PRecord;
+
+typedef struct // 定义长文件名目录项：占32个字节
+{
+    BYTE proByte;      // 属性字节
+    BYTE name1[10];    // 长文件名第1段
+    BYTE longNameFlag; // 长文件名目录项标志，取值0FH
+    BYTE sysReserved;  // 系统保留
+    BYTE name2[19];    // 长文件名第2段
+} LONGNAME;
+
+typedef struct {       // 文件类型
+    CHAR  parent[256]; // 父路径
+    CHAR  name[256];   // 文件名
+    DWORD start;       // 起始地址
+    DWORD off;         // 总偏移量,以字节为单位
+    DWORD size;        // 文件的大小，以字节为单位
+    UINT  flag;        // 文件读写标志
+} File, *PFile;
+
+typedef struct { // 动态数组元素类型，用于存储文件或目录的基本信息
+    CHAR fullpath[256]; // 绝对路径
+    CHAR name[256];     // 文件名或目录名
+    UINT tag;           // 1表示文件，0表示目录
+} DArrayElem;
+
+typedef struct {           // 动态数组类型
+    DArrayElem *base;      // 数组基地址
+    UINT        offset;    // 读取数组时的偏移量
+    UINT        used;      // 数组当前已使用的容量
+    UINT        capacity;  // 数组的总容量
+    UINT        increment; // 当数组容量不足时，动态增长的步长
+} DArray;
+
+typedef struct {        // 文件或目录属性类型
+    BYTE type;          // 0x10表示目录，否则表示文件
+    CHAR name[256];     // 文件或目录名称
+    CHAR location[256]; // 文件或目录的位置，绝对路径
+    DWORD size; // 文件的大小或整个目录中(包括子目录中)的文件总大小
+    CHAR createTime[20];       // 创建时间型如：yyyy-MM-dd hh:mm:ss类型
+    CHAR lastModifiedTime[20]; // 最后修改时间
+
+    union {
+        CHAR lastAccessDate[11]; // 最后访问时间，当type为文件值有效
+        UINT contain[2]; // 目录中的文件个数和子目录的个数，当type为目录时有效
+    } share;
+} Properties;
 
 /**
  * @struct dev_drv_map fs.h "include/sys/fs.h"
@@ -114,7 +206,7 @@ struct dir_entry {
 
 // added by mingxuan 2019-5-17
 union ptr_node {
-    struct inode* fd_inode; /**< Ptr to the i-node */
+    struct inode *fd_inode; /**< Ptr to the i-node */
     PFile         fd_file;  // 指向fat32的file结构体
 };
 
