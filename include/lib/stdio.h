@@ -25,13 +25,7 @@ int deletedir(const char *path);
 
 long strtol(const char *cp, char **endp, unsigned int base);
 
-#define EOF        -1
-#define isspace(s) (s == ' ')
-#define TOLOWER(x) ((x) | 0x20)
-#define isxdigit(c)                                        \
- (('0' <= (c) && (c) <= '9') || ('a' <= (c) && (c) <= 'f') \
-  || ('A' <= (c) && (c) <= 'F'))
-#define isdigit(c) ('0' <= (c) && (c) <= '9')
+#define EOF -1
 
 void printfmt(void (*putch)(int, void *), void *putdat, const char *fmt, ...);
 void vprintfmt(
