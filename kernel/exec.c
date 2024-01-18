@@ -119,7 +119,6 @@ static int exec_pcb_init(const char* path) {
     lin_memmap_t* memmap     = &p_proc_current->pcb.memmap;
     memmap->vpage_lin_base   = VpageLinBase;
     memmap->vpage_lin_limit  = VpageLinBase;
-    memmap->heap_lin_base    = HeapLinBase;
     memmap->stack_lin_base   = StackLinBase;
     memmap->stack_lin_limit  = StackLinBase - 0x4000;
     memmap->arg_lin_base     = ArgLinBase;
@@ -452,7 +451,7 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
         //! mark the errors that occur in the future as unrecoverable
         //! errors. when these errors occur, execve directly panic and does
         //! not return
-        //! TODO: introduec a more advanced architecture to solve this kind
+        //! TODO: introduce a more advanced architecture to solve this kind
         //! of problem
         unrestorable = true;
 

@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 int  get_pid();
+int  get_ppid();
 int  get_ticks();
 int  exec(const char *path);
 int  execve(const char *path, char *const *argv, char *const *envp);

@@ -5,6 +5,7 @@
 enum {
     NR_get_ticks = 0,
     NR_get_pid,
+    NR_get_ppid,
     NR_fork,
     NR_pthread_create,
     NR_execve,
@@ -58,6 +59,7 @@ void  do_free(void *ptr);
 
 //! from proc.c
 int  do_get_pid();
+int  do_get_ppid();
 void do_yield();
 void do_sleep(int n);
 void do_wakeup(void *channel);

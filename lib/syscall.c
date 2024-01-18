@@ -112,6 +112,10 @@ int get_pid() {
     return syscall0(NR_get_pid);
 }
 
+int get_ppid() {
+    return syscall0(NR_get_ppid);
+}
+
 void yield() {
     syscall0(NR_yield);
 }

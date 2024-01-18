@@ -7,6 +7,7 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <limits.h>
 
 void setup_for_all_tty() {
@@ -145,6 +146,44 @@ void print_exec_info(int argc, char **argv) {
     printf("}\n");
 }
 
+void info_handler(int argc, char *argv[]) {
+    if (argc == 0) {
+        printf("warn: expect info type\n");
+        return;
+    }
+    if (strcmp(argv[0], "env") == 0) {
+        char *const *envp = getenv();
+        assert(envp != NULL);
+        char *const *p_env = envp;
+        printf("envs [\n");
+        while (true) {
+            printf("  \"%s\",\n", *p_env);
+            if (*p_env++ == NULL) { break; }
+        }
+        printf("]\n");
+    } else if (strcmp(argv[0], "pid") == 0) {
+        printf("{\n");
+        printf("  pid: %d,\n", get_pid());
+        printf("  ppid: %d,\n", get_ppid());
+        printf("}\n");
+    } else if (strcmp(argv[0], "clock") == 0) {
+        int tick = get_ticks();
+        printf("{\n");
+        printf("  system ticks: %d tick,\n", tick);
+        printf("  running time clock: %d ms,\n", clock_from_sysclk(tick));
+        printf("  cpu clock frequency: %d Hz,\n", SYSCLK_FREQ_HZ);
+        printf("}\n");
+    } else if (strcmp(argv[0], "help") == 0) {
+        printf("available info types:\n");
+        printf("  help   print this help info\n");
+        printf("  env    current environments\n");
+        printf("  pid    pid & ppid of current proc\n");
+        printf("  clock  current time status\n");
+    } else {
+        printf("warn: unknown info type `%s`\n", argv[0]);
+    }
+}
+
 bool route(int argc, char *argv[]) {
     assert(argc > 0 && argv != NULL);
     if (argc == 1 && strcmp(argv[0], "exit") == 0) {
@@ -159,6 +198,21 @@ bool route(int argc, char *argv[]) {
             printf("error: expect cmdline\n");
         }
         return true;
+    } else if (strcmp(argv[0], "info") == 0) {
+        info_handler(argc - 1, argv + 1);
+        return true;
+    } else if (strcmp(argv[0], "echo") == 0) {
+        for (int i = 1; i < argc; ++i) { printf("%s\n", argv[i]); }
+        return true;
+    } else if (strcmp(argv[0], "new-env") == 0) {
+        if (argc == 1) {
+            printf("error: expect env\n");
+            return true;
+        }
+        char *const env[2] = {argv[1], NULL};
+        bool        ok     = putenv(env);
+        printf("info: update env %s\n", ok ? "done" : "failed");
+        return true;
     }
     return false;
 }
@@ -168,7 +222,7 @@ int main(int arg, char *argv[]) {
 
     char buf[PATH_MAX] = {};
     while (true) {
-        printf("unios[%d]:/ $ ", get_pid());
+        printf("unios$ ");
         gets(buf);
         int    cmd_argc = 0;
         char **cmd_argv = NULL;

@@ -105,6 +105,10 @@ int do_get_pid() {
     return p_proc_current->pcb.pid;
 }
 
+int do_get_ppid() {
+    return p_proc_current->pcb.tree_info.ppid;
+}
+
 void do_wakeup(void* channel) {
     rwlock_wait_rd(&proc_table_rwlock);
     for (int i = 0; i < NR_PCBS; ++i) {
