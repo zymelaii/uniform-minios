@@ -1,5 +1,12 @@
 #include <unios/proc.h>
 #include <unios/tracing.h>
+#include <unios/hd.h>
+#include <unios/fs.h>
+#include <unios/interrupt.h>
+#include <unios/kstate.h>
+#include <unios/schedule.h>
+#include <arch/x86.h>
+#include <sys/defs.h>
 #include <config.h>
 #include <assert.h>
 #include <tar.h>
@@ -10,18 +17,18 @@
 #include <malloc.h>
 #include <stddef.h>
 
-static const char *initial_envs = "PWD=/orange\n"
-                                  "PATH=/orange\n"
-                                  "PATH_EXT=.bin\n";
+static void initial_setup_fs() {
+    hd_open(PRIMARY_MASTER);
+    kdebug("init hd done");
 
-void initial() {
-    int fd = -1;
-    fd     = open("/dev_tty0", O_RDWR);
-    assert(fd == stdin);
-    fd = open("/dev_tty0", O_RDWR);
-    assert(fd == stdout);
-    fd = open("/dev_tty0", O_RDWR);
-    assert(fd == stderr);
+    init_fs();
+    kdebug("init fs done");
+}
+
+static void initial_setup_envs() {
+    const char *initial_envs = "PWD=/orange\n"
+                               "PATH=/orange\n"
+                               "PATH_EXT=.bin\n";
 
     char path[PATH_MAX] = {};
     snprintf(path, sizeof(path), "/orange/%s", INSTALL_FILENAME);
@@ -30,7 +37,7 @@ void initial() {
 
     const char *path_to_env0 = "/orange/env";
 
-    fd = open(path_to_env0, O_RDWR);
+    int fd = open(path_to_env0, O_RDWR);
     if (fd == -1) {
         fd = open(path_to_env0, O_CREAT | O_RDWR);
         assert(fd != -1);
@@ -97,11 +104,44 @@ void initial() {
         kfree(buf);
     }
     close(fd);
+}
+
+static void initial_enable_preinited_procs() {
+    for (int i = 0; i < NR_PCBS; ++i) {
+        process_t *proc = proc_table[i];
+        if (proc == NULL) { continue; }
+        if (proc->pcb.stat != PREINITED) { continue; }
+        proc->pcb.stat = READY;
+    }
+}
+
+void initial() {
+    initial_setup_fs();
+
+    int fd = -1;
+    fd     = open("/dev_tty0", O_RDWR);
+    assert(fd == stdin);
+    fd = open("/dev_tty0", O_RDWR);
+    assert(fd == stdout);
+    fd = open("/dev_tty0", O_RDWR);
+    assert(fd == stderr);
+
+    initial_setup_envs();
 
     close(stdin);
     close(stdout);
     close(stderr);
 
-    int err = exec("shell_0");
+    initial_enable_preinited_procs();
+
+    pid_t pid = fork();
+    assert(pid >= 0);
+
+    if (pid == 0) {
+        int err = exec("shell_0");
+        unreachable();
+    }
+
+    while (true) { yield(); }
     unreachable();
 }

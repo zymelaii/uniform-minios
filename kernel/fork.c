@@ -147,7 +147,7 @@ static int fork_pcb_clone(process_t* p_child) {
     ch->heap_lock = 0;
 
     //! NOTE: forked child proc should start at user space, see
-    //! `init_proc_pcb` for more details
+    //! `init_locked_pcb` for more details
     ch->esp_save_int     = (void*)ch_frame;
     ch->esp_save_context = (void*)(ch_frame - 10);
     memset(ch->esp_save_context, 0, sizeof(u32) * 10);

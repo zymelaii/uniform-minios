@@ -91,8 +91,7 @@ void put_irq_handler(int irq, irq_handler_t handler) {
 
 void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags) {
     kerror(
-        "[Exception %s] eip=%08x eflags=0x%x cs=0x%x err_code=%d from "
-        "pid=%d",
+        "[%s] eip=%#08x eflags=%#x cs=%#x err_code=%d from pid=%d",
         int_str_table[vec_no],
         eip,
         eflags,

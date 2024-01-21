@@ -62,16 +62,16 @@
 #define NR_K_PCBS    2  //<! reserved k-pcbs, only predefined tasks currently
 #define NR_RECY_PROC 1  //<! no. of recycler proc `scanvenger`
 
-#define NR_CPUS  1
 #define NR_FILES 64
 
 enum process_stat {
-    IDLE,
-    READY,
-    SLEEPING,
-    KILLED,
-    ZOMBIE,
-    KILLING,
+    IDLE,      //<! idle pcb
+    READY,     //<! ready to be scheduled
+    SLEEPING,  //<! sleeping
+    KILLED,    //<! killed for any reasons
+    ZOMBIE,    //<! exit and become a zombie proc, wait for recycle
+    KILLING,   //<! being killed
+    PREINITED, //<! already inited and wait to be a ready one
 };
 
 #define NR_CHILD_MAX (NR_PCBS - NR_K_PCBS - 1)
@@ -186,7 +186,7 @@ typedef struct task_s {
     char           name[32];
 } task_t;
 
-bool init_proc_pcb(
+bool init_locked_pcb(
     process_t* proc, const char* name, void* entry_point, u32 rpl);
 process_t* try_lock_free_pcb();
 ph_info_t* clone_ph_info(ph_info_t* src);
@@ -198,7 +198,6 @@ int        proc2pid(process_t* proc);
 extern tss_t      tss;
 extern process_t* p_proc_current;
 extern process_t* p_proc_next;
-extern process_t  cpu_table[];
 extern process_t* proc_table[];
 extern task_t     task_table[];
 extern rwlock_t   proc_table_rwlock;

@@ -137,13 +137,13 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
         kstate_on_init ? "" : "during initializing kernel");
 
     kinfo(
-        "pid[%d]: eip=%#08x cr2=%#08x code=%x cs=%#08x eflags=%#04x\n",
-        p_proc_current->pcb.pid,
+        "eip=%#08x cr2=%#08x code=%x cs=%#08x eflags=%#04x from pid=%d\n",
         eip,
         cr2,
         err_code,
         cs,
-        eflags);
+        eflags,
+        p_proc_current->pcb.pid);
 
     if (!kstate_on_init) {
         u32  cr3     = p_proc_current->pcb.cr3;

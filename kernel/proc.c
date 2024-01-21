@@ -17,7 +17,6 @@
 tss_t      tss;
 process_t* p_proc_current;
 process_t* p_proc_next;
-process_t  cpu_table[NR_CPUS];
 process_t* proc_table[NR_PCBS];
 rwlock_t   proc_table_rwlock;
 
@@ -55,6 +54,7 @@ process_t* try_lock_free_pcb() {
             process_t* proc = kmalloc(sizeof(process_t));
             assert(proc != NULL);
             memset(proc, 0, sizeof(process_t));
+            acquire(&proc->pcb.lock);
             proc->pcb.stat = IDLE;
             proc_table[i]  = proc;
             rwlock_leave(&proc_table_rwlock);
@@ -136,7 +136,7 @@ void* va2la(int pid, void* va) {
 }
 
 process_t* pid2proc(int pid) {
-    if (pid == -1) { return cpu_table; }
+    assert(pid >= 0);
     return proc_table[pid];
 }
 
@@ -150,21 +150,18 @@ int proc2pid(process_t* proc) {
         }
     }
     rwlock_leave(&proc_table_rwlock);
-    //! FIXME: redirect any tmp pcb to index=-1
-    if (proc == cpu_table) { return -1; }
     unreachable();
 }
 
-bool init_proc_pcb(
+bool init_locked_pcb(
     process_t* proc, const char* name, void* entry_point, u32 rpl) {
     assert(proc != NULL);
     assert(name != NULL);
     assert(proc->pcb.stat == IDLE);
-    assert(!proc->pcb.lock);
+    assert(proc->pcb.lock);
 
     pcb_t*        pcb  = &proc->pcb;
     lin_memmap_t* mmap = &pcb->memmap;
-    if (!try_lock(&pcb->lock)) { return false; }
 
     //! FIXME: better pid & ldt sel assignment method
     int index = proc2pid(proc);

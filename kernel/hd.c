@@ -53,8 +53,6 @@ static int  waitfor(int mask, int val, int timeout);
  *          structures.
  *****************************************************************************/
 void init_hd() {
-    int i;
-
     put_irq_handler(AT_WINI_IRQ, hd_handler);
     enable_irq(CASCADE_IRQ);
     enable_irq(AT_WINI_IRQ);
