@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sys/types.h>
+#include <stdbool.h>
 
 //! 8259A interrupt controller ports
 //! <Master> I/O port for interrupt controller
@@ -66,6 +67,7 @@ void init_interrupt_controller();
 
 #define INT_VECTOR_SYSCALL 0x80
 
+bool is_irq_masked(int irq);
 void enable_irq(int irq);
 void disable_irq(int irq);
 void spurious_irq(int irq);

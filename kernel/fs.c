@@ -8,6 +8,7 @@
 #include <unios/tty.h>
 #include <unios/schedule.h>
 #include <unios/sync.h>
+#include <unios/tracing.h>
 #include <sys/defs.h>
 #include <config.h>
 #include <stdio.h>
@@ -59,7 +60,6 @@ int get_fs_dev(int drive, int fs_type) {
 }
 
 void init_fs() {
-    klog("-----initialize filesystem-----");
     memset(inode_table, 0, sizeof(inode_table));
     superblock_t *sb = superblock_table;
 
@@ -69,11 +69,11 @@ void init_fs() {
     read_orange_superblock(orange_dev);
     superblock_t *sb_root = get_unique_superblock(orange_dev);
 
-    klog("Superblock Address: 0x%x", sb_root);
+    kinfo("Superblock Address: 0x%x", sb_root);
 
     if (sb_root->magic != MAGIC_V1) {
         mkfs();
-        klog("-----make filesystem done-----");
+        kdebug("mkfs done");
         read_orange_superblock(orange_dev);
     }
 
@@ -98,8 +98,8 @@ static void mkfs() {
     msg.PROC_NR     = proc2pid(p_proc_current);
     hd_ioctl(&msg);
 
-    klog("-----make orange filesystem-----");
-    klog("device size: 0x%x sectors", geo.size);
+    kdebug("mkfs orange");
+    kinfo("device size: 0x%x sectors", geo.size);
 
     superblock_t sb   = {};
     sb.magic          = MAGIC_V1;
@@ -131,16 +131,16 @@ static void mkfs() {
     memcpy(fsbuf, &sb, SUPER_BLOCK_SIZE);
     WR_SECT(orange_dev, 1, fsbuf);
 
-    klog("orange geometry {");
-    klog("  device base: 0x%x00,", (geo.base + 0) * 2);
-    klog("  superbock: 0x%x00,", (geo.base + 1) * 2);
-    klog("  inode map: 0x%x00,", (geo.base + 2) * 2);
-    klog("  sector map: 0x%x00,", (geo.base + 2 + sb.nr_imap_sects) * 2);
-    klog(
+    kinfo("orange geometry {");
+    kinfo("  device base: 0x%x00,", (geo.base + 0) * 2);
+    kinfo("  superbock: 0x%x00,", (geo.base + 1) * 2);
+    kinfo("  inode map: 0x%x00,", (geo.base + 2) * 2);
+    kinfo("  sector map: 0x%x00,", (geo.base + 2 + sb.nr_imap_sects) * 2);
+    kinfo(
         "  inodes: 0x%x00,",
         (geo.base + 2 + sb.nr_imap_sects + sb.nr_smap_sects) * 2);
-    klog("  first sector: 0x%x00,", (geo.base + sb.n_1st_sect) * 2);
-    klog("}");
+    kinfo("  first sector: 0x%x00,", (geo.base + sb.n_1st_sect) * 2);
+    kinfo("}");
 
     //! resolve inode map
     //! include root, curdir, tty0, tty1, tty2, orange
@@ -239,6 +239,8 @@ static void mkfs() {
     (++pde)->inode_nr = NR_CONSOLES + 2;
     strcpy(pde->name, INSTALL_FILENAME);
     WR_SECT(orange_dev, sb.n_1st_sect, fsbuf);
+
+    kdebug("mkfs orange done");
 }
 
 /*****************************************************************************
@@ -964,7 +966,6 @@ static int do_unlink(MESSAGE *fs_msg) {
     /* get parameters from the message */
     int name_len = fs_msg->NAME_LEN; /* length of filename */
     int src      = fs_msg->source;   /* caller proc nr. */
-    // assert(name_len < PATH_MAX);
     memcpy(
         (void *)va2la(proc2pid(p_proc_current), pathname),
         (void *)va2la(src, fs_msg->PATHNAME),
@@ -972,15 +973,13 @@ static int do_unlink(MESSAGE *fs_msg) {
     pathname[name_len] = 0;
 
     if (strcmp(pathname, "/") == 0) {
-        kprintf("FS:do_unlink():: cannot unlink the root\n");
+        //! cannot unlink the root
         return -1;
     }
 
     int inode_nr = search_file(pathname);
-    if (inode_nr == INVALID_INODE) { /* file not found */
-        kprintf(
-            "FS::do_unlink():: search_file() returns invalid inode: %s\n",
-            pathname);
+    if (inode_nr == INVALID_INODE) {
+        //! search_file() returns invalid inode, file not found
         return -1;
     }
 
@@ -990,18 +989,13 @@ static int do_unlink(MESSAGE *fs_msg) {
 
     struct inode *pin = get_inode_sched(dir_inode->i_dev, inode_nr);
 
-    if (pin->i_mode != I_REGULAR) { /* can only remove regular files */
-        kprintf(
-            "cannot remove file %s, because it is not a regular file.\n",
-            pathname);
+    if (pin->i_mode != I_REGULAR) {
+        //! can not remove non-regular files
         return -1;
     }
 
-    if (pin->i_cnt > 1) { /* the file was opened */
-        kprintf(
-            "cannot remove file %s, because pin->i_cnt is %d\n",
-            pathname,
-            pin->i_cnt);
+    if (pin->i_cnt > 1) {
+        //! file is not opened yet
         return -1;
     }
 

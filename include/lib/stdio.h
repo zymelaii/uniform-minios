@@ -1,6 +1,8 @@
 ﻿#include <stdarg.h>
 #include <stddef.h>
 
+#define EOF -1
+
 #define stdin  0
 #define stdout 1
 #define stderr 2
@@ -25,21 +27,11 @@ int deletedir(const char *path);
 
 long strtol(const char *cp, char **endp, unsigned int base);
 
-#define EOF -1
-
-void printfmt(void (*putch)(int, void *), void *putdat, const char *fmt, ...);
-void vprintfmt(
-    void (*putch)(int, void *), void *putdat, const char *fmt, va_list ap);
-int vsnprintf(char *buf, int n, const char *fmt, va_list ap);
 int snprintf(char *buf, int n, const char *fmt, ...);
+int vsnprintf(char *buf, int n, const char *fmt, va_list ap);
 
-int vprintf(const char *fmt, va_list ap);
 int printf(const char *fmt, ...);
-
-int vkprintf(const char *fmt, va_list ap);
-int kprintf(const char *fmt, ...);
-int uart_kprintf(const char *fmt, ...);
-int klog(const char *fmt, ...);
+int vprintf(const char *fmt, va_list ap);
 
 char  getchar();
 char *gets(char *str);

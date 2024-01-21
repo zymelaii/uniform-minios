@@ -150,6 +150,7 @@ int proc2pid(process_t* proc) {
         }
     }
     rwlock_leave(&proc_table_rwlock);
+    //! FIXME: redirect any tmp pcb to index=-1
     if (proc == cpu_table) { return -1; }
     unreachable();
 }

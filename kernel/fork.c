@@ -5,10 +5,10 @@
 #include <unios/assert.h>
 #include <unios/schedule.h>
 #include <unios/protect.h>
+#include <unios/tracing.h>
 #include <arch/x86.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
 #include <atomic.h>
 
 static bool fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
@@ -164,7 +164,7 @@ int do_fork() {
     lock_or(&fa->pcb.lock, schedule);
     process_t* ch = try_lock_free_pcb();
     if (ch == NULL) {
-        klog("fork %d: pcb res is not available", fa->pcb.pid);
+        kwarn("fork %d: pcb res is not available", fa->pcb.pid);
         release(&fa->pcb.lock);
         return -1;
     }
@@ -172,7 +172,7 @@ int do_fork() {
     bool ok = pg_create_and_init(&ch->pcb.cr3);
     enable_int();
     if (!ok) {
-        klog("warn: fork %d: low memory", fa->pcb.pid);
+        kwarn("fork %d: low memory", fa->pcb.pid);
         release(&ch->pcb.lock);
         release(&fa->pcb.lock);
         return -1;

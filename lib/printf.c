@@ -1,17 +1,21 @@
-#include <stdlib.h>
+#include <fmt.h>
 #include <stdio.h>
-#include <atomic.h>
 #include <stdarg.h>
 
-static void printfputch(int ch, int *cnt) {
-    char buf = (char)ch;
-    write(stdout, &buf, 1);
-    ++*cnt;
+static char *putch_handler(char *buf, void *user, int len) {
+    int resp = write(stdout, buf, len);
+    if (resp > 0) { *(int *)user += resp; }
+    return buf;
 }
 
 int vprintf(const char *fmt, va_list ap) {
-    int cnt = 0;
-    vprintfmt((void *)printfputch, &cnt, fmt, ap);
+    int              cnt     = 0;
+    char             buf[64] = {};
+    strfmt_handler_t handler = {
+        .callback = putch_handler,
+        .user     = &cnt,
+    };
+    vstrfmtcb(&handler, buf, sizeof(buf), fmt, ap);
     return cnt;
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-typedef struct tar_header {
+typedef struct tar_header_s {
     char name[100];
     char mode[8];
     char uid[8];

@@ -1,4 +1,4 @@
-#include <unios/uart.h>
+#include <unios/serial.h>
 #include <unios/assert.h>
 #include <arch/x86.h>
 
@@ -32,15 +32,15 @@ static inline int is_transmit_empty() {
 }
 
 static inline int serial_received() {
-    return inb(PORT_COM1 + 5) & 1;
+    return inb(PORT_COM1 + 5) & 0x01;
 }
 
-char read_serial() {
-    while (serial_received() == 0) {}
+char serial_read() {
+    while (!serial_received()) {}
     return inb(PORT_COM1);
 }
 
-void write_serial(char a) {
-    while (is_transmit_empty() == 0) {}
+void serial_write(char a) {
+    while (!is_transmit_empty()) {}
     outb(PORT_COM1, a);
 }

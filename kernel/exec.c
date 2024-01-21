@@ -7,6 +7,7 @@
 #include <unios/memory.h>
 #include <unios/schedule.h>
 #include <unios/environ.h>
+#include <unios/tracing.h>
 #include <sys/errno.h>
 #include <stdio.h>
 #include <atomic.h>
@@ -60,7 +61,7 @@ static u32 exec_load(
         bool flag_read  = elf_proghs[ph_num].p_flags & 0b100;
         bool flag_write = elf_proghs[ph_num].p_flags & 0b010;
         if (!flag_exec && !flag_read && !flag_write) {
-            klog(
+            kerror(
                 "exec: exec_load: unknown elf program header flags=0x%x",
                 elf_proghs[ph_num].p_flags);
             return -1;
@@ -517,6 +518,6 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
 
     p_proc_current->pcb.stat = READY;
     release(&p_proc_current->pcb.lock);
-    if (errno != 0) { klog("exec: caught %s", strerrno(errno)); }
+    if (errno != 0) { kerror("exec: caught %s", strerrno(errno)); }
     return -errno;
 }

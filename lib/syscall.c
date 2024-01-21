@@ -64,10 +64,6 @@ int get_ticks() {
     return syscall0(NR_get_ticks);
 }
 
-int pthread_create(void *entry) {
-    return syscall1(NR_pthread_create, (u32)entry);
-}
-
 int execve(const char *path, char *const *argv, char *const *envp) {
     return syscall3(NR_execve, (u32)path, (u32)argv, (u32)envp);
 }

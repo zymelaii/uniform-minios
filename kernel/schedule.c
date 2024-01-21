@@ -9,6 +9,7 @@ void switch_pde() {
 }
 
 void cherry_pick_next_ready_proc() {
+    //! FIXME: index=-1 means proc comes from a temporary pcb
     int index = proc2pid(p_proc_current);
     while (true) {
         index           = (index + 1) % NR_PCBS;

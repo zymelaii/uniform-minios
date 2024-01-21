@@ -3,23 +3,23 @@
 #include <stdint.h>
 
 //! fs io result
-#define OK                1 //<! 成功
-#define SYSERROR          2 //<! 系统错误
-#define VDISKERROR        3 //<! 虚拟磁盘错误
-#define INSUFFICIENTSPACE 4 //<! 虚拟磁盘空间不足
-#define WRONGPATH         5 //<! 路径有误
-#define NAMEEXIST         6 //<! 文件或目录名已存在
-#define ACCESSDENIED      7 //<! 读写权限不对拒绝访问
+#define OK                1 //<! succeed
+#define SYSERROR          2 //<! system error
+#define VDISKERROR        3 //<! virtual disk error
+#define INSUFFICIENTSPACE 4 //<! virtual disk out of memory
+#define WRONGPATH         5 //<! invalid path
+#define NAMEEXIST         6 //<! entry already exists
+#define ACCESSDENIED      7 //<! bad access permission
 
 //! fs io flags
-#define C  1 //<! 创建
-#define R  5 //<! 读
-#define W  6 //<! 写
-#define RW 2 //<! 读写
+#define C  1 //<! create
+#define R  5 //<! read
+#define W  6 //<! write
+#define RW 2 //<! read & write
 
 //! fs entry type
-#define F 1 //<! 文件
-#define D 0 //<! 目录
+#define F 1 //<! file
+#define D 0 //<! directory
 
 enum fat32_entry_attr {
     ATTR_RW      = 0,      //<! read & write
@@ -31,7 +31,7 @@ enum fat32_entry_attr {
     ATTR_ARCHIVE = 1 << 5, //<! archive
 };
 
-typedef struct fat32_entry {
+typedef struct fat32_entry_s {
     u8  name[8];            //<! file name
     u8  ext[3];             //<! extension
     u8  attr;               //<! attribute, compound with fat32_entry_attr
@@ -47,7 +47,7 @@ typedef struct fat32_entry {
     u32 size;               //<! file size, in bytes
 } fat32_entry_t;
 
-typedef struct fat32_lfn_entry {
+typedef struct fat32_lfn_entry_s {
     u8  attr;       //<! attribute, compound with fat32_entry_attr
     u8  name1[10];  //<! 1st name part
     u8  flag;       //<! lfn entry flag, always 0x0f

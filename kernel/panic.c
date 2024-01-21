@@ -1,24 +1,20 @@
+#include <unios/tracing.h>
+#include <unios/tracing_handler.h>
 #include <arch/x86.h>
 #include <stdarg.h>
 #include <stdio.h>
 
 void _panic(const char* file, int line, const char* fmt, ...) {
-    disable_int();
-    clear_dir_flag();
-    va_list ap;
-    va_start(ap, fmt);
-    kprintf("kernel panic at %s:%d: ", file, line);
-    vkprintf(fmt, ap);
-    kprintf("\n");
-    va_end(ap);
-    while (1) { halt(); }
-}
+    klog_set_handler(klog_stderr_handler, NULL);
 
-void _warn(const char* file, int line, const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    kprintf("kernel warning at %s:%d: ", file, line);
-    vkprintf(fmt, ap);
-    kprintf("\n");
+    kerror("kernel panic at %s:%d: ", file, line);
+    kverror(fmt, ap);
     va_end(ap);
+
+    kfatal("\n");
+
+    //! NOTE: ok, so now that the kernel is dead, nothing can be done except
+    //! shutdown
 }

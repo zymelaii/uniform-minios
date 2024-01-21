@@ -7,7 +7,6 @@ enum {
     NR_get_pid,
     NR_get_ppid,
     NR_fork,
-    NR_pthread_create,
     NR_execve,
     NR_yield,
     NR_sleep,
@@ -76,9 +75,6 @@ int do_delete(const char *path);
 int do_opendir(const char *path);
 int do_createdir(const char *path);
 int do_deletedir(const char *path);
-
-//! from pthread.c
-int do_pthread_create(void *arg);
 
 //! from killerabbit.c
 int do_killerabbit(int pid);

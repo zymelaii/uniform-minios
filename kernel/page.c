@@ -4,9 +4,9 @@
 #include <unios/proc.h>
 #include <unios/kstate.h>
 #include <unios/memory.h>
+#include <unios/tracing.h>
 #include <arch/x86.h>
 #include <string.h>
-#include <stdio.h>
 
 bool pg_free_page_table(u32 cr3) {
     assert(cr3 != 0);
@@ -72,7 +72,7 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr) {
             bool in_kernel = laddr >= KernelLinBase;
             phyaddr = (u32)(in_kernel ? kmalloc_phypage() : malloc_phypage());
             if (phyaddr == 0) {
-                klog("warn: pg_map_laddr: run out of phy page");
+                kinfo("warn: pg_map_laddr: run out of phy page");
                 return false;
             }
         } else {
@@ -126,13 +126,18 @@ void pg_refresh() {
 }
 
 void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
+    static uint32_t pfh_cntr = 0;
+    uint32_t        id       = pfh_cntr++;
+
     u32 cr2 = rcr2();
 
-    klog("BEGIN --> trigger page fault");
-    if (kstate_on_init) { klog("during initializing kernel"); }
+    kinfo(
+        "[#PF.%d] trigger page fault %s",
+        ++id,
+        kstate_on_init ? "" : "during initializing kernel");
 
-    klog(
-        "pid[%d]: eip=0x%08x cr2=0x%08x code=%x cs=0x%08x eflags=0x%04x\n",
+    kinfo(
+        "pid[%d]: eip=%#08x cr2=%#08x code=%x cs=%#08x eflags=%#04x\n",
         p_proc_current->pcb.pid,
         eip,
         cr2,
@@ -152,9 +157,8 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
             {"RX", "RWX"},
             {"S",  "U"  },
         };
-        klog(
-            "cr3=0x%08x pde=0x%08x { %s | %s | %s } pte=0x%08x { %s | %s | %s "
-            "}\n",
+        kinfo(
+            "cr3=%#08x pde=%#08x { %s | %s | %s } pte=%#08x { %s | %s | %s }",
             p_proc_current->pcb.cr3,
             pde,
             flag[0][(pde & PG_MASK_US) == PG_U],
@@ -166,10 +170,12 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
             flag[2][(pte & PG_MASK_P) == PG_P]);
     }
 
-    klog("<--- END");
+    kinfo("[#PF.%d] page fault handler done", id);
 
     if (!kstate_on_init) { disable_int(); }
     halt();
+
+    kinfo("[#PF.%d] leave page fault handler", id);
 }
 
 bool pg_create_and_init(u32 *p_cr3) {
@@ -203,12 +209,4 @@ bool pg_create_and_init(u32 *p_cr3) {
     }
     *p_cr3 = cr3;
     return true;
-}
-
-void clear_kernel_pagepte_low() {
-    u32 page_num = *(u32 *)PageTblNumAddr;
-    u32 phyaddr  = KernelPageTblAddr;
-    memset(K_PHY2LIN(phyaddr), 0, sizeof(u32) * page_num);
-    memset(K_PHY2LIN(phyaddr + NUM_4K), 0, NUM_4K * page_num);
-    pg_refresh();
 }

@@ -6,11 +6,11 @@
 #include <unios/schedule.h>
 #include <unios/syscall.h>
 #include <unios/scavenger.h>
+#include <unios/tracing.h>
 #include <arch/x86.h>
 #include <sys/defs.h>
 #include <sys/types.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <atomic.h>
 
@@ -167,7 +167,7 @@ int do_killerabbit(int pid) {
             kill_pcb = (pcb_t*)pid2proc(kill_pid);
             if (kill_pcb == NULL) {
                 release(&p_proc_current->pcb.lock);
-                klog("[%d] doesn't exist!", kill_pid);
+                kinfo("[%d] doesn't exist!", kill_pid);
                 return -1;
             }
             //! TODO: implement thread killing!

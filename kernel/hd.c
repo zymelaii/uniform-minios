@@ -7,11 +7,11 @@
 #include <unios/interrupt.h>
 #include <unios/kstate.h>
 #include <unios/schedule.h>
+#include <unios/tracing.h>
 #include <arch/x86.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <atomic.h>
 #include <string.h>
 
@@ -59,15 +59,15 @@ void init_hd() {
     enable_irq(CASCADE_IRQ);
     enable_irq(AT_WINI_IRQ);
 
-    for (i = 0; i < (sizeof(hd_info) / sizeof(hd_info[0])); i++)
-        memset(&hd_info[i], 0, sizeof(hd_info[0]));
+    const int n = sizeof(hd_info) / sizeof(hd_info_t);
+    for (int i = 0; i < n; i++) { memset(&hd_info[i], 0, sizeof(hd_info_t)); }
     hd_info[0].open_cnt = 0;
 
     init_hd_queue(&hdque);
 }
 
 void hd_open(int drive) {
-    klog("-----read hd information-----");
+    kdebug("read hd info");
 
     /* Get the number of drives from the BIOS data area */
     // u8 * pNrDrives = (u8*)(0x475);
@@ -77,6 +77,8 @@ void hd_open(int drive) {
         partition(drive * (NR_PART_PER_DRIVE + 1), P_PRIMARY);
         print_hdinfo(&hd_info[drive]);
     }
+
+    kdebug("read hd info done");
 }
 
 void hd_close(int device) {
@@ -425,7 +427,7 @@ static void partition(int device, int style) {
 static void print_hdinfo(hd_info_t *hdi) {
     int i;
     for (i = 0; i < NR_PART_PER_DRIVE + 1; i++) {
-        klog(
+        kinfo(
             "%*sPART_%d: base %d, size: %d (in sector)",
             i == 0 ? 0 : 2,
             "",
@@ -435,7 +437,7 @@ static void print_hdinfo(hd_info_t *hdi) {
     }
     for (i = 0; i < NR_SUB_PER_DRIVE; i++) {
         if (hdi->logical[i].size == 0) continue;
-        klog(
+        kinfo(
             "%*s%d: base %d, size %d (in sector)",
             4,
             "",
@@ -491,7 +493,7 @@ static void print_identify_info(u16 *hdinfo) {
         {27, 40, "HD Model"}  /* Model number in ASCII */
     };
 
-    klog("HD Identity {");
+    kinfo("HD Identity {");
 
     for (k = 0; k < sizeof(iinfo) / sizeof(iinfo[0]); k++) {
         char *p = (char *)&hdinfo[iinfo[k].idx];
@@ -500,17 +502,17 @@ static void print_identify_info(u16 *hdinfo) {
             s[i * 2]     = *p++;
         }
         s[i * 2] = 0;
-        klog("  %s: %s", iinfo[k].desc, s);
+        kinfo("  %s: %s", iinfo[k].desc, s);
     }
 
     int capabilities      = hdinfo[49];
     int cmd_set_supported = hdinfo[83];
     int sectors           = ((int)hdinfo[61] << 16) + hdinfo[60];
 
-    klog("  LBA supported: %s", capabilities & 0x0200 ? "YES" : "NO");
-    klog("  LBA48 supported: %s", cmd_set_supported & 0x0400 ? "YES" : "NO");
-    klog("  HD size: %d MB", sectors * 512 / 1000000);
-    klog("}");
+    kinfo("  LBA supported: %s", capabilities & 0x0200 ? "YES" : "NO");
+    kinfo("  LBA48 supported: %s", cmd_set_supported & 0x0400 ? "YES" : "NO");
+    kinfo("  HD size: %d MB", sectors * 512 / 1000000);
+    kinfo("}");
 }
 
 /*****************************************************************************

@@ -1,7 +1,7 @@
 #include <unios/scavenger.h>
 #include <unios/page.h>
 #include <unios/assert.h>
-#include <stdio.h>
+#include <unios/tracing.h>
 #include <stdlib.h>
 #include <stddef.h>
 
@@ -57,19 +57,19 @@ void recycle_proc_memory(process_t* proc) {
 }
 
 void scavenger() {
-        while (true) {
+    while (true) {
         int number = killerabbit(-1);
         if (number == 0) {
             p_proc_current->pcb.stat = SLEEPING;
             yield();
         } else if (number > 0) {
-            klog("---killed orphan! number = [%d]---", number);
+            kinfo("---killed orphan! number = [%d]---", number);
         } else {
             for (int i = 0; i < p_proc_current->pcb.tree_info.child_p_num;
                  ++i) {
                 pcb_t* pcb = (pcb_t*)pid2proc(
                     p_proc_current->pcb.tree_info.child_process[i]);
-                klog(
+                kinfo(
                     "------ kill error pid:[%d] state:[%d] (0: I, 1: R, 2: S, "
                     "3: K, 4: Z, 5: "
                     "KILLING)",

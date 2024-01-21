@@ -52,7 +52,6 @@ void vga_clear_screen() {
     u16 *end = ptr + SCR_WIDTH * SCR_HEIGHT;
     while (ptr != end) { *ptr++ = BLANK; }
     disp_pos = 0;
-    vga_set_cursor(disp_pos);
 }
 
 void vga_put_raw(u32 pos, u16 dat) {

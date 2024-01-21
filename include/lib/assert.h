@@ -10,4 +10,6 @@ __attribute__((noreturn)) void
 #ifndef NDEBUG
 #define assert(expr) \
  (void)((!!(expr)) || (abort("assertion failed: " #expr), 0))
+#else
+#define assert(...)
 #endif

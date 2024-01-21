@@ -42,6 +42,7 @@ DEFINES  ?=
 INCDIRS  ?=
 INCDIRS  += include/kernel
 INCDIRS  += include/lib
+INCDIRS  += include/deps
 LINKDIRS ?=
 LINKDIRS += $(OBJDIR)/lib
 include $(PROJMK_PREFIX)conf-toolchain.mk

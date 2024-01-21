@@ -1,7 +1,7 @@
 #include <unios/interrupt.h>
+#include <unios/tracing.h>
 #include <unios/proc.h>
 #include <arch/x86.h>
-#include <stdio.h>
 
 irq_handler_t irq_table[NR_IRQS];
 
@@ -60,34 +60,37 @@ void init_interrupt_controller() {
     for (int i = 0; i < NR_IRQS; i++) { irq_table[i] = spurious_irq; }
 }
 
+bool is_irq_masked(int irq) {
+    uint8_t mask = 1 << (irq % 8);
+    int     port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
+    return !!(inb(port) & mask);
+}
+
 void enable_irq(int irq) {
-    u8 mask = 1 << (irq % 8);
-    if (irq < 8) {
-        outb(INT_M_CTLMASK, inb(INT_M_CTLMASK) & ~mask);
-    } else {
-        outb(INT_S_CTLMASK, inb(INT_S_CTLMASK) & ~mask);
-    }
+    u8  mask = 1 << (irq % 8);
+    int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
+    outb(port, inb(port) & ~mask);
 }
 
 void disable_irq(int irq) {
-    u8 mask = 1 << (irq % 8);
-    if (irq < 8)
-        outb(INT_M_CTLMASK, inb(INT_M_CTLMASK) | mask);
-    else
-        outb(INT_S_CTLMASK, inb(INT_S_CTLMASK) | mask);
+    u8  mask = 1 << (irq % 8);
+    int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
+    outb(port, inb(port) | mask);
 }
 
 void spurious_irq(int irq) {
-    klog("spurious_irq: %d", irq);
+    kwarn("spurious irq: %d", irq);
 }
 
 void put_irq_handler(int irq, irq_handler_t handler) {
+    bool masked = is_irq_masked(irq);
     disable_irq(irq);
     irq_table[irq] = handler;
+    if (!masked) { enable_irq(irq); }
 }
 
 void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags) {
-    klog(
+    kerror(
         "[Exception %s] eip=%08x eflags=0x%x cs=0x%x err_code=%d from "
         "pid=%d",
         int_str_table[vec_no],

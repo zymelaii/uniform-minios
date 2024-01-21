@@ -1,4 +1,5 @@
 #include <unios/proc.h>
+#include <unios/tracing.h>
 #include <config.h>
 #include <assert.h>
 #include <tar.h>
@@ -52,7 +53,7 @@ void initial() {
         assert(buf != NULL);
         int total_rd = read(fd, buf, len);
         assert(total_rd == len);
-        klog("load initial env from `%s`\n%s", path_to_env0, buf);
+        kinfo("load initial env from `%s`\n%s", path_to_env0, buf);
         int total_envs = 0;
         for (int i = 0; i < len; ++i) {
             if (buf[i] == '=') {
@@ -74,9 +75,11 @@ void initial() {
         }
         envp[total_envs] = NULL;
 
-        klog("expected envp [pid=%d] {", get_pid());
-        for (int i = 0; i <= total_envs; ++i) { klog("  [%d] %s", i, envp[i]); }
-        klog("}");
+        kdebug("expected envp [pid=%d] {", get_pid());
+        for (int i = 0; i <= total_envs; ++i) {
+            kdebug("  [%d] %s", i, envp[i]);
+        }
+        kdebug("}");
 
         bool ok = putenv(envp);
         assert(ok);
@@ -84,9 +87,11 @@ void initial() {
         char *const *new_envp = getenv();
         assert(new_envp != NULL);
         free((void *)new_envp);
-        klog("current envp [pid=%d] {", get_pid());
-        for (int i = 0; i <= total_envs; ++i) { klog("  [%d] %s", i, envp[i]); }
-        klog("}");
+        kdebug("current envp [pid=%d] {", get_pid());
+        for (int i = 0; i <= total_envs; ++i) {
+            kdebug("  [%d] %s", i, envp[i]);
+        }
+        kdebug("}");
 
         kfree(envp);
         kfree(buf);

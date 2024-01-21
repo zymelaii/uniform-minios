@@ -31,7 +31,7 @@ int untar(const char *tar_path, const char *extract_dir) {
 
         snprintf(pathbuf, sizeof(pathbuf), "%s/%s", extract_dir, phdr->name);
         int fdout = open(pathbuf, O_CREAT | O_RDWR);
-        //! TODO: enable custome handler for existed file
+        //! TODO: enable custom handler for existed file
         bool skip = fdout == -1;
 
         while (left > 0) {
