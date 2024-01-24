@@ -12,7 +12,7 @@ void clock_handler(int irq) {
     ++system_ticks;
     if (kstate_on_init) { return; }
     --p_proc_current->pcb.live_ticks;
-    do_wakeup(&system_ticks);
+    wakeup_exclusive(&system_ticks);
 }
 
 void init_sysclk() {

@@ -886,9 +886,9 @@ static int do_rdwt(MESSAGE *fs_msg) {
         if (MAJOR(dev) != 4) { panic("Error: MAJOR(dev) == 4\n"); }
 
         if (fs_msg->type == DEV_READ) {
-            fs_msg->CNT = tty_read(&tty_table[nr_tty], buf, len);
+            fs_msg->CNT = tty_read(tty_table[nr_tty], buf, len);
         } else if (fs_msg->type == DEV_WRITE) {
-            tty_write(&tty_table[nr_tty], buf, len);
+            tty_write(tty_table[nr_tty], buf, len);
         }
 
         return fs_msg->CNT;

@@ -1,178 +1,175 @@
 #include <unios/console.h>
-#include <unios/vga.h>
-#include <unios/tty.h>
 #include <unios/layout.h>
-#include <unios/assert.h>
-#include <arch/x86.h>
-#include <sys/defs.h>
+#include <unios/tracing.h>
+#include <unios/memory.h>
 #include <string.h>
-#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <math.h>
 
-console_t console_table[NR_CONSOLES];
-
-static void flush(console_t* con) {
-    if (is_current_console(con)) {
-        vga_set_cursor(con->cursor);
-        vga_set_video_start_addr(con->crtc_start);
-    }
-}
-
-void init_screen(tty_t* tty) {
-    int v_mem_size   = V_MEM_SIZE >> 1;
-    int size_per_con = (v_mem_size / NR_CONSOLES) / SCR_WIDTH * SCR_WIDTH;
-
-    int nr_tty   = tty - tty_table;
-    tty->console = &console_table[nr_tty];
-
-    console_t* con    = tty->console;
-    con->crtc_start   = nr_tty * size_per_con;
-    con->orig         = con->crtc_start;
-    con->con_size     = size_per_con;
-    con->cursor       = con->orig;
-    con->is_full      = false;
-    con->current_line = 0;
-
-    if (nr_tty == 0) { con->cursor += vga_get_disppos(); }
-    const char prompt[] = "[TTY #?]\n";
-    for (const char* p = prompt; *p != '\0'; ++p) {
-        assert(con != NULL);
-        out_char(con, *p == '?' ? nr_tty + '0' : *p);
-    }
-
-    vga_set_cursor(con->cursor);
-}
-
-static void clear_screen(int pos, int len) {
-    u16* p = K_PHY2LIN(V_MEM_BASE + (u32)pos * 2);
-    while (--len >= 0) { *p++ = BLANK; }
-}
-
-void scroll_screen(console_t* con, int dir, int next_cur_pos) {
-    int oldest;
-    int newest;
-    int scr_top;
-
-    newest  = (next_cur_pos - con->orig) / SCR_WIDTH * SCR_WIDTH;
-    oldest  = con->is_full ? (newest + SCR_WIDTH) % con->con_size : 0;
-    scr_top = con->crtc_start - con->orig;
-
-    if (dir == SCROLL_DOWN) {
-        if (!con->is_full && scr_top > 0) {
-            con->crtc_start -= SCR_WIDTH;
-        } else if (con->is_full && scr_top != oldest) {
-            if (next_cur_pos - con->orig >= con->con_size - SCR_SIZE) {
-                if (con->crtc_start != con->orig) con->crtc_start -= SCR_WIDTH;
-            } else if (con->crtc_start == con->orig) {
-                scr_top         = con->con_size - SCR_SIZE;
-                con->crtc_start = con->orig + scr_top;
-            } else {
-                con->crtc_start -= SCR_WIDTH;
-            }
-        }
-    } else if (dir == SCROLL_UP) {
-        if (!con->is_full && newest >= scr_top + SCR_SIZE) {
-            con->crtc_start += SCR_WIDTH;
-        } else if (con->is_full && scr_top + SCR_SIZE - SCR_WIDTH != newest) {
-            if (scr_top + SCR_SIZE == con->con_size)
-                con->crtc_start = con->orig;
-            else
-                con->crtc_start += SCR_WIDTH;
-        }
-    } else {
-        assert(dir == SCROLL_DOWN || dir == SCROLL_UP);
-    }
-
-    flush(con);
-}
-
-void out_char(console_t* con, char ch) {
-    //! FIXME: dirty current_line
+void setup_vga_console(console_t* con) {
     assert(con != NULL);
-    int curr_cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
-    int curr_cursor_y = (con->cursor - con->orig) / SCR_WIDTH;
-    int curr_curs_pos = con->cursor;
+    con->state.width          = vga_get_textmode_width_unsafe();
+    con->state.height         = vga_get_textmode_height_unsafe();
+    con->state.capacity       = VGA_VMEM3_SIZE / sizeof(vga_textmode_char_t);
+    con->state.vmem_base_phy  = VGA_VMEM3_BASE;
+    con->state.vmem_base      = K_PHY2LIN(con->state.vmem_base_phy);
+    con->state.origin         = con->state.vmem_base;
+    con->state.last_char_pos  = 0;
+    con->state.next_char_pos  = 0;
+    con->state.cursor_pos     = 0;
+    con->state.real_line      = 0;
+    con->state.last_attr      = VGATM_ATTR(white, black, false);
+    con->state.cursor_begin   = vga_get_textmode_char_height_unsafe() - 2;
+    con->state.cursor_end     = con->state.cursor_begin + 1;
+    con->state.cursor_enabled = false;
+    con->state.use_last_attr  = false;
+    con->vmem_real            = con->state.vmem_base;
+    con->vmem_buf             = NULL;
+}
 
-    int next_cursor_x = -1;
-    int next_cursor_y = -1;
-    int next_curs_pos = -1;
+bool vcon_is_foreground(console_t* con) {
+    assert(con != NULL);
+    return con->state.vmem_base == con->vmem_real;
+}
 
-    char disp_ch = 0;
+bool vcon_is_offscreen(console_t* con) {
+    assert(con != NULL);
+    return con->state.vmem_base == con->vmem_buf;
+}
 
+void vcon_make_foreground(console_t* con) {
+    typedef vga_textmode_char_t char_t;
+
+    assert(con != NULL);
+    if (vcon_is_offscreen(con)) {
+        ptrdiff_t vmem_diff = con->state.origin - (char_t*)con->state.vmem_base;
+        memcpy(
+            con->vmem_real,
+            con->vmem_buf,
+            con->state.capacity * sizeof(char_t));
+        con->state.origin    = (char_t*)con->vmem_real + vmem_diff;
+        con->state.vmem_base = con->vmem_real;
+    }
+    vgatm_switch_to_unsafe(&con->state);
+    assert(vcon_is_foreground(con));
+}
+
+void vcon_make_offscreen(console_t* con) {
+    typedef vga_textmode_char_t char_t;
+
+    assert(con != NULL);
+    if (vcon_is_offscreen(con)) { return; }
+    if (con->vmem_buf == NULL) {
+        //! TODO: move to user space
+        con->vmem_buf = kmalloc(con->state.capacity * sizeof(char_t));
+        assert(con->vmem_buf != NULL);
+    }
+    ptrdiff_t vmem_diff = con->state.origin - (char_t*)con->state.vmem_base;
+    memcpy(con->vmem_buf, con->vmem_real, con->state.capacity * sizeof(char_t));
+    con->state.origin    = (char_t*)con->vmem_buf + vmem_diff;
+    con->state.vmem_base = con->vmem_buf;
+    assert(vcon_is_offscreen(con));
+}
+
+void vcon_scroll(console_t* con, int row_diff) {
+    typedef vga_textmode_char_t  char_t;
+    typedef vga_textmode_state_t state_t;
+
+    state_t* state  = &con->state;
+    char_t*  base   = state->vmem_base;
+    int      origin = state->origin - base + row_diff * state->width;
+    int      limit  = origin + state->width * state->height;
+
+    int row_corrected = 0;
+    if (origin < 0) {
+        row_corrected = (-origin + state->width - 1) / state->width;
+
+    } else if (limit > state->capacity) {
+        row_corrected = -((limit - 1 - state->capacity) / state->width + 1);
+    }
+    row_diff += row_corrected;
+
+    int diff             = row_diff * state->width;
+    state->origin        += diff;
+    state->cursor_pos    -= diff;
+    state->last_char_pos -= diff;
+    state->next_char_pos -= diff;
+    state->real_line     -= row_diff;
+
+    if (vcon_is_foreground(con)) {
+        vgatm_sync_screen_unsafe(state);
+        vgatm_sync_cursor_unsafe(state);
+    }
+}
+
+static void _vcon_write(vga_textmode_state_t* state, char ch) {
     switch (ch) {
         case '\n': {
-            //! no out char
-            if (con->wrapped) {
-                next_curs_pos = con->orig + SCR_WIDTH * curr_cursor_y;
-            } else {
-                next_curs_pos = con->orig + SCR_WIDTH * (curr_cursor_y + 1);
-            }
-        } break;
-        case '\r': {
-            if (con->wrapped) {
-                next_curs_pos = con->orig + (curr_cursor_y - 1) * SCR_WIDTH;
-            } else {
-                next_curs_pos = con->orig + curr_cursor_y * SCR_WIDTH;
-            }
+            vgatm_accept_ctrl_cr(state);
+            vgatm_accept_ctrl_lf(state);
         } break;
         case '\b': {
-            disp_ch       = ' ';
-            next_curs_pos = curr_curs_pos - 1;
-            --curr_curs_pos;
+            vgatm_accept_ctrl_bs(state);
+            vgatm_write_printable_char_direct(state, ' ');
         } break;
         default: {
-            disp_ch       = ch;
-            next_curs_pos = curr_curs_pos + 1;
+            vgatm_accept_char(state, ch);
         } break;
     }
-    next_cursor_x = (next_curs_pos - con->orig) % SCR_WIDTH;
-    next_cursor_y = (next_curs_pos - con->orig) / SCR_WIDTH;
-
-    if (ch == '\r' || ch == '\n') {
-        con->wrapped = false;
-    } else if ((curr_curs_pos + 1 - con->orig) / SCR_WIDTH > curr_cursor_y) {
-        con->wrapped = true;
-    } else if ((next_curs_pos - 1 - con->orig) / SCR_WIDTH < curr_cursor_y) {
-        con->wrapped = true;
-    } else if (ch != '\n' && ch != '\r' && con->wrapped == true) {
-        con->wrapped = false;
-    }
-    assert(next_curs_pos != -1);
-
-    if (next_curs_pos - con->orig >= con->con_size - SCR_WIDTH - 1) {
-        int cp_orig = con->orig + (next_cursor_y + 1) * SCR_WIDTH - SCR_SIZE;
-        disable_int();
-        vga_copy(con->orig, cp_orig, SCR_SIZE - SCR_WIDTH);
-        enable_int();
-        con->crtc_start = con->orig;
-        next_curs_pos   = con->orig + (SCR_SIZE - SCR_WIDTH) + next_cursor_x;
-        clear_screen(
-            next_curs_pos, con->con_size - (next_curs_pos - con->orig));
-        if (!con->is_full) con->is_full = 1;
-    }
-
-    while (next_curs_pos >= con->crtc_start + SCR_SIZE
-           || next_curs_pos < con->crtc_start) {
-        scroll_screen(con, SCROLL_UP, next_curs_pos);
-        clear_screen(next_curs_pos, SCR_WIDTH);
-    }
-    if (disp_ch != 0) {
-        vga_set_disppos(curr_curs_pos);
-        vga_write_char(disp_ch, WHITE_CHAR);
-    }
-
-    con->cursor = next_curs_pos;
-
-    assert(con->cursor - con->orig < con->con_size);
-    assert(con->cursor - con->crtc_start < 1920);
-    flush(con);
 }
 
-int is_current_console(console_t* con) {
-    return (con == &console_table[current_console]);
+void vcon_write(console_t* con, const char* buf, int size) {
+    typedef vga_textmode_char_t  char_t;
+    typedef vga_textmode_state_t state_t;
+
+    state_t* state = &con->state;
+    if (size == -1) { size = strlen(buf); }
+
+    char_t* base   = state->vmem_base;
+    int     offset = state->origin - base;
+    assert(offset % state->width == 0);
+
+    size_t copy_size = (state->capacity - state->width) * sizeof(char_t);
+    int    limit     = state->capacity - offset;
+
+    for (int i = 0; i < size; ++i) {
+        char ch = buf[i];
+        do {
+            if (ch == '\b' || ch == '\r') { break; }
+            int inc = ch == '\n' ? state->width : 1;
+            if (state->last_char_pos + inc >= limit) {
+                //! FIXME: sometimes perform bad if capacity too large
+                memcpy(base, base + state->width, copy_size);
+                int lineno = idiv_floor(state->last_char_pos, state->width);
+                state->cursor_pos    -= state->width;
+                state->last_char_pos -= state->width;
+                state->next_char_pos -= state->width;
+                --state->real_line;
+                char_t* last_line = state->origin + lineno * state->width;
+                for (int i = 0; i < state->width; ++i) {
+                    last_line[i].code = ' ';
+                }
+            }
+        } while (0);
+        _vcon_write(state, ch);
+    }
+
+    int upper_bound = state->width * state->height;
+    int row_diff    = 0;
+    if (state->last_char_pos >= upper_bound) {
+        row_diff = (state->last_char_pos - upper_bound + state->width - 1)
+                 / state->width;
+    } else if (state->last_char_pos < 0) {
+        row_diff = -((-state->last_char_pos + state->width - 1) / state->width);
+    }
+    if (row_diff != 0) { vcon_scroll(con, row_diff); }
 }
 
-void select_console(int nr_console) {
-    if ((nr_console < 0) || (nr_console >= NR_CONSOLES)) { return; }
-    current_console = nr_console;
-    flush(&console_table[current_console]);
+void vcon_clear_screen(console_t* con) {
+    vga_textmode_char_t charcode = {
+        .attr = con->state.last_attr,
+        .code = ' ',
+    };
+    vgatm_fill_screen(&con->state, charcode.raw);
 }

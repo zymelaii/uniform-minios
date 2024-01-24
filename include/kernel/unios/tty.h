@@ -38,14 +38,14 @@ typedef struct tty_s {
     console_t* console;
 } tty_t;
 
-void select_console(int nr_console);
-void init_screen(tty_t* tty);
-int  is_current_console(console_t* con);
-
+void tty_wait_shell(int index);
+int  tty_wait_for();
+void tty_notify_shell();
+bool tty_select(int index);
 void tty_write(tty_t* tty, char* buf, int len);
 int  tty_read(tty_t* tty, char* buf, int len);
 void tty_keyboard_proc(tty_t* tty, u32 key);
 
 void tty_handler();
 
-extern tty_t tty_table[];
+extern tty_t* tty_table[];

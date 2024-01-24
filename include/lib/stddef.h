@@ -16,6 +16,7 @@ typedef uint32_t uintptr_t;
 
 typedef int32_t ptrdiff_t;
 
-//! WARNING: make sure that your x, y expr no side-effect!
+//! WARNING: make sure that your x, y expr no side-effect! recommand using
+//! the min/max methods provided in the math.h
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))

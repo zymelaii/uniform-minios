@@ -10,7 +10,6 @@ enum {
     NR_execve,
     NR_yield,
     NR_sleep,
-    NR_wakeup,
     NR_malloc,
     NR_free,
     NR_open,
@@ -61,7 +60,6 @@ int  do_get_pid();
 int  do_get_ppid();
 void do_yield();
 void do_sleep(int n);
-void do_wakeup(void *channel);
 
 //! from vfs.c
 int do_open(const char *path, int flags);

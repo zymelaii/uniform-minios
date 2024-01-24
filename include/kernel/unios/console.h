@@ -1,22 +1,20 @@
 #pragma once
 
+#include <unios/vga.h>
 #include <stddef.h>
 #include <stdbool.h>
 
-#define SCROLL_UP   (+1)
-#define SCROLL_DOWN (-1)
-
 typedef struct console_s {
-    uintptr_t orig;       //<! start addr of the vga memory
-    uintptr_t crtc_start; //<! start addr of the current console origin
-    size_t    con_size;   //<! how many words does the console have
-    bool      is_full;
-    bool      wrapped;
-    int       cursor;
-    int       current_line;
+    vga_textmode_state_t state;
+    void                *vmem_real;
+    void                *vmem_buf;
 } console_t;
 
-extern int       current_console;
-extern console_t console_table[];
-
-void out_char(console_t* con, char ch);
+void setup_vga_console(console_t *con);
+bool vcon_is_foreground(console_t *con);
+bool vcon_is_offscreen(console_t *con);
+void vcon_make_foreground(console_t *con);
+void vcon_make_offscreen(console_t *con);
+void vcon_scroll(console_t *con, int row_diff);
+void vcon_write(console_t *con, const char *buf, int size);
+void vcon_clear_screen(console_t *con);

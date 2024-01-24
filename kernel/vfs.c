@@ -207,10 +207,9 @@ int do_vopen(const char *path, int flags) {
     int         index   = get_vfs_index_and_relpath(path, &relpath);
     if (index == -1) { return -1; }
 
-    if (relpath[0] == '\0') {
-        //! a tty file
-        relpath = path + 1;
-    }
+    //! FIXME: better vfs router
+    //! NOTE: indicates a tty file currently
+    if (relpath[0] == '\0') { relpath = path + 1; }
 
     int fd = vfs_table[index].ops->open(relpath, flags);
     if (fd != -1) { p_proc_current->pcb.filp[fd]->dev_index = index; }
@@ -220,21 +219,27 @@ int do_vopen(const char *path, int flags) {
 
 int do_vclose(int fd) {
     assert(fd != -1 && "invalid fd");
-    int index = p_proc_current->pcb.filp[fd]->dev_index;
+    file_desc_t *file = p_proc_current->pcb.filp[fd];
+    if (file == NULL) { return -1; }
+    int index = file->dev_index;
     assert(index != -1 && "invalid vfs index");
     return vfs_table[index].ops->close(fd);
 }
 
 int do_vread(int fd, char *buf, int count) {
     assert(fd != -1 && "invalid fd");
-    int index = p_proc_current->pcb.filp[fd]->dev_index;
+    file_desc_t *file = p_proc_current->pcb.filp[fd];
+    if (file == NULL) { return -1; }
+    int index = file->dev_index;
     assert(index != -1 && "invalid vfs index");
     return vfs_table[index].ops->read(fd, buf, count);
 }
 
 int do_vwrite(int fd, const char *buf, int count) {
     assert(fd != -1 && "invalid fd");
-    int index = p_proc_current->pcb.filp[fd]->dev_index;
+    file_desc_t *file = p_proc_current->pcb.filp[fd];
+    if (file == NULL) { return -1; }
+    int index = file->dev_index;
     assert(index != -1 && "invalid vfs index");
     int resp = vfs_table[index].ops->write(fd, buf, count);
     if (resp < 0) { return resp; }
@@ -251,7 +256,9 @@ int do_vunlink(const char *path) {
 
 int do_vlseek(int fd, int offset, int whence) {
     assert(fd != -1 && "invalid fd");
-    int index = p_proc_current->pcb.filp[fd]->dev_index;
+    file_desc_t *file = p_proc_current->pcb.filp[fd];
+    if (file == NULL) { return -1; }
+    int index = file->dev_index;
     assert(index != -1 && "invalid vfs index");
     return vfs_table[index].ops->lseek(fd, offset, whence);
 }

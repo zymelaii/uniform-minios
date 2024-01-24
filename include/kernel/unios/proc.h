@@ -8,9 +8,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 
-// new kernel stack is 8 KB
-#define INIT_STACK_SIZE (8 * NUM_1K)
-#define STACK_SIZE_TASK NUM_4K
+#define DEFAULT_STACK_SIZE (8 * NUM_1K)
 
 #define NR_GSREG        0
 #define NR_FSREG        1
@@ -176,13 +174,15 @@ typedef struct pcb_s {
 } pcb_t;
 
 typedef union {
-    pcb_t pcb;
-    char  stack[INIT_STACK_SIZE / sizeof(char)];
+    pcb_t   pcb;
+    uint8_t stack[DEFAULT_STACK_SIZE];
+    //! NOTE: only for convenient access
+    uint8_t       stack_top[0];
+    stack_frame_t frame_top[0];
 } process_t;
 
 typedef struct task_s {
-    task_handler_t initial_eip;
-    int            stacksize;
+    task_handler_t entry_point;
     char           name[32];
 } task_t;
 
@@ -194,6 +194,9 @@ int        ldt_seg_linear(process_t* p, int idx);
 void*      va2la(int pid, void* va);
 process_t* pid2proc(int pid);
 int        proc2pid(process_t* proc);
+
+//! ATTENTION: only called in a restart restore routine
+void wakeup_exclusive(void* channel);
 
 extern tss_t      tss;
 extern process_t* p_proc_current;

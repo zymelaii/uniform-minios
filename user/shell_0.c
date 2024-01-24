@@ -1,31 +1,14 @@
 #include <sys/defs.h>
-#include <sys/types.h>
-#include <stddef.h>
-#include <stdbool.h>
 #include <assert.h>
-#include <string.h>
+#include <stddef.h>
 #include <malloc.h>
+#include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
+#include <stdlib.h>
 #include <limits.h>
-
-void setup_for_all_tty() {
-    int nr_tty = 0;
-    while (nr_tty + 1 < NR_CONSOLES) {
-        if (fork() == 0) {
-            ++nr_tty;
-            continue;
-        }
-        break;
-    }
-
-    char tty[PATH_MAX] = {};
-    snprintf(tty, sizeof(tty), "/dev_tty%d", nr_tty);
-    int fd[3] = {};
-    for (int i = 0; i < 3; ++i) { fd[i] = open(tty, O_RDWR); }
-    assert(fd[0] == stdin && fd[1] == stdout && fd[2] == stderr);
-}
+#include <stddef.h>
+#include "screen_sync.h"
 
 bool arg_from_cmdline(const char *buf, int *p_argc, char ***p_argv) {
     assert(buf != NULL);
@@ -213,13 +196,34 @@ bool route(int argc, char *argv[]) {
         bool        ok     = putenv(env);
         printf("info: update env %s\n", ok ? "done" : "failed");
         return true;
+    } else if (strcmp(argv[0], "sync") == 0) {
+        int enabled = -1;
+        if (argc >= 2) {
+            if (strcmp(argv[1], "enable") == 0) {
+                enabled = 1;
+            } else if (strcmp(argv[1], "disable") == 0) {
+                enabled = 0;
+            }
+        }
+        if (enabled == -1) {
+            printf("info: sync [ enable | disable ]\n");
+            return true;
+        }
+        if (enabled && krnlobj_lookup(screen_lock_uid) == INVALID_HANDLE) {
+            init_exclusive_screen();
+            assert(krnlobj_lookup(screen_lock_uid) != INVALID_HANDLE);
+        }
+        if (!enabled) {
+            handle_t handle = krnlobj_lookup(screen_lock_uid);
+            if (handle != INVALID_HANDLE) { krnlobj_destroy(handle); }
+            assert(krnlobj_lookup(screen_lock_uid) == INVALID_HANDLE);
+        }
+        return true;
     }
     return false;
 }
 
 int main(int arg, char *argv[]) {
-    setup_for_all_tty();
-
     char buf[PATH_MAX] = {};
     while (true) {
         printf("unios$ ");

@@ -120,10 +120,6 @@ void sleep(int n) {
     syscall1(NR_sleep, n);
 }
 
-void wakeup(void *channel) {
-    syscall1(NR_wakeup, (u32)channel);
-}
-
 void *malloc(int size) {
     return size <= 0 ? NULL : (void *)syscall1(NR_malloc, size);
 }

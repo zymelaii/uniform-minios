@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 void killall() {
+    //! FIXME: not a killall method
     for (int i = 20; i >= 7; --i) {
         int state = killerabbit(i);
         if (state == 1) {

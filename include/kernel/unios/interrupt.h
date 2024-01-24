@@ -16,18 +16,6 @@
 //! init 8259A interrupt controller
 void init_interrupt_controller();
 
-//! 8253/8254 PIT (Programmable Interval Timer)
-//! I/O port for timer channel 0
-#define TIMER0 0x40
-//! I/O port for timer mode control
-#define TIMER_MODE 0x43
-//! 00-11-010-0 : Counter0 - LSB then MSB - rate generator - binary
-#define RATE_GENERATOR 0x34
-//! clock frequency for timer in PC and AT
-#define TIMER_FREQ 1193182L
-//! clock freq (software settable on IBM-PC)
-#define HZ 100
-
 //! hardware interrupts
 #define NR_IRQS            16
 #define CLOCK_IRQ          0  //<! clock

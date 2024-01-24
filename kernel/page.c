@@ -134,7 +134,7 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
     kinfo(
         "[#PF.%d] trigger page fault %s",
         ++id,
-        kstate_on_init ? "" : "during initializing kernel");
+        kstate_on_init ? "during initializing kernel" : "");
 
     kinfo(
         "eip=%#08x cr2=%#08x code=%x cs=%#08x eflags=%#04x from pid=%d\n",
@@ -210,3 +210,20 @@ bool pg_create_and_init(u32 *p_cr3) {
     *p_cr3 = cr3;
     return true;
 }
+
+#pragma GCC push_options
+#pragma GCC optimize("O3")
+
+u32 pg_laddr_phyaddr(u32 cr3, u32 laddr) {
+    u32 pde = pg_pde(cr3, laddr);
+    u32 pte = pg_pte(pde, laddr);
+    return pg_frame_phyaddr(pte) | pg_offset(laddr);
+}
+
+bool pg_addr_pte_exist(u32 cr3, u32 laddr) {
+    u32 pde = pg_pde(cr3, laddr);
+    if ((pde & PG_MASK_P) != PG_P) { return false; }
+    return pg_pte_exist(pde, laddr);
+}
+
+#pragma GCC pop_options

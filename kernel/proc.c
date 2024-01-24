@@ -21,7 +21,7 @@ process_t* proc_table[NR_PCBS];
 rwlock_t   proc_table_rwlock;
 
 #define TASK_ENTRY(handler) \
- { handler, STACK_SIZE_TASK, #handler }
+ { handler, #handler }
 
 task_t task_table[NR_TASKS] = {
     TASK_ENTRY(tty_handler),
@@ -109,8 +109,7 @@ int do_get_ppid() {
     return p_proc_current->pcb.tree_info.ppid;
 }
 
-void do_wakeup(void* channel) {
-    rwlock_wait_rd(&proc_table_rwlock);
+void wakeup_exclusive(void* channel) {
     for (int i = 0; i < NR_PCBS; ++i) {
         process_t* proc = proc_table[i];
         if (proc == NULL) { continue; }
@@ -118,7 +117,6 @@ void do_wakeup(void* channel) {
             proc->pcb.stat = READY;
         }
     }
-    rwlock_leave(&proc_table_rwlock);
 }
 
 int ldt_seg_linear(process_t* p, int idx) {

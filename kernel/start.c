@@ -19,6 +19,7 @@ void cstart() {
 
     init_protect_mode();
 
+    //! TODO: select handler by kernel arguments
     klog_set_handler(klog_serial_handler, NULL);
     kdebug("cstart done");
 }

@@ -123,69 +123,60 @@ static u32 *pg_pde_ptr(u32 cr3, u32 laddr);
 static u32 *pg_pte_ptr(u32 pde, u32 laddr);
 static u32  pg_pde(u32 cr3, u32 laddr);
 static u32  pg_pte(u32 pde, u32 laddr);
-static u32  pg_laddr_phyaddr(u32 cr3, u32 laddr);
 static u32  pg_pde_attr(u32 cr3, u32 laddr, u32 mask);
 static u32  pg_pte_attr(u32 pde, u32 laddr, u32 mask);
 static bool pg_pde_exist(u32 cr3, u32 laddr);
 static bool pg_pte_exist(u32 pde, u32 laddr);
-static bool pg_addr_pte_exist(u32 cr3, u32 laddr);
 
-static inline u32 pg_offset(u32 laddr) {
+u32  pg_laddr_phyaddr(u32 cr3, u32 laddr);
+bool pg_addr_pte_exist(u32 cr3, u32 laddr);
+
+#define PGBASE_CALL __attribute__((optimize("O3"), always_inline)) inline
+
+PGBASE_CALL u32 pg_offset(u32 laddr) {
     return laddr & 0xfff;
 }
 
-static inline u32 pg_pde_index(u32 laddr) {
+PGBASE_CALL u32 pg_pde_index(u32 laddr) {
     return (laddr >> 22) & 0x3ff;
 }
 
-static inline u32 pg_pte_index(u32 laddr) {
+PGBASE_CALL u32 pg_pte_index(u32 laddr) {
     return (laddr >> 12) & 0x3ff;
 }
 
-static inline u32 pg_frame_phyaddr(u32 entry) {
+PGBASE_CALL u32 pg_frame_phyaddr(u32 entry) {
     return entry & 0xfffff000;
 }
 
-static inline u32 *pg_pde_ptr(u32 cr3, u32 laddr) {
+PGBASE_CALL u32 *pg_pde_ptr(u32 cr3, u32 laddr) {
     return (u32 *)K_PHY2LIN(pg_frame_phyaddr(cr3)) + pg_pde_index(laddr);
 }
 
-static inline u32 *pg_pte_ptr(u32 pde, u32 laddr) {
+PGBASE_CALL u32 *pg_pte_ptr(u32 pde, u32 laddr) {
     return (u32 *)K_PHY2LIN(pg_frame_phyaddr(pde)) + pg_pte_index(laddr);
 }
 
-static inline u32 pg_pde(u32 cr3, u32 laddr) {
+PGBASE_CALL u32 pg_pde(u32 cr3, u32 laddr) {
     return *pg_pde_ptr(cr3, laddr);
 }
 
-static inline u32 pg_pte(u32 pde, u32 laddr) {
+PGBASE_CALL u32 pg_pte(u32 pde, u32 laddr) {
     return *pg_pte_ptr(pde, laddr);
 }
 
-static inline u32 pg_laddr_phyaddr(u32 cr3, u32 laddr) {
-    u32 pde = pg_pde(cr3, laddr);
-    u32 pte = pg_pte(pde, laddr);
-    return pg_frame_phyaddr(pte) | pg_offset(laddr);
-}
-
-static inline u32 pg_pde_attr(u32 cr3, u32 laddr, u32 mask) {
+PGBASE_CALL u32 pg_pde_attr(u32 cr3, u32 laddr, u32 mask) {
     return pg_pde(cr3, laddr) & mask;
 }
 
-static inline u32 pg_pte_attr(u32 pde, u32 laddr, u32 mask) {
+PGBASE_CALL u32 pg_pte_attr(u32 pde, u32 laddr, u32 mask) {
     return pg_pte(pde, laddr) & mask;
 }
 
-static inline bool pg_pde_exist(u32 cr3, u32 laddr) {
+PGBASE_CALL bool pg_pde_exist(u32 cr3, u32 laddr) {
     return pg_pde_attr(cr3, laddr, PG_MASK_P) == PG_P;
 }
 
-static inline bool pg_pte_exist(u32 pde, u32 laddr) {
+PGBASE_CALL bool pg_pte_exist(u32 pde, u32 laddr) {
     return pg_pte_attr(pde, laddr, PG_MASK_P) == PG_P;
-}
-
-static bool pg_addr_pte_exist(u32 cr3, u32 laddr) {
-    u32 pde = pg_pde(cr3, laddr);
-    if ((pde & PG_MASK_P) != PG_P) { return false; }
-    return pg_pte_exist(pde, laddr);
 }

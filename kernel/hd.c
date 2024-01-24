@@ -14,6 +14,7 @@
 #include <stddef.h>
 #include <atomic.h>
 #include <string.h>
+#include <time.h>
 
 struct part_ent PARTITION_ENTRY;
 
@@ -566,12 +567,12 @@ static void interrupt_wait() {
  * @return One if sucess, zero if timeout.
  *****************************************************************************/
 static int waitfor(int mask, int val, int timeout) {
-    int t = do_get_ticks();
-
-    while (((do_get_ticks() - t) * 1000 / HZ) < timeout) {
-        if ((inb(REG_STATUS) & mask) == val) return 1;
+    int t0 = do_get_ticks();
+    while (true) {
+        int t1 = do_get_ticks();
+        if (clock_from_sysclk(t1 - t0) >= timeout) { break; }
+        if ((inb(REG_STATUS) & mask) == val) { return 1; }
     }
-
     return 0;
 }
 

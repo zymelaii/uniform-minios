@@ -1,11 +1,15 @@
 #include <unios/memory.h>
 #include <unios/assert.h>
 #include <unios/page.h>
+#include <unios/sync.h>
+#include <unios/schedule.h>
 #include <string.h>
 
 memblk_allocator_t* kmem_allocator  = NULL;
 memblk_allocator_t* kpage_allocator = NULL;
 memblk_allocator_t* upage_allocator = NULL;
+
+spinlock_t kmem_lock;
 
 void* unsafe_kmalloc(size_t size) {
     static void* base = KMEM_BASE;
@@ -192,7 +196,9 @@ void init_memory() {
 
 void* kmalloc(size_t size) {
     size_t real_size = size + sizeof(size_t);
-    void*  ptr       = mballoc_alloc(kmem_allocator, real_size);
+    lock_or(&kmem_lock, schedule);
+    void* ptr = mballoc_alloc(kmem_allocator, real_size);
+    release(&kmem_lock);
     if (ptr == NULL) { return NULL; }
     *(size_t*)ptr = real_size;
     return ptr + sizeof(size_t);
@@ -209,7 +215,9 @@ void kfree(void* ptr) {
         && ptr < kmem_allocator->memblk_limit);
 
     size_t size = *(size_t*)real_ptr;
-    int    resp = mballoc_free(kmem_allocator, real_ptr, size);
+    lock_or(&kmem_lock, schedule);
+    int resp = mballoc_free(kmem_allocator, real_ptr, size);
+    release(&kmem_lock);
 
     //! NOTE: we exactly not that care about memory leak :-)
     assert(resp == MBALLOC_OK || resp == MBALLOC_NOSLOTS);

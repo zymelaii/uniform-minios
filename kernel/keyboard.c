@@ -45,9 +45,6 @@ void kb_handler(int irq) {
     }
 };
 
-#define TTY_FIRST (tty_table)
-#define TTY_END   (tty_table + NR_CONSOLES)
-
 void mouse_handler(int irq) {
     u8 scan_code = inb(0x60);
     if (!mouse_init) {
@@ -59,12 +56,16 @@ void mouse_handler(int irq) {
 
     if (mouse_in.count != 3) { return; }
 
-    tty_t* tty = TTY_FIRST;
-    while (tty < TTY_END) {
-        if (is_current_console(tty->console)) { break; }
-        ++tty;
+    tty_t* tty = NULL;
+    for (int i = 0; i < NR_CONSOLES; ++i) {
+        tty_t* this = tty_table[i];
+        if (this == NULL) { continue; }
+        if (!vcon_is_foreground(this->console)) {
+            tty = this;
+            break;
+        }
     }
-    if (tty == TTY_END) { return; }
+    if (tty == NULL) { return; }
 
     if (mouse_in.buf[0] & 0b001) {
         tty->mouse.buttons |= MOUSE_LEFT_BUTTON;

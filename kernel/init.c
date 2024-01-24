@@ -1,31 +1,24 @@
-#include <unios/proc.h>
 #include <unios/tracing.h>
 #include <unios/hd.h>
 #include <unios/fs.h>
-#include <unios/interrupt.h>
-#include <unios/kstate.h>
-#include <unios/schedule.h>
-#include <arch/x86.h>
-#include <sys/defs.h>
+#include <unios/tty.h>
 #include <config.h>
 #include <assert.h>
 #include <tar.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <limits.h>
 #include <malloc.h>
-#include <stddef.h>
 
-static void initial_setup_fs() {
+static void init_setup_fs() {
     hd_open(PRIMARY_MASTER);
-    kdebug("init hd done");
+    kinfo("init hd done");
 
     init_fs();
-    kdebug("init fs done");
+    kinfo("init fs done");
 }
 
-static void initial_setup_envs() {
+static void init_setup_envs() {
     const char *initial_envs = "PWD=/orange\n"
                                "PATH=/orange\n"
                                "PATH_EXT=.bin\n";
@@ -106,7 +99,7 @@ static void initial_setup_envs() {
     close(fd);
 }
 
-static void initial_enable_preinited_procs() {
+static void init_enable_preinited_procs() {
     for (int i = 0; i < NR_PCBS; ++i) {
         process_t *proc = proc_table[i];
         if (proc == NULL) { continue; }
@@ -115,33 +108,44 @@ static void initial_enable_preinited_procs() {
     }
 }
 
-void initial() {
-    initial_setup_fs();
+void init_handle_new_tty() {
+    //! NOTE: block init proc reenter the shell init routine
+    static int lock = 0;
+    if (!try_lock(&lock)) { return; }
 
-    int fd = -1;
-    fd     = open("/dev_tty0", O_RDWR);
-    assert(fd == stdin);
-    fd = open("/dev_tty0", O_RDWR);
-    assert(fd == stdout);
-    fd = open("/dev_tty0", O_RDWR);
-    assert(fd == stderr);
-
-    initial_setup_envs();
-
-    close(stdin);
-    close(stdout);
-    close(stderr);
-
-    initial_enable_preinited_procs();
+    int nr_tty = tty_wait_for();
+    if (nr_tty == -1) {
+        release(&lock);
+        return;
+    }
 
     pid_t pid = fork();
     assert(pid >= 0);
-
-    if (pid == 0) {
-        int err = exec("shell_0");
-        unreachable();
+    if (pid > 0) { return; }
+    int       rfd[3]        = {-1, -1, -1};
+    const int tfd[3]        = {stdin, stdout, stderr};
+    char      buf[PATH_MAX] = {};
+    snprintf(buf, sizeof(buf), "/dev_tty%d", nr_tty);
+    for (int i = 0; i < 3; ++i) {
+        rfd[i] = open(buf, O_RDWR);
+        assert(rfd[i] == tfd[i]);
     }
 
-    while (true) { yield(); }
+    tty_notify_shell();
+    release(&lock);
+
+    printf("[TTY #%d]\n", nr_tty);
+    exec("shell_0");
+    unreachable();
+}
+
+void init() {
+    init_setup_fs();
+    init_setup_envs();
+    init_enable_preinited_procs();
+    while (true) {
+        init_handle_new_tty();
+        yield();
+    }
     unreachable();
 }

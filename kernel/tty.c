@@ -3,35 +3,23 @@
 #include <unios/tty.h>
 #include <unios/console.h>
 #include <unios/keyboard.h>
-#include <unios/assert.h>
-#include <unios/vga.h>
 #include <unios/console.h>
+#include <unios/tracing.h>
 #include <sys/defs.h>
 #include <arch/x86.h>
+#include <assert.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <malloc.h>
 
-#define TTY_FIRST (tty_table)
-#define TTY_END   (tty_table + NR_CONSOLES)
+tty_t *tty_table[NR_CONSOLES];
 
-int   current_console;
-tty_t tty_table[NR_CONSOLES];
-
-static void flush_screen_scroll(tty_t *tty, int expected_cur_line) {
-    assert(expected_cur_line == -1 || expected_cur_line >= 0);
-    if (expected_cur_line != -1) {
-        tty->console->current_line = expected_cur_line;
-    }
-    int cur_line   = tty->console->current_line;
-    int real_line  = tty->console->orig / SCR_WIDTH;
-    int vga_offset = SCR_WIDTH * (cur_line + real_line);
-    vga_set_video_start_addr(vga_offset);
-}
-
-static void flush_cursor_pos(int pos) {
-    vga_set_cursor(pos);
-}
+static volatile int tty_wait_nr;
 
 static void tty_init(tty_t *tty) {
+    //! TODO: move part of struct to user space
+
     tty->status    = TTY_DISPLAY;
     tty->ibuf_next = tty->ibuf;
     tty->ibuf_wr   = tty->ibuf_next;
@@ -39,12 +27,18 @@ static void tty_init(tty_t *tty) {
     tty->ibuf_rd   = tty->ibuf_next;
     tty->cnt_rd    = 0;
 
-    int nr_tty   = tty - tty_table;
-    tty->console = &console_table[nr_tty];
+    console_t *con = kmalloc(sizeof(console_t));
+    assert(con != NULL);
+    setup_vga_console(con);
+    vcon_make_offscreen(con);
+    vga_textmode_char_t charcode = {
+        .attr = con->state.last_attr,
+        .code = ' ',
+    };
+    vgatm_flush_vmem(&con->state, charcode.raw);
+    tty->console = con;
 
     memset(&tty->mouse, 0, sizeof(tty->mouse));
-
-    init_screen(tty);
 }
 
 static bool tty_buf_push(tty_t *tty, u32 code) {
@@ -140,7 +134,7 @@ static void tty_put_key(tty_t *tty, u32 key) {
 //! NOTE: currently only support console stdout
 //! TODO: support general tty write, e.g. serial write
 void tty_write(tty_t *tty, char *buf, int len) {
-    for (int i = 0; i < len; ++i) { out_char(tty->console, buf[i]); }
+    vcon_write(tty->console, buf, len);
 }
 
 //! NOTE: currently only support console stdin
@@ -174,66 +168,30 @@ void tty_keyboard_proc(tty_t *tty, u32 key) {
         return;
     }
 
-    int real_line = tty->console->orig / SCR_WIDTH;
-    int raw_code  = key & MASK_RAW;
+    int raw_code = key & MASK_RAW;
 
-    do {
-        if (raw_code == ENTER) {
-            tty_put_key(tty, '\n');
-            tty->status &= ~TTY_WAIT_ENTER;
-        } else if (raw_code == BACKSPACE) {
-            tty_put_key(tty, '\b');
-        } else if (raw_code == UP) {
-            //! FIXME: why constant 43?
-            if (tty->console->current_line >= 43) { break; }
-            flush_screen_scroll(tty, tty->console->current_line + 1);
-        } else if (raw_code == DOWN) {
-            if (tty->console->current_line == 0) { break; }
-            flush_screen_scroll(tty, tty->console->current_line - 1);
-        } else if (raw_code >= F1 && raw_code <= F12) {
-            //! NOTE: assume F1~F12 is consistent
-            int nr_console = raw_code - F1;
-            if (nr_console >= 0 && nr_console < NR_CONSOLES) {
-                select_console(nr_console);
-            }
-        }
-    } while (0);
+    if (raw_code == ENTER) {
+        tty_put_key(tty, '\n');
+        tty->status &= ~TTY_WAIT_ENTER;
+    } else if (raw_code == BACKSPACE) {
+        tty_put_key(tty, '\b');
+    } else if (raw_code == UP) {
+        vcon_scroll(tty->console, -1);
+    } else if (raw_code == DOWN) {
+        vcon_scroll(tty->console, 1);
+    } else if (raw_code >= F1 && raw_code <= F12) {
+        //! NOTE: assume F1~F12 is consistent
+        int index = raw_code - F1;
+        if (index >= 0 && index < NR_CONSOLES) { tty_select(index); }
+    }
 
     //! TODO: other cases
-}
-
-static void tty_mouse(tty_t *tty) {
-    if (!is_current_console(tty->console)) { return; }
-
-    // scroll up: left-button up & drag up
-    if ((tty->mouse.buttons & MOUSE_LEFT_BUTTON)
-        && tty->mouse.off_y > MOUSE_UPDOWN_BOUND) {
-        if (tty->console->current_line < 43) {
-            flush_screen_scroll(tty, tty->console->current_line + 1);
-            tty->mouse.off_y = 0;
-        }
-    }
-
-    // scroll down: left-button down & drag down
-    if ((tty->mouse.buttons & MOUSE_LEFT_BUTTON)
-        && tty->mouse.off_y < -MOUSE_UPDOWN_BOUND) {
-        if (tty->console->current_line > 0) {
-            flush_screen_scroll(tty, tty->console->current_line - 1);
-            tty->mouse.off_y = 0;
-        }
-    }
-
-    // resume: middle-button down
-    if (tty->mouse.buttons & MOUSE_MIDDLE_BUTTON) {
-        flush_screen_scroll(tty, 0);
-        tty->mouse.off_y = 0;
-    }
 }
 
 //! read from the device to the rdbuf
 //! TODO: support other devices except for console
 static void tty_dev_read(tty_t *tty) {
-    if (!is_current_console(tty->console)) { return; }
+    if (!vcon_is_foreground(tty->console)) { return; }
     keyboard_read(tty);
 }
 
@@ -280,33 +238,75 @@ static void tty_dev_write(tty_t *tty) {
             }
         }
 
-        if (should_output) { out_char(tty->console, code); }
+        if (should_output) {
+            char buf[1] = {code};
+            vcon_write(tty->console, buf, 1);
+        }
     }
 }
 
-void tty_handler() {
-    tty_t *tty = NULL;
-    for (tty = TTY_FIRST; tty < TTY_END; ++tty) { tty_init(tty); }
+void tty_wait_shell(int index) {
+    int nr = index + 1;
+    assert(tty_wait_nr == 0);
+    tty_wait_nr = nr;
+    while (tty_wait_nr == nr) { yield(); }
+    kdebug("tty %d shell done", index);
+}
 
-    //! select first tty & console
-    tty = TTY_FIRST;
-    select_console(0);
+int tty_wait_for() {
+    int nr_tty = tty_wait_nr - 1;
+    return nr_tty;
+}
 
-    //! reset cursor pos to be safe
-    flush_cursor_pos(vga_get_disppos());
+void tty_notify_shell() {
+    tty_wait_nr = 0;
+}
 
-    while (true) {
-        for (tty = TTY_FIRST; tty < TTY_END; ++tty) {
-            //! NOTE: always try recv before handle
-            //! NOTE: actually this is expected to be a dead loop, here we break
-            //! the loop only to free up the cpu at a convenient time to allow
-            //! other ttys handle its own jobs, that is, this is just a very
-            //! simple schedule program
-            do {
-                tty_mouse(tty);
-                tty_dev_read(tty);
-                tty_dev_write(tty);
-            } while (tty->cnt_wr > 0);
+bool tty_select(int index) {
+    if (index < 0 || index >= NR_CONSOLES) { return false; }
+    bool should_setup_shell = false;
+    if (tty_table[index] == NULL) {
+        tty_t *tty = kmalloc(sizeof(tty_t));
+        assert(tty != NULL);
+        tty_init(tty);
+        tty_table[index]   = tty;
+        should_setup_shell = true;
+    }
+    tty_t *this     = tty_table[index];
+    console_t *last = NULL;
+    for (int i = 0; i < NR_CONSOLES; ++i) {
+        tty_t *tty = tty_table[i];
+        if (tty == NULL || tty == this) { continue; }
+        if (vcon_is_foreground(tty->console)) {
+            last = tty->console;
+            break;
         }
+    }
+    //! NOTE: waiting for the initial shell is a time-consuming job, switch
+    //! fg/bg after this might lead to a better interactive experience
+    if (should_setup_shell) { tty_wait_shell(index); }
+    if (last != NULL) { vcon_make_offscreen(last); }
+    vcon_make_foreground(this->console);
+    kdebug("make console %d foreground", index);
+    return true;
+}
+
+void tty_handler() {
+    tty_select(0);
+    while (true) {
+        int done = 0;
+        for (int i = 0; i < NR_CONSOLES; ++i) {
+            tty_t *tty = tty_table[i];
+            if (tty == NULL) { continue; }
+            int times = 0;
+            tty_dev_read(tty);
+            while (tty->cnt_wr > 0) {
+                tty_dev_write(tty);
+                tty_dev_read(tty);
+                ++times;
+            }
+            if (times > 0) { ++done; }
+        }
+        if (done == 0) { yield(); }
     }
 }

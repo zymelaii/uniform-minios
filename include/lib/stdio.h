@@ -25,8 +25,6 @@ int opendir(const char *path);
 int createdir(const char *path);
 int deletedir(const char *path);
 
-long strtol(const char *cp, char **endp, unsigned int base);
-
 int snprintf(char *buf, int n, const char *fmt, ...);
 int vsnprintf(char *buf, int n, const char *fmt, va_list ap);
 

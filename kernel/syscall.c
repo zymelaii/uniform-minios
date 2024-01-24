@@ -94,11 +94,6 @@ static u32 sys_sleep() {
     return 0;
 }
 
-static u32 sys_wakeup() {
-    do_wakeup(SYSCALL_ARGS1(void *));
-    return 0;
-}
-
 static u32 sys_malloc(int size) {
     return (u32)do_malloc(SYSCALL_ARGS1(int));
 }
@@ -161,17 +156,29 @@ static u32 sys_krnlobj_request() {
 }
 
 syscall_t syscall_table[NR_SYSCALLS] = {
-    SYSCALL_ENTRY(get_ticks), SYSCALL_ENTRY(get_pid),
-    SYSCALL_ENTRY(get_ppid),  SYSCALL_ENTRY(fork),
-    SYSCALL_ENTRY(execve),    SYSCALL_ENTRY(yield),
-    SYSCALL_ENTRY(sleep),     SYSCALL_ENTRY(wakeup),
-    SYSCALL_ENTRY(malloc),    SYSCALL_ENTRY(free),
-    SYSCALL_ENTRY(open),      SYSCALL_ENTRY(close),
-    SYSCALL_ENTRY(read),      SYSCALL_ENTRY(write),
-    SYSCALL_ENTRY(lseek),     SYSCALL_ENTRY(unlink),
-    SYSCALL_ENTRY(create),    SYSCALL_ENTRY(delete),
-    SYSCALL_ENTRY(opendir),   SYSCALL_ENTRY(createdir),
-    SYSCALL_ENTRY(deletedir), SYSCALL_ENTRY(wait),
-    SYSCALL_ENTRY(exit),      SYSCALL_ENTRY(killerabbit),
-    SYSCALL_ENTRY(environ),   SYSCALL_ENTRY(krnlobj_request),
+    SYSCALL_ENTRY(get_ticks),
+    SYSCALL_ENTRY(get_pid),
+    SYSCALL_ENTRY(get_ppid),
+    SYSCALL_ENTRY(fork),
+    SYSCALL_ENTRY(execve),
+    SYSCALL_ENTRY(yield),
+    SYSCALL_ENTRY(sleep),
+    SYSCALL_ENTRY(malloc),
+    SYSCALL_ENTRY(free),
+    SYSCALL_ENTRY(open),
+    SYSCALL_ENTRY(close),
+    SYSCALL_ENTRY(read),
+    SYSCALL_ENTRY(write),
+    SYSCALL_ENTRY(lseek),
+    SYSCALL_ENTRY(unlink),
+    SYSCALL_ENTRY(create),
+    SYSCALL_ENTRY(delete),
+    SYSCALL_ENTRY(opendir),
+    SYSCALL_ENTRY(createdir),
+    SYSCALL_ENTRY(deletedir),
+    SYSCALL_ENTRY(wait),
+    SYSCALL_ENTRY(exit),
+    SYSCALL_ENTRY(killerabbit),
+    SYSCALL_ENTRY(environ),
+    SYSCALL_ENTRY(krnlobj_request),
 };

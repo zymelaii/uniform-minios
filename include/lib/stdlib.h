@@ -13,8 +13,6 @@ void exit(int exit_code);
 int  killerabbit(int pid);
 void yield();
 void sleep(int n);
-void wakeup(void *channel);
-int  pthread_create(void *args);
 
 bool         putenv(char *const *envp);
 char *const *getenv();

@@ -2,35 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-
-const int screen_lock_uid = 0xcafebabe;
-
-int sync_printf(const char *fmt, ...) {
-    va_list ap;
-    int     rc;
-    va_start(ap, fmt);
-    krnlobj_lock(screen_lock_uid);
-    rc = vprintf(fmt, ap);
-    krnlobj_unlock(screen_lock_uid);
-    va_end(ap);
-    return rc;
-}
-
-#define printf sync_printf
+#include "screen_sync.h"
 
 int global = 0;
 
 int main(int arg, char *argv[]) {
-    if (krnlobj_lookup(screen_lock_uid) == INVALID_HANDLE) {
-        handle_t hd = krnlobj_create(screen_lock_uid);
-        assert(hd != INVALID_HANDLE);
-    }
-
     int i = 0;
     int j = 0;
     global++;
 
+    begin_exclusive_screen();
     printf("good\n");
+    end_exclusive_screen();
+
     while (i < 3) {
         if (fork() == 0) {
             i++;
@@ -43,14 +27,18 @@ int main(int arg, char *argv[]) {
         j++;
         if (j == 1000000) {
             j = 0;
+            begin_exclusive_screen();
             printf("i am %d", i);
+            end_exclusive_screen();
         }
     }
 
     while (1) {
+        begin_exclusive_screen();
         printf("init");
         printf("%d", ++global);
         printf(" ");
+        end_exclusive_screen();
         i = 1000000;
         while (--i) {}
     }
