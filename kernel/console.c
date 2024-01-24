@@ -26,6 +26,7 @@ void setup_vga_console(console_t* con) {
     con->state.use_last_attr  = false;
     con->vmem_real            = con->state.vmem_base;
     con->vmem_buf             = NULL;
+    con->wrlock               = 0;
 }
 
 bool vcon_is_foreground(console_t* con) {
@@ -41,6 +42,7 @@ bool vcon_is_offscreen(console_t* con) {
 void vcon_make_foreground(console_t* con) {
     typedef vga_textmode_char_t char_t;
 
+    acquire(&con->wrlock);
     assert(con != NULL);
     if (vcon_is_offscreen(con)) {
         ptrdiff_t vmem_diff = con->state.origin - (char_t*)con->state.vmem_base;
@@ -53,11 +55,13 @@ void vcon_make_foreground(console_t* con) {
     }
     vgatm_switch_to_unsafe(&con->state);
     assert(vcon_is_foreground(con));
+    release(&con->wrlock);
 }
 
 void vcon_make_offscreen(console_t* con) {
     typedef vga_textmode_char_t char_t;
 
+    acquire(&con->wrlock);
     assert(con != NULL);
     if (vcon_is_offscreen(con)) { return; }
     if (con->vmem_buf == NULL) {
@@ -70,6 +74,7 @@ void vcon_make_offscreen(console_t* con) {
     con->state.origin    = (char_t*)con->vmem_buf + vmem_diff;
     con->state.vmem_base = con->vmem_buf;
     assert(vcon_is_offscreen(con));
+    release(&con->wrlock);
 }
 
 void vcon_scroll(console_t* con, int row_diff) {
@@ -123,6 +128,8 @@ void vcon_write(console_t* con, const char* buf, int size) {
     typedef vga_textmode_char_t  char_t;
     typedef vga_textmode_state_t state_t;
 
+    acquire(&con->wrlock);
+
     state_t* state = &con->state;
     if (size == -1) { size = strlen(buf); }
 
@@ -164,6 +171,8 @@ void vcon_write(console_t* con, const char* buf, int size) {
         row_diff = -((-state->last_char_pos + state->width - 1) / state->width);
     }
     if (row_diff != 0) { vcon_scroll(con, row_diff); }
+
+    release(&con->wrlock);
 }
 
 void vcon_clear_screen(console_t* con) {
@@ -171,5 +180,8 @@ void vcon_clear_screen(console_t* con) {
         .attr = con->state.last_attr,
         .code = ' ',
     };
+
+    acquire(&con->wrlock);
     vgatm_fill_screen(&con->state, charcode.raw);
+    release(&con->wrlock);
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unios/vga.h>
+#include <unios/sync.h>
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -8,6 +9,7 @@ typedef struct console_s {
     vga_textmode_state_t state;
     void                *vmem_real;
     void                *vmem_buf;
+    spinlock_t           wrlock;
 } console_t;
 
 void setup_vga_console(console_t *con);
