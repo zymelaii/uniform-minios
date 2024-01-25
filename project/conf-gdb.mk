@@ -6,6 +6,8 @@ GDB ?= gdb
 
 GDB_SCRIPTS_HOME ?=
 
+GDB_REALMODE_XML := $(GDB_SCRIPTS_HOME)target.xml
+
 GDB_FLAGS := -q -nx
 GDB_FLAGS += -x '$(GDB_SCRIPTS_HOME)connect-qemu.gdb'
 GDB_FLAGS += -x '$(GDB_SCRIPTS_HOME)instr-level.gdb'

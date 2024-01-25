@@ -1,61 +1,49 @@
-	;deleted by mingxuan 2020-9-16
-	;BS_OEM			DB	'mkfs.fat'
-	;BPB_BytesPerSec	DW	0x200
-	;BPB_SecPerClu 	DB	1
-	;BPB_RsvdSecCnt	DW	0x20
-	;BPB_NumFATs		DB	2
-	;BPB_RootEntCnt	DW 	0
-	;BPB_TotSec16	DW	0
-	;BPB_Media		DB 	0xf8
-	;BPB_FATSz16		DW	0
-	;BPB_SecPerTrk	DW	0x20
-	;BPB_NumHeads	DW	0x40
-	;BPB_HiddSec		DD	0
-	;BPB_TotSec32	DD	0x015791
-	;BS_SecPerFAT	DD	0x02a5
-	;BS_Flag			DW	0
-	;BS_Version		DW	0
-	;BS_RootClus		DD	2
-	;BS_FsInfoSec 	DW	1
-	;BS_BackBootSec 	DW	6
-	;BS_Unuse1		DD	0
-	;BS_Unuse2		DD	0
-	;BS_Unuse3		DD 	0
-	;BS_DriveNum		DB	0x80
-	;BS_Unuse4		DB	0
-	;BS_ExtBootFlag	DB	0x29
-	;BS_VolNum		DD	0xbe3a8ff5
-	;BS_VolName		DB	'MZY hd boot'
+; [in]: OffsetOfBPB
+BS_jmpBoot     equ OffsetOfBPB + 0
+BS_OEMName     equ OffsetOfBPB + 3
+BPB_BytsPerSec equ OffsetOfBPB + 11
+BPB_SecPerClus equ OffsetOfBPB + 13
+BPB_RsvdSecCnt equ OffsetOfBPB + 14
+BPB_NumFATs    equ OffsetOfBPB + 16
+BPB_RootEntCnt equ OffsetOfBPB + 17
+BPB_TotSec16   equ OffsetOfBPB + 19
+BPB_Media      equ OffsetOfBPB + 21
+BPB_FATSz16    equ OffsetOfBPB + 22
+BPB_SecPerTrk  equ OffsetOfBPB + 24
+BPB_NumHeads   equ OffsetOfBPB + 26
+BPB_HiddSec    equ OffsetOfBPB + 28
+BPB_TotSec32   equ OffsetOfBPB + 32
+BPB_FATSz32    equ OffsetOfBPB + 36
+BPB_ExtFlags   equ OffsetOfBPB + 40
+BPB_FSVer      equ OffsetOfBPB + 42
+BPB_RootClus   equ OffsetOfBPB + 44
+BPB_FSInfo     equ OffsetOfBPB + 48
+BPB_BkBootSec  equ OffsetOfBPB + 50
+BPB_Reserved   equ OffsetOfBPB + 52
+BS_DrvNum      equ OffsetOfBPB + 64
+BS_Reserved1   equ OffsetOfBPB + 65
+BS_BootSig     equ OffsetOfBPB + 66
+BS_VolID       equ OffsetOfBPB + 67
+BS_VolLab      equ OffsetOfBPB + 71
+BS_FilSysType  equ OffsetOfBPB + 82
+EndOfBPB       equ OffsetOfBPB + 90
 
-; added by mingxuan 2020-9-12
-;BaseOfBoot 			equ	1000h 		; added by mingxuan 2020-9-12
-;OffsetOfBoot		equ	7c00h		; load Boot sector to BaseOfBoot:OffsetOfBoot
+DIR_Name         equ 0
+DIR_Attr         equ 11
+DIR_NTRes        equ 12
+DIR_CrtTimeTenth equ 13
+DIR_CrtTime      equ 14
+DIR_CrtDate      equ 16
+DIR_LstAccDate   equ 18
+DIR_FstClusHI    equ 20
+DIR_WrtTime      equ 22
+DIR_WrtDate      equ 24
+DIR_FstClusLO    equ 26
+DIR_FileSize     equ 28
+SizeOfDIR        equ 32
 
-BPB_BytesPerSec	    equ		(OffsetOfBoot + 0xb)	;每扇区字节数
-BPB_SecPerClu 		equ		(OffsetOfBoot + 0xd)	;每簇扇区数 
-BPB_RsvdSecCnt		equ		(OffsetOfBoot + 0xe)	;保留扇区数
-BPB_NumFATs			equ		(OffsetOfBoot + 0x10)	;FAT表数
-BPB_RootEntCnt		equ 	(OffsetOfBoot + 0x11)	;FAT32不使用
-BPB_TotSec16		equ		(OffsetOfBoot + 0x13)	;扇区总数
-BPB_Media			equ 	(OffsetOfBoot + 0x15)	;介质描述符
-BPB_FATSz16			equ		(OffsetOfBoot + 0x16)	;每个FAT表的大小扇区数(FAT32不使用)
-BPB_SecPerTrk		equ		(OffsetOfBoot + 0x18)	;每磁道扇区数
-BPB_NumHeads		equ		(OffsetOfBoot + 0x1a)	;磁头数
-BPB_HiddSec			equ	    (OffsetOfBoot + 0x1c)	;分区已使用扇区数
-BPB_TotSec32		equ		(OffsetOfBoot + 0x20)	;文件系统大小扇区数
-	
-BS_SecPerFAT		equ		(OffsetOfBoot + 0x24)	;每个FAT表大小扇区数
-BS_Flag				equ		(OffsetOfBoot + 0x28)	;标记
-BS_Version			equ		(OffsetOfBoot + 0x2a)	;版本号
-BS_RootClus			equ		(OffsetOfBoot + 0x2c)	;根目录簇号
-BS_FsInfoSec 		equ		(OffsetOfBoot + 0x30)	;FSINFO扇区号
-BS_BackBootSec 		equ	    (OffsetOfBoot + 0x32)	;备份引导扇区位置
-BS_Unuse1			equ		(OffsetOfBoot + 0x34)	;未使用
-;BS_Unuse2			equ		(OffsetOfBoot + 0x40)	;未使用	;deleted by mingxuan 2020-9-15
-;BS_Unuse3			equ 	(OffsetOfBoot + 0x41)	;未使用	;deleted by mingxuan 2020-9-15
-BS_DriveNum			equ		(OffsetOfBoot + 0x40)	;设备号
-BS_Unuse4			equ		(OffsetOfBoot + 0x41)	;未使用
-BS_ExtBootFlag		equ		(OffsetOfBoot + 0x42)	;扩展引导标志
-BS_VolNum			equ		(OffsetOfBoot + 0x43)	;卷序列号
-BS_VolName			equ		(OffsetOfBoot + 0x47)	;卷标
-
+CLUSTER_Free equ 00000000h
+CLUSTER_Base equ 00000002h
+CLUSTER_Bad  equ 0FFFFFF7h
+CLUSTER_Last equ 0FFFFFFFh
+CLUSTER_Mask equ 0FFFFFFFh

@@ -27,6 +27,8 @@ static void clear_lower_ptes_from_loader() {
 }
 
 void kernel_main() {
+    //! FIXME: sync with new bootloader impl
+
     //! ATTENTION: ints is disabled through the whole `kernel_main`
 
     //! TODO: maybe we can print our logo here?

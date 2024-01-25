@@ -31,7 +31,39 @@ enum fat32_entry_attr {
     ATTR_ARCHIVE = 1 << 5, //<! archive
 };
 
-typedef struct fat32_entry_s {
+typedef struct {
+    u8  BS_jmpBoot[3];
+    u8  BS_OEMName[8];
+    u16 BPB_BytsPerSec;
+    u8  BPB_SecPerClus;
+    u16 BPB_RsvdSecCnt;
+    u8  BPB_NumFATs;
+    u16 BPB_RootEntCnt;
+    u16 BPB_TotSec16;
+    u8  BPB_Media;
+    u16 BPB_FATSz16;
+    u16 BPB_SecPerTrk;
+    u16 BPB_NumHeads;
+    u32 BPB_HiddSec;
+    u32 BPB_TotSec32;
+    u32 BPB_FATSz32;
+    u16 BPB_ExtFlags;
+    u16 BPB_FSVer;
+    u32 BPB_RootClus;
+    u16 BPB_FSInfo;
+    u16 BPB_BkBootSec;
+    u8  BPB_Reserved[12];
+    u8  BS_DrvNum;
+    u8  BS_Reserved1;
+    u8  BS_BootSig;
+    u32 BS_VolID;
+    u8  BS_VolLabp[11];
+    u8  BS_FilSysType[8];
+    u8  zero[420];
+    u16 Signature_word;
+} __attribute__((packed)) fat32_bpb_t;
+
+typedef struct {
     u8  name[8];            //<! file name
     u8  ext[3];             //<! extension
     u8  attr;               //<! attribute, compound with fat32_entry_attr
@@ -47,7 +79,7 @@ typedef struct fat32_entry_s {
     u32 size;               //<! file size, in bytes
 } fat32_entry_t;
 
-typedef struct fat32_lfn_entry_s {
+typedef struct {
     u8  attr;       //<! attribute, compound with fat32_entry_attr
     u8  name1[10];  //<! 1st name part
     u8  flag;       //<! lfn entry flag, always 0x0f

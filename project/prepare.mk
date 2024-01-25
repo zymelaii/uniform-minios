@@ -4,10 +4,6 @@ PROJMK_PREFIX ?=
 # elf type .obj files
 OBJECT_FILES :=
 
-# assembly .bin files
-ASBIN_SOURCE_FILES :=
-ASBIN_FILES        :=
-
 # generated files
 GENERATED_FILES :=
 

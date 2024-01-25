@@ -1,18 +1,23 @@
 # path to project mk files
 PROJMK_PREFIX ?=
 
-# collect bootloader objects
+# collect boot/mbr objects
 SOURCE_DIR := boot/
 OUTPUT_DIR := $(OBJDIR)/$(SOURCE_DIR)
 include $(PROJMK_PREFIX)collect-objects.mk
 
-# bootloader programs
-BOOTLOADER_SOURCES := $(SOURCE_FILES)
-BOOTLOADER_FILES   := $(patsubst %,$(OUTPUT_DIR)%.bin,$(basename $(notdir $(BOOTLOADER_SOURCES))))
+MBR_FILE    := $(OBJDIR)/boot/mbr.bin
+BOOT_FILE   := $(OBJDIR)/boot/boot.bin
 
-ASBIN_SOURCE_FILES += $(BOOTLOADER_SOURCES)
-ASBIN_FILES        += $(BOOTLOADER_FILES)
+# collect loader objects
+SOURCE_DIR := boot/loader/
+OUTPUT_DIR := $(OBJDIR)/$(SOURCE_DIR)
+include $(PROJMK_PREFIX)collect-objects.mk
 
-# needed by loader.bin, provide kernel info to loader
-GENERATED_FILES += $(GENERATED_INCDIR)/kernel_entry.inc
-GENERATED_FILES += $(GENERATED_INCDIR)/kernel_file.inc
+LOADER_SIZE_LIMIT := $(shell echo $$[0x10000])
+
+# loader objects
+LOADER_OBJECTS  := $(patsubst %,$(OBJDIR)/%.obj,$(SOURCE_FILES))
+LOADER_LINKER	:= $(SOURCE_DIR)/linker.ld
+
+LOADER_FILE := $(OBJDIR)/boot/loader.bin

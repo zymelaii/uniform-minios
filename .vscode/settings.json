@@ -17,6 +17,7 @@
         "-nostdinc",
         "-nostdlib",
         "-fno-builtin",
+        "-I${workspaceFolder}/include",
         "-I${workspaceFolder}/include/kernel",
         "-I${workspaceFolder}/include/lib",
         "-I${workspaceFolder}/include/deps",
