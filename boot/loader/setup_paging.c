@@ -7,8 +7,8 @@ static size_t get_total_memory() {
     size_t         total_memory = 0;
     device_info_t *device_info  = (void *)DEVICE_INFO_ADDR;
 
-    for (int i = 0; i < device_info->ARDS_count; i++) {
-        ARDS_t ards = device_info->ARDS_buffer[i];
+    for (int i = 0; i < device_info->ards_count; i++) {
+        ards_t ards = device_info->ards_buffer[i];
         if (ards.type == 1) {
             size_t segment_limit = ards.base_addr_low + ards.length_low;
             total_memory         = MAX(total_memory, segment_limit);
@@ -26,13 +26,12 @@ static uint32_t *alloc_free_page(void) {
     static size_t allocator = NUM_1M;
     uint32_t     *res;
 
-    res        = (void *)allocator;
+    res       = (void *)allocator;
     allocator += NUM_4K;
 
-    //! todo: if allocator can't alloc more free pages,
-    //  print some error message and then be in a dead loop
-    while ((void *)res >= (void *)(2 * NUM_1M))
-        ; // do nothing
+    //! TODO: if allocator can't alloc more free pages, print some error message
+    //! and then be in a dead loop
+    while ((void *)res >= (void *)(2 * NUM_1M)) {}
 
     return res;
 }
@@ -51,7 +50,7 @@ uint32_t *setup_paging(void) {
         loader_cr3[i] = pde;
         uint32_t *pd  = pg_frame_phyaddr(pde);
         for (uint32_t j = 0; j < 1024; j++) {
-            pd[j]         = mapping_addr | 0x3;
+            pd[j]        = mapping_addr | 0x3;
             mapping_addr += NUM_4K;
         }
     }
@@ -63,7 +62,7 @@ uint32_t *setup_paging(void) {
 
         loader_cr3[i + kernel_pde_offset] = pde;
         for (uint32_t j = 0; j < 1024; j++) {
-            pd[j]         = mapping_addr | 0x3;
+            pd[j]        = mapping_addr | 0x3;
             mapping_addr += NUM_4K;
         }
     }

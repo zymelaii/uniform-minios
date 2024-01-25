@@ -61,7 +61,7 @@ typedef struct {
     u8  BS_FilSysType[8];
     u8  zero[420];
     u16 Signature_word;
-} __attribute__((packed)) fat32_BPB_t;
+} __attribute__((packed)) fat32_bpb_t;
 
 typedef struct {
     u8  name[8];            //<! file name

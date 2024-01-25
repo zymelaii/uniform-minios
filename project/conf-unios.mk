@@ -27,7 +27,6 @@ LIBRT_FILE := $(OBJDIR)/lib/lib$(LIBRT).a
 INSTALL_FILENAME := "$(USER_PROG_ARCHIVE)"
 
 # hardcoded image assignment arguments
-OSBOOT_OFFSET          := $(shell echo $$[0x00100000])
 OSBOOT_START_OFFSET    := $(shell echo $$[0x0010005a])
 ORANGE_FS_START_OFFSET := $(shell echo $$[0x00300200])
 PART_START_SECTOR      := 6144
@@ -35,7 +34,6 @@ INSTALL_PHY_SECTOR     := 7095
 INSTALL_NR_SECTORS     := 1000
 
 INSTALL_START_SECTOR := $(shell echo $$[$(INSTALL_PHY_SECTOR) - $(PART_START_SECTOR)])
-SUPER_BLOCK_ADDR     := $(shell echo $$[($(PART_START_SECTOR) + 1) * 512])
 
 DEVICE_INFO_ADDR := 0x90000
 
@@ -48,9 +46,9 @@ KERNEL_NAME_IN_FAT := $(shell \
 # configure toolchain
 DEFINES  ?=
 INCDIRS  ?=
+INCDIRS  += include
 INCDIRS  += include/kernel
 INCDIRS  += include/lib
-INCDIRS  += include/fs
 INCDIRS  += include/deps
 LINKDIRS ?=
 LINKDIRS += $(OBJDIR)/lib

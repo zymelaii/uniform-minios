@@ -1,9 +1,9 @@
 #include <unios/elf.h>
+#include <fs/fat.h>
 #include <arch/x86.h>
 #include <config.h>
 #include <limits.h>
 #include <stddef.h>
-#include <fat.h>
 
 static void *memset(void *v, int c, size_t n) {
     char *p;
@@ -43,7 +43,7 @@ static int strncmp(const char *p, const char *q, size_t n) {
 }
 
 static void waitdisk(void) {
-    // wait for disk reaady
+    // wait for disk ready
     while ((inb(0x1F7) & 0xC0) != 0x40) /* do nothing */
         ;
 }
@@ -85,7 +85,7 @@ uint32_t    fat_start_sec;
 uint32_t    data_start_sec;
 uint32_t    elf_clus;
 uint32_t    clus_bytes;
-fat32_BPB_t bpb;
+fat32_bpb_t bpb;
 
 /**
  * @brief Get the next cluster number
@@ -115,7 +115,7 @@ static uint32_t get_next_clus(uint32_t clus) {
 static void *read_clus(void *dst, uint32_t clus) {
     uint32_t base_sector;
 
-    base_sector  = (clus - 2) * bpb.BPB_SecPerClus;
+    base_sector = (clus - 2) * bpb.BPB_SecPerClus;
     base_sector += data_start_sec;
 
     for (int i = 0; i < bpb.BPB_SecPerClus; i++, dst += SECTSIZE)
@@ -176,7 +176,7 @@ static uint32_t get_clus(uint32_t offset) {
 
         while (new_elf_offset < elf_offset) {
             new_elf_offset += clus_bytes;
-            new_clus        = get_next_clus(new_clus);
+            new_clus       = get_next_clus(new_clus);
         }
         elf_offset_cache[0][0] = new_elf_offset;
         elf_offset_cache[0][1] = new_clus;
@@ -198,20 +198,20 @@ void readseg(void *va, uint32_t count, uint32_t offset) {
     if (offset % clus_bytes != 0) {
         uint32_t clus = get_clus(offset);
         read_clus(BUF_DATA_ADDR, clus);
-        uint32_t n  = MIN(end_offset, ROUNDUP(offset, clus_bytes)) - offset;
-        va          = memcpy(va, BUF_DATA_ADDR + offset % clus_bytes, n);
+        uint32_t n = MIN(end_offset, ROUNDUP(offset, clus_bytes)) - offset;
+        va         = memcpy(va, BUF_DATA_ADDR + offset % clus_bytes, n);
         offset     += n;
     }
     while (end_offset - offset >= clus_bytes) {
-        uint32_t clus  = get_clus(offset);
-        va             = read_clus(va, clus);
+        uint32_t clus = get_clus(offset);
+        va            = read_clus(va, clus);
         offset        += clus_bytes;
     }
     if (offset < end_offset) {
         uint32_t clus = get_clus(offset);
         read_clus(BUF_DATA_ADDR, clus);
-        uint32_t n  = end_offset - offset;
-        va          = memcpy(va, BUF_DATA_ADDR, n);
+        uint32_t n = end_offset - offset;
+        va         = memcpy(va, BUF_DATA_ADDR, n);
         offset     += n;
     }
 }
@@ -233,6 +233,9 @@ static Elf32_Phdr *get_phdr(Elf32_Ehdr *eh, int i) {
     }
     return BUF_PHDR_ADDR + offset % clus_bytes;
 }
+
+//! TODO: change it to real macro
+#define PT_LOAD 1
 
 void *load_kernel(void) {
     readsect((void *)&bpb, 0);
@@ -260,8 +263,6 @@ void *load_kernel(void) {
     Elf32_Ehdr *eh = ELF_ADDR;
     for (int i = 0; i < eh->e_phnum; i++) {
         Elf32_Phdr *ph = get_phdr(eh, i);
-// todo: change it to real macro
-#define PT_LOAD 1
         if (ph->p_type != PT_LOAD) continue;
         readseg((void *)ph->p_vaddr, ph->p_filesz, ph->p_offset);
         memset(

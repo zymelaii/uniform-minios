@@ -1,13 +1,11 @@
 #pragma once
 
 #define INSTALL_FILENAME     @INSTALL_FILENAME@
-#define INSTALL_PHY_SECTOR   @INSTALL_PHY_SECTOR@
 #define INSTALL_NR_SECTORS   @INSTALL_NR_SECTORS@
-#define PART_START_SECTOR    @PART_START_SECTOR@
 #define INSTALL_START_SECTOR @INSTALL_START_SECTOR@
 
-//!NOTE: this var is closely integrated with loader,
-// so if you should read loader carefully before modifying this var.
-#define DEVICE_INFO_ADDR     @DEVICE_INFO_ADDR@
+//! NOTE: this var is closely integrated with loader, so if you should read
+//! loader carefully before modifying this var.
+#define DEVICE_INFO_ADDR @DEVICE_INFO_ADDR@
 
-#define KERNEL_NAME_IN_FAT   @KERNEL_NAME_IN_FAT@
+#define KERNEL_NAME_IN_FAT @KERNEL_NAME_IN_FAT@

@@ -31,10 +31,10 @@ monitor: $(KERNEL_DEBUG_FILE)
 
 monitor-real: $(GDB_REALMODE_XML)
 	@\
-	$(GDB) $(GDB_FLAGS) 		\
-	-ex 'set tdesc filename $<'	\
-	-ex 'b *0x7c00'				\
-	-ex 'c'
+	$(GDB) $(GDB_FLAGS) 			\
+		-ex 'set tdesc filename $<'	\
+		-ex 'b *0x7c00'				\
+		-ex 'c'
 
 # unios rules
 include $(PROJMK_PREFIX)rules-gen.mk

@@ -1,5 +1,4 @@
-MOUNT_POINT := $(OBJDIR)/iso
-
+MOUNT_POINT  := $(OBJDIR)/iso
 RAW_HD_IMAGE := hd/test1.img
 
 $(IMAGE_FILE)p0: $(RAW_HD_IMAGE) $(MBR_FILE) $(BOOT_FILE)
@@ -27,8 +26,8 @@ $(IMAGE_FILE)p1: $(IMAGE_FILE)p0 $(LOADER_FILE) $(KERNEL_FILE)
 	@\
 	loader_size=`stat -c "%s" $(LOADER_FILE)`;					\
 	if [ "$$loader_size" -gt "$(LOADER_SIZE_LIMIT)" ]; then		\
-		echo -en "\e[1K\r\e[31mLOADER too large";				\
-		echo -e "($${loader_size}/$(LOADER_SIZE_LIMIT))\e[0m"	\
+		echo -ne "\e[1K\r\e[31m[FAIL]\e[0m LOADER too large";	\
+		echo -e " ($${loader_size}/$(LOADER_SIZE_LIMIT))"		\
 		exit 1;													\
 	fi
 	@mkdir -p $(@D)
