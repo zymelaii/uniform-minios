@@ -29,6 +29,13 @@ monitor: $(KERNEL_DEBUG_FILE)
 	@$(GDB) $(GDB_FLAGS) -ex 'file $<'
 .PHONY: monitor
 
+monitor-real: $(GDB_REALMODE_XML)
+	@\
+	$(GDB) $(GDB_FLAGS) 		\
+	-ex 'set tdesc filename $<'	\
+	-ex 'b *0x7c00'				\
+	-ex 'c'
+
 # unios rules
 include $(PROJMK_PREFIX)rules-gen.mk
 include $(PROJMK_PREFIX)rules-obj.mk
@@ -62,10 +69,10 @@ install:
 
 # compile_commands.json rules
 $(OBJDIR)/compile_commands.json: force
-	@echo -ne "[PROC] dump compile_commands.json\r"
+	@echo -ne "[PROC] dump $(notdir $@)\r"
 	@mkdir -p $(@D)
-	@bear --output $(OBJDIR)/compile_commands.json -- $(MAKE) -B > /dev/null 2>&1
-	@echo -e "\e[1K\r\e[32m[DONE]\e[0m dump compile_commands.json"
+	@bear --output $@ -- $(MAKE) -B > /dev/null 2>&1
+	@echo -e "\e[1K\r\e[32m[DONE]\e[0m dump $(notdir $@)"
 .PHONY: force
 
 dup-cc: $(OBJDIR)/compile_commands.json

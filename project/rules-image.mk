@@ -2,12 +2,6 @@ MOUNT_POINT := $(OBJDIR)/iso
 
 RAW_HD_IMAGE := hd/test1.img
 
-MBR_FILE    := $(OBJDIR)/boot/mbr.bin
-BOOT_FILE   := $(OBJDIR)/boot/boot.bin
-LOADER_FILE := $(OBJDIR)/boot/loader.bin
-
-ORANGE_FS_FLAG_FILE := $(OBJDIR)/fs_flags/orange_flag.bin
-
 $(IMAGE_FILE)p0: $(RAW_HD_IMAGE) $(MBR_FILE) $(BOOT_FILE)
 	@echo -ne "[PROC] pre-build image\r"
 	@mkdir -p $(@D)
@@ -30,6 +24,13 @@ $(IMAGE_FILE)p0: $(RAW_HD_IMAGE) $(MBR_FILE) $(BOOT_FILE)
 
 $(IMAGE_FILE)p1: $(IMAGE_FILE)p0 $(LOADER_FILE) $(KERNEL_FILE)
 	@echo -ne "[PROC] install bootloader & kernel\r"
+	@\
+	loader_size=`stat -c "%s" $(LOADER_FILE)`;					\
+	if [ "$$loader_size" -gt "$(LOADER_SIZE_LIMIT)" ]; then		\
+		echo -en "\e[1K\r\e[31mLOADER too large";				\
+		echo -e "($${loader_size}/$(LOADER_SIZE_LIMIT))\e[0m"	\
+		exit 1;													\
+	fi
 	@mkdir -p $(@D)
 	@cp -f $< $@
 	@mkdir -p $(MOUNT_POINT)

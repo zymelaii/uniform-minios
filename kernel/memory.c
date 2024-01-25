@@ -14,7 +14,7 @@ spinlock_t kmem_lock;
 void* unsafe_kmalloc(size_t size) {
     static void* base = KMEM_BASE;
     if (KMEM_LIMIT - base < size) { return NULL; }
-    void* ptr = base;
+    void* ptr  = base;
     base      += size;
     return ptr;
 }
@@ -93,7 +93,7 @@ int mballoc_free(memblk_allocator_t* allocator, void* addr, size_t size) {
     if (index < allocator->nr_frees) {
         assert(addr + size <= after->addr);
         if (addr + size == after->addr) {
-            after->addr = addr;
+            after->addr  = addr;
             after->size += size;
             ++merged;
         }
@@ -159,6 +159,11 @@ memblk_allocator_t* mballoc_create_by(
 }
 
 void init_memory() {
+    //! NOTE: end symbol is provided by compiler, it's address is end of
+    //! elf(kernel)
+    extern int end;
+    assert((void*)&end <= KMEM_BASE);
+
     kmem_allocator =
         mballoc_create(unsafe_kmalloc, NUM_1K, KMEM_BASE, KMEM_LIMIT);
     assert(kmem_allocator != NULL);

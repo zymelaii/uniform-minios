@@ -20,6 +20,7 @@
         "-I${workspaceFolder}/include/kernel",
         "-I${workspaceFolder}/include/lib",
         "-I${workspaceFolder}/include/deps",
+        "-I${workspaceFolder}/include/fs",
         "-I${workspaceFolder}/build/include",
         "-Wno-unknown-attributes",
     ],

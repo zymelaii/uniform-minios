@@ -18,9 +18,9 @@ $(OBJDIR)/%.c.obj: %.c $(filter %.h,$(GENERATED_FILES)) $(CACHED_FLAG_FILES)
 	@$(CC) $(CFLAGS) -c -o $@ $<
 	@echo -e "\e[1K\r\e[32m[DONE]\e[0m cc $<"
 
-# [fallthrough] compile assembly objects
-$(OBJDIR)/%.obj: % $(CACHED_FLAG_FILES)
+# compile assembly objects
+$(OBJDIR)/%.asm.obj: %.asm $(filter %.inc,$(GENERATED_FILES)) $(CACHED_FLAG_FILES)
 	@echo -ne "[PROC] as $<\r"
 	@mkdir -p $(@D)
-	@$(AS) $(ASFLAGS) -f elf -o $@ $<
+	@$(AS) $(ASFLAGS) -MD $(patsubst %.obj, %.d, $@) -f elf -o $@ $<
 	@echo -e "\e[1K\r\e[32m[DONE]\e[0m as $<"
