@@ -15,3 +15,4 @@ include $(PROJMK_PREFIX)prepare-fs_flags.mk
 include $(PROJMK_PREFIX)prepare-lib.mk
 include $(PROJMK_PREFIX)prepare-user.mk
 include $(PROJMK_PREFIX)prepare-kernel.mk
+include $(PROJMK_PREFIX)prepare-tools.mk

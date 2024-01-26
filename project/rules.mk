@@ -2,7 +2,7 @@
 PROJMK_PREFIX ?=
 
 # general rules
-all: $(IMAGE_FILE) $(KERNEL_DEBUG_FILE)
+all: $(IMAGE_FILE) $(KERNEL_DEBUG_FILE) $(TOOLS_EXECUTABLE)
 .PHONY: all
 
 clean:
@@ -61,6 +61,7 @@ include $(PROJMK_PREFIX)rules-lib.mk
 include $(PROJMK_PREFIX)rules-user.mk
 include $(PROJMK_PREFIX)rules-kernel.mk
 include $(PROJMK_PREFIX)rules-image.mk
+include $(PROJMK_PREFIX)rules-tools.mk
 include $(PROJMK_PREFIX)rules-deps.mk
 
 # install rules
@@ -71,6 +72,7 @@ install:
 			$(KERNEL_FILE) 			\
 			$(KERNEL_DEBUG_FILE) 	\
 			$(LIBRT_FILE)			\
+			$(TOOLS_EXECUTABLE)		\
 	";								\
 	for file in $${files}; do 		\
 		target=`basename $${file}`;									\
@@ -114,3 +116,4 @@ user: $(USER_TAR_FILE)
 kernel: $(KERNEL_FILE) $(KERNEL_DEBUG_FILE)
 krnl: kernel
 image: $(IMAGE_FILE)
+tools: $(TOOLS_EXECUTABLE)
