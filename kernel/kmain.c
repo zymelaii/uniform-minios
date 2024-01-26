@@ -1,4 +1,3 @@
-#include <unios/proc.h>
 #include <unios/vga.h>
 #include <unios/kstate.h>
 #include <unios/memory.h>
@@ -9,33 +8,15 @@
 #include <unios/vfs.h>
 #include <unios/fs.h>
 #include <unios/tracing.h>
-#include <unios/page.h>
-#include <unios/layout.h>
-#include <unios/interrupt.h>
-#include <arch/x86.h>
-#include <assert.h>
-#include <string.h>
+#include <unios/assert.h>
 
 extern void init();
 
-static void clear_lower_ptes_from_loader() {
-    u32 page_num = *(u32 *)PageTblNumAddr;
-    u32 phyaddr  = KernelPageTblAddr;
-    memset(K_PHY2LIN(phyaddr), 0, sizeof(u32) * page_num);
-    memset(K_PHY2LIN(phyaddr + NUM_4K), 0, NUM_4K * page_num);
-    pg_refresh();
-}
-
 void kernel_main() {
-    //! FIXME: sync with new bootloader impl
-
     //! ATTENTION: ints is disabled through the whole `kernel_main`
 
     //! TODO: maybe we can print our logo here?
     vga_set_cursor_visible_unsafe(false);
-
-    clear_lower_ptes_from_loader();
-    kdebug("clean-up stuffs from loader");
 
     kstate_on_init = true;
     kdebug("init kernel");

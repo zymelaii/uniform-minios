@@ -98,42 +98,34 @@ static u32 exec_load(
 }
 
 static int exec_pcb_init(const char* path) {
-    char* p_regs;
-    strncpy(
-        p_proc_current->pcb.name, path, sizeof(p_proc_current->pcb.name) - 1);
-
     pcb_t* pcb = &p_proc_current->pcb;
+    strncpy(pcb->name, path, sizeof(pcb->name) - 1);
 
     pcb->ldts[0].attr0 = DA_C | RPL_USER << 5;
     pcb->ldts[1].attr0 = DA_DRW | RPL_USER << 5;
-    pcb->regs.cs     = ((8 * 0) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    pcb->regs.ds     = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    pcb->regs.es     = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    pcb->regs.fs     = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    pcb->regs.ss     = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | RPL_USER;
-    pcb->regs.gs     = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | RPL_USER;
-    pcb->regs.eflags = EFLAGS_RESERVED | EFLAGS_IF | EFLAGS_IOPL(0);
+    pcb->regs.cs       = (pcb->regs.cs & SA_MASK_RPL) | RPL_USER;
+    pcb->regs.ds       = (pcb->regs.ds & SA_MASK_RPL) | RPL_USER;
+    pcb->regs.es       = (pcb->regs.es & SA_MASK_RPL) | RPL_USER;
+    pcb->regs.fs       = (pcb->regs.fs & SA_MASK_RPL) | RPL_USER;
+    pcb->regs.ss       = (pcb->regs.ss & SA_MASK_RPL) | RPL_USER;
+    pcb->regs.gs       = (pcb->regs.gs & SA_MASK_RPL) | RPL_USER;
+    pcb->regs.eflags   = EFLAGS_RESERVED | EFLAGS_IF | EFLAGS_IOPL(0);
 
     u32* frame = (void*)(p_proc_current + 1) - P_STACKTOP;
     memcpy(frame, &pcb->regs, sizeof(pcb->regs));
 
-    lin_memmap_t* memmap     = &p_proc_current->pcb.memmap;
-    memmap->vpage_lin_base   = VpageLinBase;
-    memmap->vpage_lin_limit  = VpageLinBase;
-    memmap->stack_lin_base   = StackLinBase;
-    memmap->stack_lin_limit  = StackLinBase - 0x4000;
-    memmap->arg_lin_base     = ArgLinBase;
-    memmap->arg_lin_limit    = ArgLinLimitMAX;
-    memmap->kernel_lin_base  = KernelLinBase;
-    memmap->kernel_lin_limit = KernelLinBase + KernelSize;
+    //! NOTE: pcb only comes from fork or init_locked_pcb, so simply keep the
+    //! origin memmap
+    //! TODO: adaptive addr allocation
+    lin_memmap_t* memmap = &pcb->memmap;
 
     //! NOTE: keep pages for heap and only reset allocator, so that we can
     //! reduce the overhead of page table updates at the cost of a certain
     //! memory footprint
-    mballoc_reset_unsafe(p_proc_current->pcb.allocator);
+    mballoc_reset_unsafe(pcb->allocator);
 
-    p_proc_current->pcb.tree_info.text_hold = true;
-    p_proc_current->pcb.tree_info.data_hold = true;
+    pcb->tree_info.text_hold = true;
+    pcb->tree_info.data_hold = true;
 
     return 0;
 }

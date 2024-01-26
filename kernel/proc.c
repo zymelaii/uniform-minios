@@ -186,15 +186,25 @@ bool init_locked_pcb(
     //! memory
     bool ok = pg_create_and_init(&pcb->cr3);
     if (!ok) { return false; }
-    mmap->kernel_lin_base   = KernelLinBase;
-    mmap->kernel_lin_limit  = KernelLinBase + KernelSize;
-    mmap->arg_lin_base      = ArgLinBase;
-    mmap->arg_lin_limit     = ArgLinLimitMAX;
+
+    phyaddr_t phy_base  = 0;
+    phyaddr_t phy_limit = 0;
+
+    //! 1. kernel space
+    ok = get_phymem_bound(KernelSpace, &phy_base, &phy_limit);
+    assert(ok);
+    mmap->kernel_lin_base  = (u32)K_PHY2LIN(phy_base);
+    mmap->kernel_lin_limit = (u32)K_PHY2LIN(phy_limit);
+
+    //! 2. arg page, save argv & envp
+    mmap->arg_lin_base  = ArgLinBase;
+    mmap->arg_lin_limit = ArgLinLimitMAX;
+
+    //! 3. stack, alloc 16 KB currently
+    //! TODO: adaptive stack allocation
     mmap->stack_lin_base    = StackLinBase;
-    mmap->stack_lin_limit   = StackLinBase - 0x4000;
+    mmap->stack_lin_limit   = StackLinBase - 4 * NUM_4K;
     mmap->stack_child_limit = StackLinLimitMAX;
-    mmap->heap_lin_base     = HeapLinBase;
-    mmap->heap_lin_limit    = HeapLinBase;
     ok                      = pg_map_laddr_range(
         pcb->cr3,
         mmap->stack_lin_limit,
@@ -202,7 +212,11 @@ bool init_locked_pcb(
         PG_P | PG_U | PG_RWX,
         PG_P | PG_U | PG_RWX);
     assert(ok);
-    //! FIXME: better heap manager
+
+    //! 4. heap, alloc dynamically
+    mmap->heap_lin_base  = HeapLinBase;
+    mmap->heap_lin_limit = HeapLinBase;
+    //! TODO: better heap manager
     pcb->allocator = mballoc_create(
         kmalloc, NUM_4K, (void*)mmap->heap_lin_base, (void*)HeapLinLimitMAX);
     pcb->heap_lock = 0;
@@ -227,13 +241,14 @@ bool init_locked_pcb(
     u32* frame = (void*)stack - P_STACKTOP;
     memcpy(frame, &pcb->regs, P_STACKTOP);
 
-    pcb->esp_save_context = (void*)(frame - 10); //<! popad + popfd + ret
+    //! represent: popad + popfd + ret
+    pcb->esp_save_context = (void*)(frame - 10);
     memset(pcb->esp_save_context, 0, sizeof(u32) * 10);
     frame[-1] = (u32)restart_restore; //<! ret -> retaddr
     //! NOTE: proc inited here always start from kernel space, so allow iopl=1
     //! here
-    frame[-2] =
-        EFLAGS_RESERVED | EFLAGS_IF | EFLAGS_IOPL(1); //<! popfd -> eflags
+    //! represent: popfd -> eflags
+    frame[-2] = EFLAGS_RESERVED | EFLAGS_IF | EFLAGS_IOPL(1);
 
     pcb->esp_save_int     = (void*)frame;
     pcb->esp_save_syscall = (void*)stack;

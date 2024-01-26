@@ -237,7 +237,7 @@ static Elf32_Phdr *get_phdr(Elf32_Ehdr *eh, int i) {
 //! TODO: change it to real macro
 #define PT_LOAD 1
 
-void *load_kernel(void) {
+void load_and_enter_kernel(void) {
     readsect((void *)&bpb, 0);
 
     fat_start_sec  = bpb.BPB_RsvdSecCnt;
@@ -269,5 +269,11 @@ void *load_kernel(void) {
             (void *)ph->p_vaddr + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
     }
 
-    return (void *)eh->e_entry;
+    if (eh->e_entry == 0) {
+        //! TODO: something error with kernel, abort
+        while (true) {}
+    }
+
+    ((void (*)())eh->e_entry)();
+    __builtin_unreachable();
 }

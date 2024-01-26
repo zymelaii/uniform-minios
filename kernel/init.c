@@ -23,11 +23,6 @@ static void init_setup_envs() {
                                "PATH=/orange\n"
                                "PATH_EXT=.bin\n";
 
-    char path[PATH_MAX] = {};
-    snprintf(path, sizeof(path), "/orange/%s", INSTALL_FILENAME);
-    int resp = untar(path, "/orange");
-    assert(resp != -1);
-
     const char *path_to_env0 = "/orange/env";
 
     int fd = open(path_to_env0, O_RDWR);
@@ -97,6 +92,8 @@ static void init_setup_envs() {
         kfree(buf);
     }
     close(fd);
+
+    kinfo("setup envs done");
 }
 
 static void init_enable_preinited_procs() {
@@ -106,6 +103,14 @@ static void init_enable_preinited_procs() {
         if (proc->pcb.stat != PREINITED) { continue; }
         proc->pcb.stat = READY;
     }
+}
+
+static void init_untar_user_progs() {
+    char path[PATH_MAX] = {};
+    snprintf(path, sizeof(path), "/orange/%s", INSTALL_FILENAME);
+    int resp = untar(path, "/orange");
+    assert(resp != -1);
+    kinfo("untar builtin user programs done");
 }
 
 void init_handle_new_tty() {
@@ -142,6 +147,7 @@ void init_handle_new_tty() {
 void init() {
     init_setup_fs();
     init_setup_envs();
+    init_untar_user_progs();
     init_enable_preinited_procs();
     while (true) {
         init_handle_new_tty();

@@ -10,33 +10,18 @@
 #define NUM_4M 0x00400000
 #define NUM_1G 0x40000000
 
-//! WARNING: real size of kernel may excceed this
-#define KernelSize 0x800000
-
-//! where to store total page table, see load.inc
-#define PageTblNumAddr 0x500
-
-//! where is kernel page table, see load.inc
-#define KernelPageTblAddr 0x200000
-
-//! read only sections in elf
-//! NOTE: only for reference, refer to target elf please
-#define RO_SECTION_SIZE (512 * NUM_1M)
-#define TextLinBase     ((uintptr_t)0x0)
-#define TextLinLimitMAX (TextLinBase + RO_SECTION_SIZE)
-#define DataLinLimitMAX TextLinLimitMAX
-
-//! reserved memory space
-#define VpageLinBase     ((uintptr_t)DataLinLimitMAX)
-#define VpageLinLimitMAX (VpageLinBase + 128 * NUM_1M - NUM_4K)
-
-//! shared memory space, reserved for fork, etc.
-#define SharePageBase  ((uintptr_t)VpageLinLimitMAX)
-#define SharePageLimit (SharePageBase + NUM_4K)
+//! where to store page table from loader ~ phy [1, 2) MB
+//! NOTE: reusable after `kernel_main` done
+#define LoaderPageTableBase  NUM_1M
+#define LoaderPageTableLimit (LoaderPageTableBase + NUM_1M)
 
 //! user heap
-#define HeapLinBase     ((uintptr_t)SharePageLimit)
+#define HeapLinBase     ((uintptr_t)(512u * NUM_1M))
 #define HeapLinLimitMAX (HeapLinBase + NUM_1G)
+
+//! shared memory space, used by fork
+#define SharePageBase  ((uintptr_t)(HeapLinBase - NUM_4K))
+#define SharePageLimit HeapLinBase
 
 //! kernel memory space
 #define KernelLinBase     ((uintptr_t)(3u * NUM_1G))

@@ -33,8 +33,6 @@ void recycle_proc_memory(process_t* proc) {
     memmap->ph_info = NULL;
 
     recycle_memory_part(
-        cr3, (void*)memmap->vpage_lin_base, (void*)memmap->vpage_lin_limit);
-    recycle_memory_part(
         cr3, (void*)memmap->heap_lin_base, (void*)memmap->heap_lin_limit);
     recycle_memory_part(
         cr3, (void*)memmap->arg_lin_base, (void*)memmap->arg_lin_limit);

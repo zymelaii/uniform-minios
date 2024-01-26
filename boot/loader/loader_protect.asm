@@ -1,7 +1,7 @@
 %include "loader.inc"
 
 extern setup_paging
-extern load_kernel
+extern load_and_enter_kernel
 
 [bits 32]
 
@@ -23,10 +23,8 @@ ProtectStart:
     mov     eax, cr0
     or      eax, 80000000h
     mov     cr0, eax
-    ; load kernel
-    call    load_kernel
-    ; `load_kernel` returns the entrypoint of the kernel
-    jmp     eax
+    ; jmp into kernel, always noreturn
+    call    load_and_enter_kernel
 
 [section .data]
 

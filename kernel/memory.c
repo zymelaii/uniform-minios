@@ -3,17 +3,47 @@
 #include <unios/page.h>
 #include <unios/sync.h>
 #include <unios/schedule.h>
+#include <unios/tracing.h>
+#include <arch/device.h>
 #include <string.h>
+#include <stddef.h>
+#include <config.h>
+#include <math.h>
 
-memblk_allocator_t* kmem_allocator  = NULL;
-memblk_allocator_t* kpage_allocator = NULL;
-memblk_allocator_t* upage_allocator = NULL;
+//! { kmem, kpage, upage, kernel space } ~ [ base, limit ]
+static phyaddr_t memblk_bounds[4][2];
 
-spinlock_t kmem_lock;
+static memblk_allocator_t* kmem_allocator  = NULL;
+static memblk_allocator_t* kpage_allocator = NULL;
+static memblk_allocator_t* upage_allocator = NULL;
+
+static spinlock_t kmem_lock;
+
+static size_t get_total_memory() {
+    size_t         total_memory = 0;
+    device_info_t* device_info  = (void*)DEVICE_INFO_ADDR;
+    //! FIXME: unios not support multi-seg memory currently
+    for (int i = 0; i < device_info->ards_count; ++i) {
+        ards_t ards = device_info->ards_buffer[i];
+        if (ards.type == 1) {
+            size_t limit = ards.base_addr_low + ards.length_low;
+            total_memory = MAX(total_memory, limit);
+        }
+    }
+    return total_memory;
+}
+
+static size_t get_critical_memsize() {
+    //! NOTE: symbol `_end` is provided by GCC and is addressed at the end of
+    //! the elf, addr from 0 to 4 KB aligned `_end` is marked critical and
+    //! should never be access by anything except the kernel
+    extern int end;
+    return (size_t)K_LIN2PHY(ROUNDUP(&end, NUM_4K));
+}
 
 void* unsafe_kmalloc(size_t size) {
-    static void* base = KMEM_BASE;
-    if (KMEM_LIMIT - base < size) { return NULL; }
+    static void* base = 0;
+    if (base == 0) { base = K_PHY2LIN(get_critical_memsize()); }
     void* ptr = base;
     base      += size;
     return ptr;
@@ -158,48 +188,6 @@ memblk_allocator_t* mballoc_create_by(
     return obj;
 }
 
-void init_memory() {
-    //! NOTE: symbol `_end` is provided by GCC and is addressed at the end of
-    //! the elf, perform bound check to ensure the runtime mem ops do not
-    //! destroy the kernel
-    extern int end;
-    assert((void*)&end <= KMEM_BASE);
-
-    kmem_allocator =
-        mballoc_create(unsafe_kmalloc, NUM_1K, KMEM_BASE, KMEM_LIMIT);
-    assert(kmem_allocator != NULL);
-
-    //! NOTE: remove `kmem_allocator` itself from the kmem segment, and now
-    //! nothing except a violent mem direct write could destroy kmem_allocator
-    size_t kmem_alloc_size =
-        sizeof(memblk_allocator_t)
-        + kmem_allocator->total_free_slots * sizeof(memblk_t);
-    kmem_allocator->memblk_base = (void*)kmem_allocator + kmem_alloc_size;
-    mballoc_reset_unsafe(kmem_allocator);
-
-    //! NOTE: ok, now `unsafe_kmalloc` has finished its task and was completely
-    //! replaced by `kmem_allocator`, it should never be used since then,
-    //! neither should we free the memory allocated by it
-
-    //! NOTE: kpage_allocator & upage_allocator is expected always to allocate
-    //! and free page size, so the free slots should never excceed half of total
-    //! pages
-
-    kpage_allocator = mballoc_create_by(
-        kmem_allocator,
-        ((KPAGE_LIMIT - KPAGE_BASE + NUM_4K - 1) / NUM_4K + 1) / 2,
-        KPAGE_BASE,
-        KPAGE_LIMIT);
-    assert(kpage_allocator != NULL);
-
-    upage_allocator = mballoc_create_by(
-        kmem_allocator,
-        ((UPAGE_LIMIT - UPAGE_BASE + NUM_4K - 1) / NUM_4K + 1) / 2,
-        UPAGE_BASE,
-        UPAGE_LIMIT);
-    assert(upage_allocator != NULL);
-}
-
 void* kmalloc(size_t size) {
     size_t real_size = size + sizeof(size_t);
     lock_or(&kmem_lock, schedule);
@@ -255,4 +243,111 @@ void free_phypage(phyaddr_t phyaddr) {
         return;
     }
     unreachable();
+}
+
+bool get_phymem_bound(int type, phyaddr_t* base, phyaddr_t* limit) {
+    int index = -1;
+    if (type == KernelMemory) {
+        index = 0;
+    } else if (type == KernelPage) {
+        index = 1;
+    } else if (type == UserPage) {
+        index = 2;
+    } else if (type == KernelSpace) {
+        index = 3;
+    }
+    if (index == -1) { return false; }
+    if (base != NULL) { *base = memblk_bounds[index][0]; }
+    if (limit != NULL) { *limit = memblk_bounds[index][1]; }
+    return true;
+}
+
+void init_memory() {
+    size_t total_mem = get_total_memory();
+    kinfo("total memory: %.3f MB", total_mem * 1.0 / NUM_1M);
+
+    size_t total_crit = get_critical_memsize();
+    kdebug("total critical memory: %.3f KB", total_crit * 1.0 / NUM_1K);
+
+    const int    kmem_slots = 1000;
+    const size_t kmem_alloc_size =
+        sizeof(memblk_allocator_t) + kmem_slots * sizeof(memblk_t);
+
+    //! layout: critical | kmem_allocator | kmem | kpage | upage
+
+    const ssize_t min_kmem_size  = 2 * NUM_1M;
+    const ssize_t min_kpage_size = 2 * NUM_1M;
+    const ssize_t min_upage_size = 8 * NUM_1M;
+    const ssize_t min_free_mem =
+        min_kmem_size + min_kpage_size + min_upage_size;
+
+    const ssize_t kmem_offset    = total_crit + kmem_alloc_size;
+    const ssize_t total_free_mem = (ssize_t)total_mem - kmem_offset;
+    if (total_free_mem < min_free_mem) {
+        size_t min_req = idiv_ceil(min_free_mem + kmem_offset, NUM_1M);
+        kerror("physical memory too small, expect >= %d MB", min_req);
+        kfatal("init memory failed");
+    }
+
+    //! current assignment: kmem 0.2, kpage 0.1, upage 0.7
+    int    slack     = total_free_mem % NUM_4K;
+    size_t kmemsize  = ROUNDDOWN(total_free_mem * 0.2 - slack, NUM_4K) + slack;
+    size_t kpagesize = ROUNDUP(total_free_mem * 0.1, NUM_4K);
+    size_t upagesize = total_free_mem - kmemsize - kpagesize;
+    assert(kpagesize == ROUNDDOWN(kpagesize, NUM_4K));
+    assert(upagesize == ROUNDDOWN(upagesize, NUM_4K));
+    assert(kmemsize + kpagesize + upagesize == total_free_mem);
+
+    memblk_bounds[0][0] = kmem_offset;
+    memblk_bounds[0][1] = memblk_bounds[0][0] + kmemsize;
+    memblk_bounds[1][0] = memblk_bounds[0][1];
+    memblk_bounds[1][1] = memblk_bounds[1][0] + kpagesize;
+    memblk_bounds[2][0] = memblk_bounds[1][1];
+    memblk_bounds[2][1] = memblk_bounds[2][0] + upagesize;
+    memblk_bounds[3][0] = 0;
+    memblk_bounds[3][1] = memblk_bounds[1][1];
+    kdebug(
+        "kmem: address at %#p, %d MB %d KB %d bytes",
+        memblk_bounds[0][0],
+        kmemsize / NUM_1M,
+        kmemsize % NUM_1M / NUM_1K,
+        kmemsize % NUM_1K);
+    kdebug(
+        "kpage: address at %#p, %d pages",
+        memblk_bounds[1][0],
+        kpagesize / NUM_4K);
+    kdebug(
+        "upage: address at %#p, %d pages",
+        memblk_bounds[2][0],
+        upagesize / NUM_4K);
+
+    //! NOTE: separate `kmem_allocator` itself from the kmem segment, so nothing
+    //! except a violent mem direct write could destroy kmem_allocator
+    kmem_allocator = mballoc_create(
+        unsafe_kmalloc,
+        kmem_slots,
+        K_PHY2LIN(memblk_bounds[0][0]),
+        K_PHY2LIN(memblk_bounds[0][1]));
+
+    //! NOTE: ok, now `unsafe_kmalloc` has finished its task and was completely
+    //! replaced by `kmem_allocator`, it should never be used since then,
+    //! neither should we free the memory allocated by it
+
+    //! NOTE: kpage_allocator & upage_allocator is expected always to allocate
+    //! and free page size, so the free slots should never excceed half of total
+    //! pages
+
+    kpage_allocator = mballoc_create_by(
+        kmem_allocator,
+        idiv_ceil(memblk_bounds[1][1] - memblk_bounds[1][0], NUM_4K * 2),
+        (void*)memblk_bounds[1][0],
+        (void*)memblk_bounds[1][1]);
+    assert(kpage_allocator != NULL);
+
+    upage_allocator = mballoc_create_by(
+        kmem_allocator,
+        idiv_ceil(memblk_bounds[2][1] - memblk_bounds[2][0], NUM_4K * 2),
+        (void*)memblk_bounds[2][0],
+        (void*)memblk_bounds[2][1]);
+    assert(upage_allocator != NULL);
 }

@@ -137,7 +137,7 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
         kstate_on_init ? "during initializing kernel" : "");
 
     kinfo(
-        "eip=%#08x cr2=%#08x code=%x cs=%#08x eflags=%#04x from pid=%d\n",
+        "eip=%#08x cr2=%#08x code=%x cs=%#08x eflags=%#04x from pid=%d",
         eip,
         cr2,
         err_code,
@@ -188,9 +188,15 @@ bool pg_create_and_init(u32 *p_cr3) {
     memset(K_PHY2LIN(cr3), 0, NUM_4K);
     bool should_rollback = false;
     //! init kernel memory space
-    u32 laddr   = KernelLinBase;
+    phyaddr_t phy_base  = 0;
+    phyaddr_t phy_limit = 0;
+    bool      ok        = get_phymem_bound(KernelSpace, &phy_base, &phy_limit);
+    assert(ok);
+    u32 base    = (u32)K_PHY2LIN(phy_base);
+    u32 limit   = (u32)K_PHY2LIN(phy_limit);
+    u32 laddr   = base;
     u32 phyaddr = 0;
-    while (laddr < KernelLinBase + KernelSize) {
+    while (laddr < limit) {
         bool ok = pg_map_laddr(
             cr3, laddr, phyaddr, PG_P | PG_U | PG_RWX, PG_P | PG_S | PG_RWX);
         if (!ok) {
@@ -201,8 +207,7 @@ bool pg_create_and_init(u32 *p_cr3) {
         phyaddr += NUM_4K;
     }
     if (should_rollback) {
-        pg_unmap_laddr_range(
-            cr3, KernelLinBase, KernelLinBase + KernelSize, false);
+        pg_unmap_laddr_range(cr3, base, limit, false);
         return false;
     } else {
         pg_refresh();

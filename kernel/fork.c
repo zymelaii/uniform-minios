@@ -74,11 +74,6 @@ static bool fork_memory_clone(u32 ppid, u32 pid) {
     //! from base to limit might lost some pages differing from the parent's,
     //! cases are like that, e.g. heap limit reduction, thread clone, etc.
 
-    //! clone vpage
-    ok = fork_clone_part_rwx(
-        ppid, pid, memmap->vpage_lin_base, memmap->vpage_lin_limit);
-    if (!ok) { return false; }
-
     //! clone heap
     ok = fork_clone_part_rwx(
         ppid, pid, memmap->heap_lin_base, memmap->heap_lin_limit);
@@ -89,10 +84,12 @@ static bool fork_memory_clone(u32 ppid, u32 pid) {
     ok = fork_clone_part_rwx(
         ppid, pid, memmap->stack_lin_limit, memmap->stack_lin_base);
     if (!ok) { return false; }
+
     //! clone args
     ok = fork_clone_part_rwx(
         ppid, pid, memmap->arg_lin_base, memmap->arg_lin_limit);
     if (!ok) { return false; }
+
     return true;
 }
 

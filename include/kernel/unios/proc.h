@@ -120,23 +120,20 @@ typedef struct ph_info_s {
 
 typedef struct lin_memmap_s {
     ph_info_t* ph_info;
-    //! stack limit for child thread
-    u32 stack_child_limit;
-    //! reserved
-    u32 vpage_lin_base;
-    u32 vpage_lin_limit;
     //! heap
     u32 heap_lin_base;
     u32 heap_lin_limit;
-    //! stack
-    u32 stack_lin_base;
-    u32 stack_lin_limit;
-    //! where to store exec argv & envp
-    u32 arg_lin_base;
-    u32 arg_lin_limit;
     //! kernel space
     u32 kernel_lin_base;
     u32 kernel_lin_limit;
+    //! where to store exec argv & envp
+    u32 arg_lin_base;
+    u32 arg_lin_limit;
+    //! stack
+    u32 stack_lin_base;
+    u32 stack_lin_limit;
+    //! stack limit for child thread
+    u32 stack_child_limit;
 } lin_memmap_t;
 
 typedef struct pcb_s {
@@ -163,7 +160,7 @@ typedef struct pcb_s {
     u32  pid;
     char name[16];
 
-    enum process_stat   stat;
+    int                 stat;
     u32                 cr3;
     memblk_allocator_t* allocator;
     u32                 heap_lock;

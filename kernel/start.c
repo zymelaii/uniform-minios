@@ -8,7 +8,6 @@ void cstart() {
     // descriptor(&gdt, 0, 0x00000000, 0x00000, 0);
     // descriptor(&gdt, 1, 0x00000000, 0xfffff, DA_CR | DA_32 | DA_LIMIT_4K);
     // descriptor(&gdt, 2, 0x00000000, 0xfffff, DA_DRW | DA_32 | DA_LIMIT_4K);
-    // descriptor(&gdt, 3, 0x000b8000, 0x0ffff, DA_DRW | DA_DPL3);
 
     memcpy(&gdt, (void*)gdt_ptr.base, gdt_ptr.limit + 1);
 
