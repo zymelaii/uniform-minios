@@ -21,20 +21,37 @@ run: $(IMAGE_FILE)
 	@$(QEMU) $(QEMU_FLAGS) -drive file=$<,format=raw
 .PHONY: run
 
-debug: $(IMAGE_FILE)
+debug: $(IMAGE_FILE) $(KERNEL_DEBUG_FILE)
 	@$(QEMU) $(QEMU_FLAGS) -drive file=$<,format=raw -s -S
 .PHONY: debug
 
-monitor: $(KERNEL_DEBUG_FILE)
-	@$(GDB) $(GDB_FLAGS) -ex 'file $<'
+monitor:
+	@\
+	dbg="$(KERNEL_DEBUG_FILE)";							\
+	if [ -e "$${dbg}" ]; then 							\
+		$(GDB) $(GDB_FLAGS)								\
+			-ex 'layout-sac'							\
+			-ex "file $${dbg}"							\
+			-ex 'b _start'								\
+			-ex 'c';									\
+	else												\
+		echo -e "\e[31m[FAIL]\e[0m missing debug file";	\
+	fi
 .PHONY: monitor
 
 monitor-real: $(GDB_REALMODE_XML)
 	@\
-	$(GDB) $(GDB_FLAGS) 			\
-		-ex 'set tdesc filename $<'	\
-		-ex 'b *0x7c00'				\
-		-ex 'c'
+	dbg="$(KERNEL_DEBUG_FILE)";							\
+	if [ -e "$${dbg}" ]; then 							\
+		$(GDB) $(GDB_FLAGS)								\
+			-ex 'layout-rac'							\
+			-ex "file $${dbg}"							\
+			-ex 'set tdesc filename $<'					\
+			-ex 'b *0x7c00'								\
+			-ex 'c';									\
+	else												\
+		echo -e "\e[31m[FAIL]\e[0m missing debug file";	\
+	fi
 
 # unios rules
 include $(PROJMK_PREFIX)rules-gen.mk
@@ -91,6 +108,7 @@ d: debug
 i: install
 gdb: monitor
 mon: monitor
+mon-real: monitor-real
 lib: $(LIBRT_FILE)
 user: $(USER_TAR_FILE)
 kernel: $(KERNEL_FILE) $(KERNEL_DEBUG_FILE)

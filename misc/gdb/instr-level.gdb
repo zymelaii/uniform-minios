@@ -5,6 +5,8 @@ resp = gdb.execute('x/2i $pc', to_string=True)
 resp = re.findall(r'(0x[0-9A-Fa-f]+)(?=(?: <[^>]+>)?:)', resp)
 gdb.execute(f'set $pc={resp[1]}')
 end
+tui disable
+tui enable
 end
 
 define break-next-instr
