@@ -1,10 +1,9 @@
 #include <tar.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <stddef.h>
 #include <assert.h>
 #include <limits.h>
+#include <math.h>
 
 int untar(const char *tar_path, const char *extract_dir) {
     //! NOTE: untar may only support 1-depth extraction
@@ -35,7 +34,7 @@ int untar(const char *tar_path, const char *extract_dir) {
         bool skip = fdout == -1;
 
         while (left > 0) {
-            int iobytes = MIN(sizeof(buf), left);
+            int iobytes = min(sizeof(buf), left);
             read(fd, buf, ((iobytes - 1) / 512 + 1) * 512);
             if (!skip) { write(fdout, buf, iobytes); }
             left -= iobytes;

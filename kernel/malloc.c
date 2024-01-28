@@ -5,6 +5,7 @@
 #include <unios/schedule.h>
 #include <stddef.h>
 #include <atomic.h>
+#include <math.h>
 
 void *do_malloc(int size) {
     pcb_t *pcb = &p_proc_current->pcb;
@@ -27,7 +28,7 @@ void *do_malloc(int size) {
 
     *(size_t *)ptr = real_size;
     pcb->memmap.heap_lin_limit =
-        MAX(pcb->memmap.heap_lin_limit, (u32)(ptr + real_size));
+        max(pcb->memmap.heap_lin_limit, (u32)(ptr + real_size));
 
     return ptr + sizeof(size_t);
 }

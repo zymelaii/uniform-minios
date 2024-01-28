@@ -13,7 +13,7 @@ static size_t get_total_memory() {
         ards_t ards = device_info->ards_buffer[i];
         if (ards.type == 1) {
             size_t segment_limit = ards.base_addr_low + ards.length_low;
-            total_memory         = MAX(total_memory, segment_limit);
+            total_memory         = max(total_memory, segment_limit);
         }
     }
 
@@ -67,7 +67,7 @@ uint32_t *setup_paging() {
         uint32_t pde1               = alloc_free_page() | attr_rw_p;
         loader_cr3[index]           = pde0;
         loader_cr3[index + koffset] = pde1;
-        int       total_ptes = MIN(1024, (total_memory - maddr) / NUM_4K);
+        int       total_ptes = min(1024, (total_memory - maddr) / NUM_4K);
         uint32_t *pd0        = pg_frame_phyaddr(pde0);
         uint32_t *pd1        = pg_frame_phyaddr(pde1);
         for (int j = 0; j < total_ptes; ++j, laddr += NUM_4K) {

@@ -27,7 +27,7 @@ static size_t get_total_memory() {
         ards_t ards = device_info->ards_buffer[i];
         if (ards.type == 1) {
             size_t limit = ards.base_addr_low + ards.length_low;
-            total_memory = MAX(total_memory, limit);
+            total_memory = max(total_memory, limit);
         }
     }
     return total_memory;
@@ -38,7 +38,7 @@ static size_t get_critical_memsize() {
     //! the elf, addr from 0 to 4 KB aligned `_end` is marked critical and
     //! should never be access by anything except the kernel
     extern int end;
-    return (size_t)K_LIN2PHY(ROUNDUP(&end, NUM_4K));
+    return (size_t)K_LIN2PHY(round_up(&end, NUM_4K));
 }
 
 void* unsafe_kmalloc(size_t size) {
@@ -291,11 +291,11 @@ void init_memory() {
 
     //! current assignment: kmem 0.2, kpage 0.1, upage 0.7
     int    slack     = total_free_mem % NUM_4K;
-    size_t kmemsize  = ROUNDDOWN(total_free_mem * 0.2 - slack, NUM_4K) + slack;
-    size_t kpagesize = ROUNDUP(total_free_mem * 0.1, NUM_4K);
+    size_t kmemsize  = round_down(total_free_mem * 0.2 - slack, NUM_4K) + slack;
+    size_t kpagesize = round_up(total_free_mem * 0.1, NUM_4K);
     size_t upagesize = total_free_mem - kmemsize - kpagesize;
-    assert(kpagesize == ROUNDDOWN(kpagesize, NUM_4K));
-    assert(upagesize == ROUNDDOWN(upagesize, NUM_4K));
+    assert(kpagesize == round_down(kpagesize, NUM_4K));
+    assert(upagesize == round_down(upagesize, NUM_4K));
     assert(kmemsize + kpagesize + upagesize == total_free_mem);
 
     memblk_bounds[0][0] = kmem_offset;

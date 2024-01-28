@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
+#include <math.h>
 
 static u32 exec_elfcpy(u32 fd, Elf32_Phdr elf_progh, u32 pte_attr) {
     u32  laddr   = elf_progh.p_vaddr;
@@ -25,7 +26,7 @@ static u32 exec_elfcpy(u32 fd, Elf32_Phdr elf_progh, u32 pte_attr) {
     assert(ok);
     pg_refresh();
 
-    u32 size = MIN(llimit - laddr, flimit - foffset);
+    u32 size = min(llimit - laddr, flimit - foffset);
     do_lseek(fd, foffset, SEEK_SET);
     do_read(fd, (void*)laddr, size);
     laddr += size;

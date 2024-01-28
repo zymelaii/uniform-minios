@@ -4,6 +4,7 @@
 #include <config.h>
 #include <limits.h>
 #include <stddef.h>
+#include <math.h>
 
 static void *memset(void *v, int c, size_t n) {
     char *p;
@@ -130,7 +131,7 @@ static void *read_clus(void *dst, uint32_t clus) {
  * @return uint32_t cluster number
  */
 static uint32_t get_clus(uint32_t offset) {
-    uint32_t elf_offset = ROUNDDOWN(offset, clus_bytes);
+    uint32_t elf_offset = round_down(offset, clus_bytes);
 
 #define CLUS_CACHE_SIZE 4
     // (elf_offset, cluster)
@@ -198,7 +199,7 @@ void readseg(void *va, uint32_t count, uint32_t offset) {
     if (offset % clus_bytes != 0) {
         uint32_t clus = get_clus(offset);
         read_clus(BUF_DATA_ADDR, clus);
-        uint32_t n = MIN(end_offset, ROUNDUP(offset, clus_bytes)) - offset;
+        uint32_t n = min(end_offset, round_up(offset, clus_bytes)) - offset;
         va         = memcpy(va, BUF_DATA_ADDR + offset % clus_bytes, n);
         offset     += n;
     }

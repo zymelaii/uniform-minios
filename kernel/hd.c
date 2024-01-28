@@ -15,6 +15,7 @@
 #include <atomic.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 struct part_ent PARTITION_ENTRY;
 
@@ -113,7 +114,7 @@ void hd_rdwt(MESSAGE *p) {
     void *la         = (void *)va2la(p->PROC_NR, p->BUF);
 
     while (bytes_left) {
-        int bytes = MIN(SECTOR_SIZE, bytes_left);
+        int bytes = min(SECTOR_SIZE, bytes_left);
         if (p->type == DEV_READ) {
             interrupt_wait();
             insw(REG_DATA, hdbuf, SECTOR_SIZE);
@@ -174,7 +175,7 @@ static void hd_rdwt_real(RWInfo *p) {
     void *la         = p->kbuf; // attention here!
 
     while (bytes_left) {
-        int bytes = MIN(SECTOR_SIZE, bytes_left);
+        int bytes = min(SECTOR_SIZE, bytes_left);
         if (p->msg->type == DEV_READ) {
             interrupt_wait();
             insw(REG_DATA, hdbuf, SECTOR_SIZE);
