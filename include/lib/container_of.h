@@ -17,8 +17,8 @@
     ({                                                  \
         void *__mptr = (void *)(ptr);                   \
         static_assert(                                  \
-            __same_type(*(ptr), ((type *)0)->member)    \
-                || __same_type(*(ptr), void),           \
+            is_same_type(*(ptr), ((type *)0)->member)   \
+                || is_same_type(*(ptr), void),          \
             "pointer type mismatch in container_of()"); \
         ((type *)(__mptr - offsetof(type, member)));    \
     })
