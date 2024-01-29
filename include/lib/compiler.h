@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef asm
+#define asm __asm__
+#endif
+
 #define auto __auto_type
 
 #define likely(x)   (__builtin_expect(!!(x), 1))

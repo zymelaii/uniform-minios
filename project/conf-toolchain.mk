@@ -39,7 +39,7 @@ CFLAGS += -fno-builtin -nostdinc -nostdlib
 CFLAGS += -m32
 CFLAGS += -static -fno-pie
 CFLAGS += -g
-CFLAGS += -Werror -Wno-unused-variable
+CFLAGS += -Werror -Wno-unused-variable -Wno-unknown-attributes
 #! NOTE: default qemu cpu core may not support sse
 CFLAGS += -mno-sse -mno-sse2
 

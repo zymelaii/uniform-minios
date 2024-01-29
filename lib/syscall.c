@@ -2,61 +2,61 @@
 #include <unios/environ.h>
 #include <unios/sync.h>
 #include <sys/types.h>
+#include <compiler.h>
 #include <stdint.h>
 #include <stddef.h>
 
 static int syscall0(u32 NR_syscall) {
     int ret = 0;
-    __asm__ volatile("int $0x80"
-                     : "=a"(ret)
-                     : "a"(NR_syscall)
-                     : "cc", "memory");
+    asm volatile("int $0x80"
+                 : "=a"(ret)
+                 : "a"(NR_syscall)
+                 : "cc", "memory");
     return ret;
 }
 
 static int syscall1(u32 NR_syscall, u32 p1) {
     int ret = 0;
-    __asm__ volatile("int $0x80"
-                     : "=a"(ret)
-                     : "a"(NR_syscall), "b"(p1)
-                     : "cc", "memory");
+    asm volatile("int $0x80"
+                 : "=a"(ret)
+                 : "a"(NR_syscall), "b"(p1)
+                 : "cc", "memory");
     return ret;
 }
 
 static int syscall2(u32 NR_syscall, u32 p1, u32 p2) {
     int ret = 0;
-    __asm__ volatile("int $0x80"
-                     : "=a"(ret)
-                     : "a"(NR_syscall), "b"(p1), "c"(p2)
-                     : "cc", "memory");
+    asm volatile("int $0x80"
+                 : "=a"(ret)
+                 : "a"(NR_syscall), "b"(p1), "c"(p2)
+                 : "cc", "memory");
     return ret;
 }
 
 static int syscall3(u32 NR_syscall, u32 p1, u32 p2, u32 p3) {
     int ret = 0;
-    __asm__ volatile("int $0x80"
-                     : "=a"(ret)
-                     : "a"(NR_syscall), "b"(p1), "c"(p2), "d"(p3)
-                     : "cc", "memory");
+    asm volatile("int $0x80"
+                 : "=a"(ret)
+                 : "a"(NR_syscall), "b"(p1), "c"(p2), "d"(p3)
+                 : "cc", "memory");
     return ret;
 }
 
 static int syscall4(u32 NR_syscall, u32 p1, u32 p2, u32 p3, u32 p4) {
     int ret = 0;
-    __asm__ volatile("int $0x80"
-                     : "=a"(ret)
-                     : "a"(NR_syscall), "b"(p1), "c"(p2), "d"(p3), "S"(p4)
-                     : "cc", "memory");
+    asm volatile("int $0x80"
+                 : "=a"(ret)
+                 : "a"(NR_syscall), "b"(p1), "c"(p2), "d"(p3), "S"(p4)
+                 : "cc", "memory");
     return ret;
 }
 
 static int syscall5(u32 NR_syscall, u32 p1, u32 p2, u32 p3, u32 p4, u32 p5) {
     int ret = 0;
-    __asm__ volatile(
-        "int $0x80"
-        : "=a"(ret)
-        : "a"(NR_syscall), "b"(p1), "c"(p2), "d"(p3), "S"(p4), "D"(p5)
-        : "cc", "memory");
+    asm volatile("int $0x80"
+                 : "=a"(ret)
+                 : "a"(NR_syscall), "b"(p1), "c"(p2), "d"(p3), "S"(p4), "D"(p5)
+                 : "cc", "memory");
     return ret;
 }
 
