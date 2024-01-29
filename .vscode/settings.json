@@ -3,16 +3,11 @@
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "files.trimTrailingWhitespace": true,
-    "editor.formatOnSave": true,
     "[c]": {
         "editor.defaultFormatter": "xaver.clang-format",
     },
     "[cpp]": {
         "editor.defaultFormatter": "xaver.clang-format",
-    },
-    //! NOTE: specify config.h.in as plain otherwise auto format would break the placeholder
-    "files.associations": {
-        "config.h.in": "plaintext",
     },
     //! todo notes
     "todo-tree.highlights.enabled": false,

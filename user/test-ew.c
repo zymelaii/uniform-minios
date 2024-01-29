@@ -13,7 +13,7 @@ int      lock_id    = 11451;
 #define sync_printf printf
 
 void testfork() {
-    int t = 0;
+    int  t  = 0;
     char id = 32;
     while (1) {
         ++t;
@@ -31,7 +31,7 @@ void testfork() {
                 memblk[0x0ffff] = get_pid() + '0';
                 int c;
                 int cpid;
-                cpid    = wait(&c);
+                cpid = wait(&c);
 
                 if (cpid == -1) {
                     sync_printf(
@@ -39,10 +39,7 @@ void testfork() {
                         memblk[0x0ffff],
                         get_pid());
                 } else {
-
-                    if (id > 126) {
-                        id = 32;
-                    }
+                    if (id > 126) { id = 32; }
                     sync_printf(
                         "[%c] I'm %d, program %d exit with %d\n",
                         id,
@@ -84,10 +81,10 @@ void testrecycle() {
 }
 
 int main(int argc, char *argv[]) {
-    //handle_t handle = krnlobj_create(lock_id);
-    //assert(handle != INVALID_HANDLE);
-    // sync_printf("startup test exit & wait [%d]\n", (int)handle);
+    // handle_t handle = krnlobj_create(lock_id);
+    // assert(handle != INVALID_HANDLE);
+    //  sync_printf("startup test exit & wait [%d]\n", (int)handle);
     testrecycle();
     testfork();
-    //krnlobj_destroy(handle);
+    // krnlobj_destroy(handle);
 }

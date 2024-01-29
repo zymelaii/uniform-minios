@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 int main() {
-    printf("%8d\n\n\n",1);
+    printf("%8d\n\n\n", 1);
 
     for (int j = 0; j <= 100; ++j) {
         printf("\r");

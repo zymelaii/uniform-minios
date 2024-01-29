@@ -64,6 +64,26 @@ include $(PROJMK_PREFIX)rules-image.mk
 include $(PROJMK_PREFIX)rules-tools.mk
 include $(PROJMK_PREFIX)rules-deps.mk
 
+# format rules
+format:
+	@\
+	TARGET="clang-format";											\
+	MINVER=17;														\
+	echo -ne "[PROC] format sources\r";								\
+	FORMATTER=`which $${TARGET} 2> /dev/null`;						\
+	if [ -z "$${FORMATTER}" ]; then 								\
+		echo -e "\e[31m[FAIL]\e[0m $${TARGET} is not available";	\
+		exit;														\
+	fi;																\
+	VERSION=`$${FORMATTER} --version | grep -Po '(\d+)(?=\.\d+\.\d+)'`;		\
+	if [ "$${VERSION}" -lt $${MINVER} ]; then								\
+		echo -e "\e[31m[FAIL]\e[0m requires $${TARGET} >= $${MINVER}.0.0";	\
+		exit;																\
+	fi;																		\
+	$${FORMATTER} -i `git ls-files '*.c' '*.h'`;							\
+	echo -e "\e[1K\r\e[32m[DONE]\e[0m format sources";
+.PHONY: format
+
 # install rules
 install:
 	@\
@@ -117,3 +137,4 @@ kernel: $(KERNEL_FILE) $(KERNEL_DEBUG_FILE)
 krnl: kernel
 image: $(IMAGE_FILE)
 tools: $(TOOLS_EXECUTABLE)
+fmt: format
