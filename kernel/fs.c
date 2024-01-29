@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
+#include <math.h>
 
 static rwlock_t inode_table_rwlock;
 
@@ -896,16 +897,16 @@ static int do_rdwt(MESSAGE *fs_msg) {
 
     int pos_end;
     if (fs_msg->type == READ)
-        pos_end = MIN(pos + len, pin->i_size);
+        pos_end = min(pos + len, pin->i_size);
     else /* WRITE */
-        pos_end = MIN(pos + len, pin->i_nr_sects * SECTOR_SIZE);
+        pos_end = min(pos + len, pin->i_nr_sects * SECTOR_SIZE);
 
     int off         = pos % SECTOR_SIZE;
     int rw_sect_min = pin->i_start_sect + (pos >> SECTOR_SIZE_SHIFT);
     int rw_sect_max = pin->i_start_sect + (pos_end >> SECTOR_SIZE_SHIFT);
 
     int chunk =
-        MIN(rw_sect_max - rw_sect_min + 1, SECTOR_SIZE >> SECTOR_SIZE_SHIFT);
+        min(rw_sect_max - rw_sect_min + 1, SECTOR_SIZE >> SECTOR_SIZE_SHIFT);
 
     int bytes_rw   = 0;
     int bytes_left = len;
@@ -915,7 +916,7 @@ static int do_rdwt(MESSAGE *fs_msg) {
 
     for (i = rw_sect_min; i <= rw_sect_max; i += chunk) {
         /* read/write this amount of bytes every time */
-        int bytes = MIN(bytes_left, chunk * SECTOR_SIZE - off);
+        int bytes = min(bytes_left, chunk * SECTOR_SIZE - off);
         rw_sector(
             DEV_READ,
             pin->i_dev,
