@@ -324,7 +324,7 @@ IntegerLiteralSeparator:
     Decimal: -1
     Hex: -1
 #! Line ending style (\n or \r\n) to use.
-LineEnding: CRLF
+# LineEnding: CRLF
 #! The indentation used for requires expression bodies.
 RequiresExpressionIndentation: OuterScope
 ---
