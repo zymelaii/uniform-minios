@@ -5,8 +5,8 @@
 #include <unios/keyboard.h>
 #include <unios/console.h>
 #include <unios/tracing.h>
-#include <sys/defs.h>
 #include <arch/x86.h>
+#include <sys/defs.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

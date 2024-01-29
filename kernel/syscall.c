@@ -1,8 +1,8 @@
 ﻿#include <unios/syscall.h>
 #include <unios/assert.h>
 #include <unios/proc.h>
-#include <sys/types.h>
 #include <arch/x86.h>
+#include <sys/types.h>
 #include <stdint.h>
 
 #define SYSCALL_ENTRY(name) [NR_##name] = sys_##name

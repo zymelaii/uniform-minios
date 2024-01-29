@@ -1,37 +1,72 @@
-#include <unios/protect.h>
-#include <unios/proc.h>
-#include <unios/tty.h>
-#include <unios/console.h>
 #include <unios/keyboard.h>
-#include <unios/keymap.h>
 #include <unios/interrupt.h>
+#include <unios/keymap.h>
 #include <arch/x86.h>
 #include <sys/defs.h>
-#include <string.h>
-#include <stdint.h>
 
 static KB_INPUT    kb_in;
 static MOUSE_INPUT mouse_in;
 static int         mouse_init;
 
-static int code_with_E0;
-static int shift_l;     /* l shift state	*/
-static int shift_r;     /* r shift state	*/
-static int alt_l;       /* l alt state		*/
-static int alt_r;       /* r left state		*/
-static int ctrl_l;      /* l ctrl state		*/
-static int ctrl_r;      /* l ctrl state		*/
-static int caps_lock;   /* Caps Lock		*/
-static int num_lock;    /* Num Lock		*/
-static int scroll_lock; /* Scroll Lock		*/
-static int column;
+static int shift_l;     //<! left shift state
+static int shift_r;     //<! right shift state
+static int alt_l;       //<! left alt state
+static int alt_r;       //<! right left state
+static int ctrl_l;      //<! left ctrl state
+static int ctrl_r;      //<! left ctrl state
+static int caps_lock;   //<! Caps Lock
+static int num_lock;    //<! Num Lock
+static int scroll_lock; //<! Scroll Lock
 
-static uint8_t get_byte_from_kb_buf();
-static void    set_leds();
-static void    set_mouse_leds();
-static void    kb_wait();
+/*!
+ * \brief wait until the input buffer of 8042 is empty.
+ */
+static void kb_wait() {
+    uint8_t kb_stat;
+    do { kb_stat = inb(KB_CMD); } while (kb_stat & 0x02);
+}
 
-// static void	kb_ack();
+/*!
+ * \brief set the leds according to: caps_lock, num_lock & scroll_lock.
+ */
+static void set_leds() {
+    kb_wait();
+    outb(KB_CMD, KEYCMD_WRITE_MODE);
+    kb_wait();
+    outb(KB_DATA, KBC_MODE);
+}
+
+static void set_mouse_leds() {
+    kb_wait();
+    outb(KB_CMD, KBCMD_EN_MOUSE_INTFACE);
+    kb_wait();
+    outb(KB_CMD, KEYCMD_SENDTO_MOUSE);
+    kb_wait();
+    outb(KB_DATA, MOUSECMD_ENABLE);
+    kb_wait();
+    outb(KB_CMD, KEYCMD_WRITE_MODE);
+    kb_wait();
+    outb(KB_DATA, KBC_MODE);
+}
+
+/*!
+ * \brief read a byte from the keyboard buffer.
+ */
+static uint8_t get_byte_from_kb_buf() {
+    uint8_t scan_code;
+
+    //! wait for a byte to arrive
+    while (kb_in.count <= 0) {}
+
+    disable_int();
+    scan_code = *(kb_in.p_tail);
+    kb_in.p_tail++;
+    if (kb_in.p_tail == kb_in.buf + KB_IN_BYTES) { kb_in.p_tail = kb_in.buf; }
+    kb_in.count--;
+    enable_int();
+
+    return scan_code;
+}
 
 void kb_handler(int irq) {
     uint8_t scan_code = inb(0x60);
@@ -115,8 +150,6 @@ void init_keyboard() {
     num_lock    = 1;
     scroll_lock = 0;
 
-    column = 0;
-
     set_leds();
     put_irq_handler(KEYBOARD_IRQ, kb_handler);
     enable_irq(KEYBOARD_IRQ);
@@ -126,293 +159,186 @@ void init_keyboard() {
 }
 
 void keyboard_read(tty_t* p_tty) {
-    uint8_t scan_code;
+    //! make or break
+    bool make = false;
 
-    /**
-     * 1 : make
-     * 0 : break
-     */
-    int make;
-
-    /**
-     * We use a integer to record a key press.
-     * For instance, if the key HOME is pressed, key will be evaluated to
-     * `HOME' defined in keyboard.h.
-     */
+    //! we use a integer to record a key press. for instance, if the key home is
+    //! pressed, key will be evaluated to `HOME' defined in keyboard.h.
     uint32_t key = 0;
 
-    /**
-     * This var points to a row in keymap[]. I don't use two-dimension
-     * array because I don't like it.
-     */
-    uint32_t* keyrow;
-
     while (kb_in.count > 0) {
-        code_with_E0 = 0;
-        scan_code    = get_byte_from_kb_buf();
+        bool    code_with_E0 = false;
+        uint8_t scan_code    = get_byte_from_kb_buf();
 
-        /* parse the scan code below */
-        if (scan_code == 0xE1) {
-            int     i;
+        if (scan_code == 0xe1) {
             uint8_t pausebreak_scan_code[] = {
-                0xE1, 0x1D, 0x45, 0xE1, 0x9D, 0xC5};
+                0xe1, 0x1d, 0x45, 0xe1, 0x9d, 0xc5};
             int is_pausebreak = 1;
-            for (i = 1; i < 6; i++) {
+            for (int i = 1; i < 6; ++i) {
                 if (get_byte_from_kb_buf() != pausebreak_scan_code[i]) {
                     is_pausebreak = 0;
                     break;
                 }
             }
             if (is_pausebreak) { key = PAUSEBREAK; }
-        } else if (scan_code == 0xE0) {
-            code_with_E0 = 1;
+        } else if (scan_code == 0xe0) {
+            code_with_E0 = true;
             scan_code    = get_byte_from_kb_buf();
-
-            /* PrintScreen is pressed */
-            if (scan_code == 0x2A) {
-                code_with_E0 = 0;
-                if ((scan_code = get_byte_from_kb_buf()) == 0xE0) {
-                    code_with_E0 = 1;
+            if (scan_code == 0x2a) {
+                //! PrintScreen pressed
+                code_with_E0 = false;
+                if ((scan_code = get_byte_from_kb_buf()) == 0xe0) {
+                    code_with_E0 = true;
                     if ((scan_code = get_byte_from_kb_buf()) == 0x37) {
                         key  = PRINTSCREEN;
-                        make = 1;
+                        make = true;
                     }
                 }
-            }
-            /* PrintScreen is released */
-            else if (scan_code == 0xB7) {
-                code_with_E0 = 0;
-                if ((scan_code = get_byte_from_kb_buf()) == 0xE0) {
-                    code_with_E0 = 1;
-                    if ((scan_code = get_byte_from_kb_buf()) == 0xAA) {
+            } else if (scan_code == 0xb7) {
+                //! PrintScreen release
+                code_with_E0 = false;
+                if ((scan_code = get_byte_from_kb_buf()) == 0xe0) {
+                    code_with_E0 = true;
+                    if ((scan_code = get_byte_from_kb_buf()) == 0xaa) {
                         key  = PRINTSCREEN;
-                        make = 0;
+                        make = false;
                     }
                 }
             }
         }
 
         if ((key != PAUSEBREAK) && (key != PRINTSCREEN)) {
-            int caps;
+            uint32_t* keyrow = keymap[scan_code & 0x7f];
+            make             = !(scan_code & FLAG_BREAK);
+            int column       = 0;
 
-            /* make or break */
-            make = (scan_code & FLAG_BREAK ? 0 : 1);
+            bool caps = shift_l || shift_r;
+            if (caps_lock && keyrow[0] >= 'a' && keyrow[0] <= 'z') {
+                caps = !caps;
+            }
 
-            keyrow = &keymap[(scan_code & 0x7F) * MAP_COLS];
-
-            column = 0;
-
-            caps = shift_l || shift_r;
-            if (caps_lock && keyrow[0] >= 'a' && keyrow[0] <= 'z') caps = !caps;
-
-            if (caps) column = 1;
-
-            if (code_with_E0) column = 2;
+            if (caps) { column = 1; }
+            if (code_with_E0) { column = 2; }
 
             key = keyrow[column];
 
             switch (key) {
-                case SHIFT_L:
+                case SHIFT_L: {
                     shift_l = make;
-                    break;
-                case SHIFT_R:
+                } break;
+                case SHIFT_R: {
                     shift_r = make;
-                    break;
-                case CTRL_L:
+                } break;
+                case CTRL_L: {
                     ctrl_l = make;
-                    break;
-                case CTRL_R:
+                } break;
+                case CTRL_R: {
                     ctrl_r = make;
-                    break;
-                case ALT_L:
+                } break;
+                case ALT_L: {
                     alt_l = make;
-                    break;
-                case ALT_R:
+                } break;
+                case ALT_R: {
                     alt_l = make;
-                    break;
-                case CAPS_LOCK:
+                } break;
+                case CAPS_LOCK: {
                     if (make) {
                         caps_lock = !caps_lock;
                         set_leds();
                     }
-                    break;
-                case NUM_LOCK:
+                } break;
+                case NUM_LOCK: {
                     if (make) {
                         num_lock = !num_lock;
                         set_leds();
                     }
-                    break;
-                case SCROLL_LOCK:
+                } break;
+                case SCROLL_LOCK: {
                     if (make) {
                         scroll_lock = !scroll_lock;
                         set_leds();
                     }
-                    break;
-                default:
-                    break;
+                } break;
             }
         }
 
-        if (make) { /* Break Code is ignored */
-            int pad = 0;
+        //! break code is ignored
+        if (!make) { continue; }
 
-            /* deal with the numpad first */
-            if ((key >= PAD_SLASH) && (key <= PAD_9)) {
-                pad = 1;
-                switch (key) { /* '/', '*', '-', '+',
-                                * and 'Enter' in num pad
-                                */
-                    case PAD_SLASH:
-                        key = '/';
-                        break;
-                    case PAD_STAR:
-                        key = '*';
-                        break;
-                    case PAD_MINUS:
-                        key = '-';
-                        break;
-                    case PAD_PLUS:
-                        key = '+';
-                        break;
-                    case PAD_ENTER:
-                        key = ENTER;
-                        break;
-                    default:
-                        /* the value of these keys
-                         * depends on the Numlock
-                         */
-                        if (num_lock) { /* '0' ~ '9' and '.' in num pad */
-                            if (key >= PAD_0 && key <= PAD_9)
-                                key = key - PAD_0 + '0';
-                            else if (key == PAD_DOT)
-                                key = '.';
-                        } else {
-                            switch (key) {
-                                case PAD_HOME:
-                                    key = HOME;
-                                    break;
-                                case PAD_END:
-                                    key = END;
-                                    break;
-                                case PAD_PAGEUP:
-                                    key = PAGEUP;
-                                    break;
-                                case PAD_PAGEDOWN:
-                                    key = PAGEDOWN;
-                                    break;
-                                case PAD_INS:
-                                    key = INSERT;
-                                    break;
-                                case PAD_UP:
-                                    key = UP;
-                                    break;
-                                case PAD_DOWN:
-                                    key = DOWN;
-                                    break;
-                                case PAD_LEFT:
-                                    key = LEFT;
-                                    break;
-                                case PAD_RIGHT:
-                                    key = RIGHT;
-                                    break;
-                                case PAD_DOT:
-                                    key = DELETE;
-                                    break;
-                                default:
-                                    break;
-                            }
+        //! deal with the numpad first
+        bool numpad = key >= PAD_SLASH && key <= PAD_9;
+        if (numpad) {
+            switch (key) {
+                case PAD_SLASH: {
+                    key = '/';
+                } break;
+                case PAD_STAR: {
+                    key = '*';
+                } break;
+                case PAD_MINUS: {
+                    key = '-';
+                } break;
+                case PAD_PLUS: {
+                    key = '+';
+                } break;
+                case PAD_ENTER: {
+                    key = ENTER;
+                } break;
+                default: {
+                    //! value of these keys depends on the Numlock
+                    if (num_lock) {
+                        //! '0'~'9' & '.'
+                        if (key >= PAD_0 && key <= PAD_9) {
+                            key = key - PAD_0 + '0';
+                        } else if (key == PAD_DOT) {
+                            key = '.';
                         }
                         break;
-                }
+                    }
+                    switch (key) {
+                        case PAD_HOME: {
+                            key = HOME;
+                        } break;
+                        case PAD_END: {
+                            key = END;
+                        } break;
+                        case PAD_PAGEUP: {
+                            key = PAGEUP;
+                        } break;
+                        case PAD_PAGEDOWN: {
+                            key = PAGEDOWN;
+                        } break;
+                        case PAD_INS: {
+                            key = INSERT;
+                        } break;
+                        case PAD_UP: {
+                            key = UP;
+                        } break;
+                        case PAD_DOWN: {
+                            key = DOWN;
+                        } break;
+                        case PAD_LEFT: {
+                            key = LEFT;
+                        } break;
+                        case PAD_RIGHT: {
+                            key = RIGHT;
+                        } break;
+                        case PAD_DOT: {
+                            key = DELETE;
+                        } break;
+                    }
+                } break;
             }
-            key |= shift_l ? FLAG_SHIFT_L : 0;
-            key |= shift_r ? FLAG_SHIFT_R : 0;
-            key |= ctrl_l ? FLAG_CTRL_L : 0;
-            key |= ctrl_r ? FLAG_CTRL_R : 0;
-            key |= alt_l ? FLAG_ALT_L : 0;
-            key |= alt_r ? FLAG_ALT_R : 0;
-            key |= pad ? FLAG_PAD : 0;
-
-            tty_keyboard_proc(p_tty, key);
         }
+
+        key |= shift_l ? FLAG_SHIFT_L : 0;
+        key |= shift_r ? FLAG_SHIFT_R : 0;
+        key |= ctrl_l ? FLAG_CTRL_L : 0;
+        key |= ctrl_r ? FLAG_CTRL_R : 0;
+        key |= alt_l ? FLAG_ALT_L : 0;
+        key |= alt_r ? FLAG_ALT_R : 0;
+        key |= numpad ? FLAG_PAD : 0;
+
+        tty_keyboard_proc(p_tty, key);
     }
-}
-
-/*****************************************************************************
- *                                get_byte_from_kb_buf
- *****************************************************************************/
-/**
- * Read a byte from the keyboard buffer.
- *
- * @return The byte read.
- *****************************************************************************/
-static uint8_t get_byte_from_kb_buf() {
-    uint8_t scan_code;
-
-    while (kb_in.count <= 0) {} /* wait for a byte to arrive */
-
-    disable_int(); /* for synchronization */
-    scan_code = *(kb_in.p_tail);
-    kb_in.p_tail++;
-    if (kb_in.p_tail == kb_in.buf + KB_IN_BYTES) { kb_in.p_tail = kb_in.buf; }
-    kb_in.count--;
-    enable_int(); /* for synchronization */
-
-    return scan_code;
-}
-
-/*****************************************************************************
- *                                kb_wait
- *****************************************************************************/
-/**
- * Wait until the input buffer of 8042 is empty.
- *
- *****************************************************************************/
-static void kb_wait() /* 等待 8042 的输入缓冲区空 */
-{
-    uint8_t kb_stat;
-    do { kb_stat = inb(KB_CMD); } while (kb_stat & 0x02);
-}
-
-/*****************************************************************************
- *                                kb_ack
- *****************************************************************************/
-/**
- * Read from the keyboard controller until a KB_ACK is received.
- *
- *****************************************************************************/
-// static void kb_ack()
-// {
-// 	uint8_t kb_read;
-
-// 	do {
-// 		kb_read = inb(KB_DATA);
-// 	} while (kb_read != KB_ACK);
-// }
-
-/*****************************************************************************
- *                                set_leds
- *****************************************************************************/
-/**
- * Set the leds according to: caps_lock, num_lock & scroll_lock.
- *
- *****************************************************************************/
-static void set_leds() {
-    kb_wait();
-    outb(KB_CMD, KEYCMD_WRITE_MODE);
-    kb_wait();
-    outb(KB_DATA, KBC_MODE);
-}
-
-static void set_mouse_leds() {
-    kb_wait();
-    outb(KB_CMD, KBCMD_EN_MOUSE_INTFACE);
-    kb_wait();
-    outb(KB_CMD, KEYCMD_SENDTO_MOUSE);
-    kb_wait();
-    outb(KB_DATA, MOUSECMD_ENABLE);
-    kb_wait();
-    outb(KB_CMD, KEYCMD_WRITE_MODE);
-    kb_wait();
-    outb(KB_DATA, KBC_MODE);
 }
