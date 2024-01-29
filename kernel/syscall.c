@@ -112,11 +112,11 @@ static u32 sys_close() {
 }
 
 static u32 sys_read() {
-    return do_read(SYSCALL_ARGS3(int, char *, int));
+    return do_read(SYSCALL_ARGS3(int, void *, int));
 }
 
 static u32 sys_write() {
-    return do_write(SYSCALL_ARGS3(int, const char *, int));
+    return do_write(SYSCALL_ARGS3(int, const void *, int));
 }
 
 static u32 sys_lseek() {

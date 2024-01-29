@@ -4,6 +4,10 @@
 #define asm __asm__
 #endif
 
+#ifndef typeof
+#define typeof __typeof__
+#endif
+
 #define auto __auto_type
 
 #define likely(x)   (__builtin_expect(!!(x), 1))

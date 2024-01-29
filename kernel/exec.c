@@ -1,5 +1,4 @@
 ﻿#include <unios/page.h>
-#include <unios/elf.h>
 #include <unios/proc.h>
 #include <unios/syscall.h>
 #include <unios/assert.h>
@@ -9,6 +8,7 @@
 #include <unios/environ.h>
 #include <unios/tracing.h>
 #include <sys/errno.h>
+#include <sys/elf.h>
 #include <stdio.h>
 #include <atomic.h>
 #include <string.h>
@@ -16,11 +16,11 @@
 #include <limits.h>
 #include <math.h>
 
-static u32 exec_elfcpy(u32 fd, Elf32_Phdr elf_progh, u32 pte_attr) {
-    u32  laddr   = elf_progh.p_vaddr;
-    u32  llimit  = elf_progh.p_vaddr + elf_progh.p_memsz;
-    u32  foffset = elf_progh.p_offset;
-    u32  flimit  = elf_progh.p_offset + elf_progh.p_filesz;
+static u32 exec_elfcpy(u32 fd, elf_proghdr_t elf_progh, u32 pte_attr) {
+    u32  laddr   = elf_progh.va;
+    u32  llimit  = elf_progh.va + elf_progh.memsz;
+    u32  foffset = elf_progh.offset;
+    u32  flimit  = elf_progh.offset + elf_progh.filesz;
     bool ok      = pg_map_laddr_range(
         p_proc_current->pcb.cr3, laddr, llimit, PG_P | PG_U | PG_RWX, pte_attr);
     assert(ok);
@@ -36,8 +36,8 @@ static u32 exec_elfcpy(u32 fd, Elf32_Phdr elf_progh, u32 pte_attr) {
 }
 
 static u32 exec_load(
-    u32 fd, const Elf32_Ehdr* elf_header, const Elf32_Phdr* elf_proghs) {
-    assert(elf_header->e_phnum > 0);
+    u32 fd, const elf_header_t* elf_header, const elf_proghdr_t* elf_proghs) {
+    assert(elf_header->phnum > 0);
 
     lin_memmap_t* memmap = &p_proc_current->pcb.memmap;
     u32           cr3    = p_proc_current->pcb.cr3;
@@ -53,18 +53,17 @@ static u32 exec_load(
     }
     memmap->ph_info = NULL;
 
-    for (int ph_num = 0; ph_num < elf_header->e_phnum; ++ph_num) {
-        //! accept PT_LOAD section only now
-        if (elf_proghs[ph_num].p_type != 0x1) { continue; }
-        assert(elf_proghs[ph_num].p_memsz > 0);
+    for (int ph_num = 0; ph_num < elf_header->phnum; ++ph_num) {
+        if (elf_proghs[ph_num].type != ELF_PT_LOAD) { continue; }
+        assert(elf_proghs[ph_num].memsz > 0);
 
-        bool flag_exec  = elf_proghs[ph_num].p_flags & 0b001;
-        bool flag_read  = elf_proghs[ph_num].p_flags & 0b100;
-        bool flag_write = elf_proghs[ph_num].p_flags & 0b010;
+        bool flag_exec  = elf_proghs[ph_num].flags & ELF_PF_X;
+        bool flag_read  = elf_proghs[ph_num].flags & ELF_PF_R;
+        bool flag_write = elf_proghs[ph_num].flags & ELF_PF_W;
         if (!flag_exec && !flag_read && !flag_write) {
             kerror(
                 "exec: exec_load: unknown elf program header flags=0x%x",
-                elf_proghs[ph_num].p_flags);
+                elf_proghs[ph_num].flags);
             return -1;
         }
         //! TODO: more detailed page privilege
@@ -80,9 +79,8 @@ static u32 exec_load(
         //! maintenance ph info list
         //! TODO: integrate linked-list ops
         ph_info_t* new_ph_info = kmalloc(sizeof(ph_info_t));
-        new_ph_info->base      = elf_proghs[ph_num].p_vaddr;
-        new_ph_info->limit =
-            elf_proghs[ph_num].p_vaddr + elf_proghs[ph_num].p_memsz;
+        new_ph_info->base      = elf_proghs[ph_num].va;
+        new_ph_info->limit = elf_proghs[ph_num].va + elf_proghs[ph_num].memsz;
         if (memmap->ph_info == NULL) {
             new_ph_info->next   = NULL;
             new_ph_info->before = NULL;
@@ -208,19 +206,19 @@ static int try_open_executable(const char* path) {
 }
 
 static void* exec_read_and_load(int fd) {
-    Elf32_Ehdr* elf_header = kmalloc(sizeof(Elf32_Ehdr));
+    elf_header_t* elf_header = kmalloc(sizeof(elf_header_t));
     assert(elf_header != NULL);
-    read_Ehdr(fd, elf_header, 0);
+    do_read(fd, elf_header, sizeof(elf_header_t));
 
-    Elf32_Phdr* elf_proghs = kmalloc(sizeof(Elf32_Phdr) * elf_header->e_phnum);
+    elf_proghdr_t* elf_proghs =
+        kmalloc(sizeof(elf_proghdr_t) * elf_header->phnum);
     assert(elf_proghs != NULL);
 
-    for (int i = 0; i < elf_header->e_phnum; i++) {
-        u32 offset = elf_header->e_phoff + i * sizeof(Elf32_Phdr);
-        read_Phdr(fd, elf_proghs + i, offset);
+    for (int i = 0; i < elf_header->phnum; i++) {
+        do_read(fd, &elf_proghs[i], sizeof(elf_proghdr_t));
     }
 
-    void* entry_point = (void*)elf_header->e_entry;
+    void* entry_point = (void*)elf_header->entry;
     int   resp        = exec_load(fd, elf_header, elf_proghs);
 
     kfree(elf_header);

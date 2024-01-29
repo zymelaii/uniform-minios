@@ -226,7 +226,7 @@ int do_vclose(int fd) {
     return vfs_table[index].ops->close(fd);
 }
 
-int do_vread(int fd, char *buf, int count) {
+int do_vread(int fd, void *buf, int count) {
     assert(fd != -1 && "invalid fd");
     file_desc_t *file = p_proc_current->pcb.filp[fd];
     if (file == NULL) { return -1; }
@@ -235,7 +235,7 @@ int do_vread(int fd, char *buf, int count) {
     return vfs_table[index].ops->read(fd, buf, count);
 }
 
-int do_vwrite(int fd, const char *buf, int count) {
+int do_vwrite(int fd, const void *buf, int count) {
     assert(fd != -1 && "invalid fd");
     file_desc_t *file = p_proc_current->pcb.filp[fd];
     if (file == NULL) { return -1; }
@@ -306,11 +306,11 @@ int do_close(int fd) {
     return do_vclose(fd);
 }
 
-int do_read(int fd, char *buf, int count) {
+int do_read(int fd, void *buf, int count) {
     return do_vread(fd, buf, count);
 }
 
-int do_write(int fd, const char *buf, int count) {
+int do_write(int fd, const void *buf, int count) {
     return do_vwrite(fd, buf, count);
 }
 

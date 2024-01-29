@@ -136,11 +136,11 @@ int close(int fd) {
     return syscall1(NR_close, fd);
 }
 
-int read(int fd, char *buf, int count) {
+int read(int fd, void *buf, int count) {
     return syscall3(NR_read, fd, (u32)buf, count);
 }
 
-int write(int fd, const char *buf, int count) {
+int write(int fd, const void *buf, int count) {
     return syscall3(NR_write, fd, (u32)buf, count);
 }
 

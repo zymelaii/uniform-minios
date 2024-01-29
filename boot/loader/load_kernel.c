@@ -1,6 +1,6 @@
-#include <unios/elf.h>
 #include <fs/fat.h>
 #include <arch/x86.h>
+#include <sys/elf.h>
 #include <config.h>
 #include <limits.h>
 #include <stddef.h>
@@ -116,7 +116,7 @@ static uint32_t get_next_clus(uint32_t clus) {
 static void *read_clus(void *dst, uint32_t clus) {
     uint32_t base_sector;
 
-    base_sector = (clus - 2) * bpb.BPB_SecPerClus;
+    base_sector  = (clus - 2) * bpb.BPB_SecPerClus;
     base_sector += data_start_sec;
 
     for (int i = 0; i < bpb.BPB_SecPerClus; i++, dst += SECTSIZE)
@@ -177,7 +177,7 @@ static uint32_t get_clus(uint32_t offset) {
 
         while (new_elf_offset < elf_offset) {
             new_elf_offset += clus_bytes;
-            new_clus       = get_next_clus(new_clus);
+            new_clus        = get_next_clus(new_clus);
         }
         elf_offset_cache[0][0] = new_elf_offset;
         elf_offset_cache[0][1] = new_clus;
@@ -199,20 +199,20 @@ void readseg(void *va, uint32_t count, uint32_t offset) {
     if (offset % clus_bytes != 0) {
         uint32_t clus = get_clus(offset);
         read_clus(BUF_DATA_ADDR, clus);
-        uint32_t n = min(end_offset, round_up(offset, clus_bytes)) - offset;
-        va         = memcpy(va, BUF_DATA_ADDR + offset % clus_bytes, n);
+        uint32_t n  = min(end_offset, round_up(offset, clus_bytes)) - offset;
+        va          = memcpy(va, BUF_DATA_ADDR + offset % clus_bytes, n);
         offset     += n;
     }
     while (end_offset - offset >= clus_bytes) {
-        uint32_t clus = get_clus(offset);
-        va            = read_clus(va, clus);
+        uint32_t clus  = get_clus(offset);
+        va             = read_clus(va, clus);
         offset        += clus_bytes;
     }
     if (offset < end_offset) {
         uint32_t clus = get_clus(offset);
         read_clus(BUF_DATA_ADDR, clus);
-        uint32_t n = end_offset - offset;
-        va         = memcpy(va, BUF_DATA_ADDR, n);
+        uint32_t n  = end_offset - offset;
+        va          = memcpy(va, BUF_DATA_ADDR, n);
         offset     += n;
     }
 }
@@ -222,11 +222,11 @@ void readseg(void *va, uint32_t count, uint32_t offset) {
  *
  * @param eh pointer to ehdr
  * @param i index of phdr
- * @return Elf32_Phdr* pointer to phdr
+ * @return pointer to phdr
  */
-static Elf32_Phdr *get_phdr(Elf32_Ehdr *eh, int i) {
+static elf_proghdr_t *get_phdr(elf_header_t *eh, int i) {
     static uint32_t clus   = 0;
-    uint32_t        offset = eh->e_phoff + i * eh->e_phentsize;
+    uint32_t        offset = eh->phoff + i * eh->phentsize;
     if (clus != get_clus(offset)) {
         clus = get_clus(offset);
         read_clus(BUF_PHDR_ADDR, clus);
@@ -234,9 +234,6 @@ static Elf32_Phdr *get_phdr(Elf32_Ehdr *eh, int i) {
     }
     return BUF_PHDR_ADDR + offset % clus_bytes;
 }
-
-//! TODO: change it to real macro
-#define PT_LOAD 1
 
 void load_and_enter_kernel(void) {
     readsect((void *)&bpb, 0);
@@ -247,7 +244,7 @@ void load_and_enter_kernel(void) {
 
     uint32_t root_clus = bpb.BPB_RootClus;
 
-    while (root_clus < 0x0FFFFFF8) {
+    while (root_clus < 0x0ffffff8) {
         fat32_entry_t *buf_end = read_clus(BUF_DATA_ADDR, root_clus);
         for (fat32_entry_t *p = BUF_DATA_ADDR; p < buf_end; p++) {
             if (strncmp((void *)p->name, KERNEL_NAME_IN_FAT, 11) == 0) {
@@ -261,20 +258,19 @@ void load_and_enter_kernel(void) {
 
     read_clus(ELF_ADDR, elf_clus);
 
-    Elf32_Ehdr *eh = ELF_ADDR;
-    for (int i = 0; i < eh->e_phnum; i++) {
-        Elf32_Phdr *ph = get_phdr(eh, i);
-        if (ph->p_type != PT_LOAD) continue;
-        readseg((void *)ph->p_vaddr, ph->p_filesz, ph->p_offset);
-        memset(
-            (void *)ph->p_vaddr + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
+    elf_header_t *eh = ELF_ADDR;
+    for (int i = 0; i < eh->phnum; i++) {
+        elf_proghdr_t *ph = get_phdr(eh, i);
+        if (ph->type != ELF_PT_LOAD) continue;
+        readseg((void *)ph->va, ph->filesz, ph->offset);
+        memset((void *)ph->va + ph->filesz, 0, ph->memsz - ph->filesz);
     }
 
-    if (eh->e_entry == 0) {
+    if (eh->entry == 0) {
         //! TODO: something error with kernel, abort
         while (true) {}
     }
 
-    ((void (*)())eh->e_entry)();
+    ((void (*)())eh->entry)();
     __builtin_unreachable();
 }

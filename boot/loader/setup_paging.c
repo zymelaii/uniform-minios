@@ -1,13 +1,13 @@
 #include <unios/layout.h>
-#include <arch/device.h>
+#include <unios/host_device.h>
 #include <sys/types.h>
 #include <config.h>
 #include <stddef.h>
 #include <math.h>
 
 static size_t get_total_memory() {
-    size_t         total_memory = 0;
-    device_info_t *device_info  = (void *)DEVICE_INFO_ADDR;
+    size_t              total_memory = 0;
+    host_device_info_t *device_info  = (void *)DEVICE_INFO_ADDR;
 
     for (int i = 0; i < device_info->ards_count; i++) {
         ards_t ards = device_info->ards_buffer[i];
@@ -27,7 +27,7 @@ static inline void *pg_frame_phyaddr(uint32_t entry) {
 static phyaddr_t alloc_free_page() {
     static phyaddr_t allocator = LoaderPageTableBase;
 
-    phyaddr_t phyaddr = allocator;
+    phyaddr_t phyaddr  = allocator;
     allocator         += NUM_4K;
 
     if (phyaddr >= LoaderPageTableLimit) {

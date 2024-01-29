@@ -1,5 +1,6 @@
 #pragma once
 
+#include <compiler.h>
 #include <container_of.h>
 #include <stddef.h>
 

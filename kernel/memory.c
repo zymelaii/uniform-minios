@@ -4,7 +4,7 @@
 #include <unios/sync.h>
 #include <unios/schedule.h>
 #include <unios/tracing.h>
-#include <arch/device.h>
+#include <unios/host_device.h>
 #include <string.h>
 #include <stddef.h>
 #include <config.h>
@@ -20,8 +20,8 @@ static memblk_allocator_t* upage_allocator = NULL;
 static spinlock_t kmem_lock;
 
 static size_t get_total_memory() {
-    size_t         total_memory = 0;
-    device_info_t* device_info  = (void*)DEVICE_INFO_ADDR;
+    size_t              total_memory = 0;
+    host_device_info_t* device_info  = (void*)DEVICE_INFO_ADDR;
     //! FIXME: unios not support multi-seg memory currently
     for (int i = 0; i < device_info->ards_count; ++i) {
         ards_t ards = device_info->ards_buffer[i];

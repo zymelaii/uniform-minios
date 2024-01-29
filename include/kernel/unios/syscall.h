@@ -64,8 +64,8 @@ void do_sleep(int n);
 //! from vfs.c
 int do_open(const char *path, int flags);
 int do_close(int fd);
-int do_read(int fd, char *buf, int count);
-int do_write(int fd, const char *buf, int count);
+int do_read(int fd, void *buf, int count);
+int do_write(int fd, const void *buf, int count);
 int do_lseek(int fd, int offset, int whence);
 int do_unlink(const char *path);
 int do_create(const char *path);

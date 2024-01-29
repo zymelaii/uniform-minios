@@ -16,4 +16,4 @@ typedef struct {
     uint8_t  vga_info[6];
     uint32_t ards_count;
     ards_t   ards_buffer[0];
-} __attribute__((packed)) device_info_t;
+} __attribute__((packed)) host_device_info_t;
