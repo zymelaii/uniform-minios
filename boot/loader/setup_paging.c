@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <math.h>
 
+#define INVALID_PHYADDR 0xffffffff
+
 static size_t get_total_memory() {
     size_t              total_memory = 0;
     host_device_info_t *device_info  = (void *)DEVICE_INFO_ADDR;
@@ -30,10 +32,7 @@ static phyaddr_t alloc_free_page() {
     phyaddr_t phyaddr  = allocator;
     allocator         += NUM_4K;
 
-    if (phyaddr >= LoaderPageTableLimit) {
-        //! TODO: throw out of memory, print error msg and abort here
-        while (true) {}
-    }
+    if (phyaddr >= LoaderPageTableLimit) { phyaddr = INVALID_PHYADDR; }
 
     return phyaddr;
 }
@@ -63,17 +62,34 @@ uint32_t *setup_paging() {
 
     // identical & kernel mapping
     while (maddr < total_memory) {
-        uint32_t pde0               = alloc_free_page() | attr_rw_p;
-        uint32_t pde1               = alloc_free_page() | attr_rw_p;
+        uint32_t pde0 = alloc_free_page();
+        uint32_t pde1 = alloc_free_page();
+
+        //! NOTE: 2 MB page table is big enough to map 128 MB physical memory,
+        //! so if run out of memory occurs during the mapping, we could simple
+        //! break it and continue our boot work since 128 MB already meet our
+        //! needs currently
+        if (pde0 == INVALID_PHYADDR || pde1 == INVALID_PHYADDR) { break; }
+        pde0 |= attr_rw_p;
+        pde1 |= attr_rw_p;
+
+        //! NOTE: ensure identical and kernel maps the same range
+        //! FIXME: unreasonable kernel base assignment may lead the mapping work
+        //! to a very embarrassing situation in this proc method , e.g. large
+        //! physical memory with a very small range memory mapping
+        if (index + koffset >= 1024) { break; }
         loader_cr3[index]           = pde0;
         loader_cr3[index + koffset] = pde1;
+
         int       total_ptes = min(1024, (total_memory - maddr) / NUM_4K);
         uint32_t *pd0        = pg_frame_phyaddr(pde0);
         uint32_t *pd1        = pg_frame_phyaddr(pde1);
+
         for (int j = 0; j < total_ptes; ++j, laddr += NUM_4K) {
             pd0[j] = laddr | attr_rw_p;
             pd1[j] = laddr | attr_rw_p;
         }
+
         maddr += NUM_4M;
         ++index;
     }
