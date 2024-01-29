@@ -192,7 +192,7 @@ struct fs_flags {
                                | 20h    | Read Sectors With Retry         |    V  V  V  V   |
                                | E8h  @ | Write Buffer                    |             D   |
                                +--------+---------------------------------+-----------------+
-
+                           
                                KEY FOR SYMBOLS IN THE TABLE:
                                ===========================================-----=========================================================================
                                PC    Register 1F1: Write Precompensation	@     These commands are
@@ -277,7 +277,7 @@ typedef struct hd_info_s {
 #define ATA_WRITE              0x30
 /* for DEVICE register. */
 #define MAKE_DEVICE_REG(lba, drv, lba_highest) \
- (((lba) << 6) | ((drv) << 4) | (lba_highest & 0xF) | 0xA0)
+    (((lba) << 6) | ((drv) << 4) | (lba_highest & 0xF) | 0xA0)
 
 typedef struct rdwt_info {
     MESSAGE          *msg;

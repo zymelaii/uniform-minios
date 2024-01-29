@@ -35,5 +35,5 @@
 #define StackLinBase     ((uintptr_t)ArgLinBase)
 #define StackLinLimitMAX HeapLinLimitMAX
 
-#define K_PHY2LIN(x) ((void*)((phyaddr_t)(x) + (KernelLinBase)))
-#define K_LIN2PHY(x) ((phyaddr_t)((void*)(x) - (KernelLinBase)))
+#define K_PHY2LIN(x) ((void *)((phyaddr_t)(x) + (KernelLinBase)))
+#define K_LIN2PHY(x) ((phyaddr_t)((void *)(x) - (KernelLinBase)))

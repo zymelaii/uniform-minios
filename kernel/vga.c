@@ -191,7 +191,7 @@ void vgatm_put_printable_str_direct(_state_t *state, const char *str) {
     }
 
     state->next_char_pos += total;
-    state->last_char_pos = state->next_char_pos - 1;
+    state->last_char_pos  = state->next_char_pos - 1;
 }
 
 void vgatm_write_raw(_state_t *state, uint16_t raw) {
@@ -244,9 +244,9 @@ void vgatm_accept_ctrl_ff(_state_t *state) {
     //! NOTE: if out of range, simply skip
     if (offset + origin_offset >= state->capacity) { return; }
     state->origin        += origin_offset;
-    state->real_line     = 0;
-    state->last_char_pos = 0;
-    state->next_char_pos = 0;
+    state->real_line      = 0;
+    state->last_char_pos  = 0;
+    state->next_char_pos  = 0;
 }
 
 bool vgatm_accept_char(_state_t *state, char ch) {

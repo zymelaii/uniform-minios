@@ -1,7 +1,6 @@
 #pragma once
 
 #include <compiler.h>
-#include <stddef.h>
 
 #define typeof_member(T, m) typeof(((T *)0)->m)
 

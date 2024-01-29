@@ -169,4 +169,4 @@ int  vgatm_accept_csi_seq(vga_textmode_state_t *state, const char *seq);
 #define VGATM_BGCOLOR(code) (((uint16_t)(code) >> 12) & 0x7)
 
 #define VGATM_ATTR(fg, bg, blink) \
- ((!!(blink) << 7) | ((VGATMCLR_##bg & 0x7) << 4) | VGATMCLR_##fg)
+    ((!!(blink) << 7) | ((VGATMCLR_##bg & 0x7) << 4) | VGATMCLR_##fg)

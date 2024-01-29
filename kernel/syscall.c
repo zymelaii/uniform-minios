@@ -9,21 +9,21 @@
 
 #define SYSCALL_ARGS1(t1) (t1) get_syscall_argument(0)
 #define SYSCALL_ARGS2(t1, t2) \
- (t1) get_syscall_argument(0), (t2)get_syscall_argument(1)
-#define SYSCALL_ARGS3(t1, t2, t3)                           \
- (t1) get_syscall_argument(0), (t2)get_syscall_argument(1), \
-     (t3)get_syscall_argument(2)
-#define SYSCALL_ARGS4(t1, t2, t3, t4)                       \
- (t1) get_syscall_argument(0), (t2)get_syscall_argument(1), \
-     (t3)get_syscall_argument(2), (t4)get_syscall_argument(3)
-#define SYSCALL_ARGS5(t1, t2, t3, t4, t5)                      \
- (t1) get_syscall_argument(0), (t2)get_syscall_argument(1),    \
-     (t3)get_syscall_argument(2), (t4)get_syscall_argument(3), \
-     (t5)get_syscall_argument(4)
-#define SYSCALL_ARGS6(t1, t2, t3, t4, t5, t6)                  \
- (t1) get_syscall_argument(0), (t2)get_syscall_argument(1),    \
-     (t3)get_syscall_argument(2), (t4)get_syscall_argument(3), \
-     (t5)get_syscall_argument(4), (t6)get_syscall_argument(5)
+    (t1) get_syscall_argument(0), (t2)get_syscall_argument(1)
+#define SYSCALL_ARGS3(t1, t2, t3)                              \
+    (t1) get_syscall_argument(0), (t2)get_syscall_argument(1), \
+        (t3)get_syscall_argument(2)
+#define SYSCALL_ARGS4(t1, t2, t3, t4)                          \
+    (t1) get_syscall_argument(0), (t2)get_syscall_argument(1), \
+        (t3)get_syscall_argument(2), (t4)get_syscall_argument(3)
+#define SYSCALL_ARGS5(t1, t2, t3, t4, t5)                         \
+    (t1) get_syscall_argument(0), (t2)get_syscall_argument(1),    \
+        (t3)get_syscall_argument(2), (t4)get_syscall_argument(3), \
+        (t5)get_syscall_argument(4)
+#define SYSCALL_ARGS6(t1, t2, t3, t4, t5, t6)                     \
+    (t1) get_syscall_argument(0), (t2)get_syscall_argument(1),    \
+        (t3)get_syscall_argument(2), (t4)get_syscall_argument(3), \
+        (t5)get_syscall_argument(4), (t6)get_syscall_argument(5)
 
 static u32 get_syscall_argument(int index) {
     //! FIXME: p_proc_current may not from the caller proc?

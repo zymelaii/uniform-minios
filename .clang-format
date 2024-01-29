@@ -45,9 +45,9 @@ BreakBeforeBinaryOperators: NonAssignment
 
 # REQUIRE: clang-format 3.7
 #! Control of trailing comments.
-# AlignTrailingComments:
-    # Kind: Always
-    # OverEmptyLines: 0
+AlignTrailingComments:
+    Kind: Always
+    OverEmptyLines: 0
 #! If true, while (true) continue; can be put on a single line.
 AllowShortLoopsOnASingleLine: true
 #! If false, a function call’s arguments will either be all on the same line or will have one line each.
@@ -313,18 +313,18 @@ RequiresClausePosition: OwnLine
 
 # REQUIRE: clang-format 16
 #! Break after a group of C++11 attributes before a function declaration/definition name.
-# BreakAfterAttributes: Never
+BreakAfterAttributes: Never
 #! The inline ASM colon style to use.
-# BreakBeforeInlineASMColon: Always
+BreakBeforeInlineASMColon: Always
 #! Insert a newline at end of file if missing.
-# InsertNewlineAtEOF: true
+InsertNewlineAtEOF: true
 #! Format integer literal separators (' for C++ and _ for C#, Java, and JavaScript).
-# IntegerLiteralSeparator:
-#     Binary: 4
-#     Decimal: 3
-#     Hex: 2
+IntegerLiteralSeparator:
+    Binary: -1
+    Decimal: -1
+    Hex: -1
 #! Line ending style (\n or \r\n) to use.
-# LineEnding: CRLF
+LineEnding: CRLF
 #! The indentation used for requires expression bodies.
-# RequiresExpressionIndentation: OuterScope
-...
+RequiresExpressionIndentation: OuterScope
+---

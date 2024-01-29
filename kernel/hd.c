@@ -43,9 +43,9 @@ static void hd_handler(int irq);
 static int  waitfor(int mask, int val, int timeout);
 //~xw
 
-#define DRV_OF_DEV(dev)                     \
- (dev <= MAX_PRIM ? dev / NR_PRIM_PER_DRIVE \
-                  : (dev - MINOR_hd1a) / NR_SUB_PER_DRIVE)
+#define DRV_OF_DEV(dev)                        \
+    (dev <= MAX_PRIM ? dev / NR_PRIM_PER_DRIVE \
+                     : (dev - MINOR_hd1a) / NR_SUB_PER_DRIVE)
 
 /*****************************************************************************
  *                                init_hd
@@ -95,8 +95,8 @@ void hd_rdwt(MESSAGE *p) {
 
     // We only allow to R/W from a SECTOR boundary:
 
-    u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT); // pos / SECTOR_SIZE
-    int logidx  = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+    u32 sect_nr  = (u32)(pos >> SECTOR_SIZE_SHIFT); // pos / SECTOR_SIZE
+    int logidx   = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
     sect_nr     += p->DEVICE < MAX_PRIM ? hd_info[drive].primary[p->DEVICE].base
                                         : hd_info[drive].logical[logidx].base;
 
@@ -155,8 +155,8 @@ static void hd_rdwt_real(RWInfo *p) {
 
     // We only allow to R/W from a SECTOR boundary:
 
-    u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT); // pos / SECTOR_SIZE
-    int logidx  = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+    u32 sect_nr  = (u32)(pos >> SECTOR_SIZE_SHIFT); // pos / SECTOR_SIZE
+    int logidx   = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
     sect_nr     += p->msg->DEVICE < MAX_PRIM
                      ? hd_info[drive].primary[p->msg->DEVICE].base
                      : hd_info[drive].logical[logidx].base;

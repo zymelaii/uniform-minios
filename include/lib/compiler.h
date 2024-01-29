@@ -12,3 +12,5 @@
 #define is_same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
 
 #define static_assert(expr, msg) _Static_assert(expr, msg)
+
+#define offsetof(TYPE, MEMBER) __builtin_offsetof(TYPE, MEMBER)

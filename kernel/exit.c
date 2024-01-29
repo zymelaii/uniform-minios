@@ -25,7 +25,7 @@ static int transfer_child_proc(u32 src_pid, u32 dst_pid) {
         pcb_t* son_pcb = (pcb_t*)pid2proc(src_pcb->tree_info.child_process[i]);
         lock_or(&son_pcb->lock, schedule);
         son_pcb->tree_info.ppid = dst_pid;
-        son_pcb->stat = ZOMBIE;
+        son_pcb->stat           = ZOMBIE;
         ++dst_pcb->tree_info.child_p_num;
         release(&son_pcb->lock);
     }
@@ -64,7 +64,7 @@ static void exit_handle_child_thread_proc(u32 pid, bool lock_recy) {
     }
     pcb->tree_info.child_t_num = 0;
     return;
-}//8049143
+} // 8049143
 
 void do_exit(int exit_code) {
     pcb_t* exit_pcb = NULL;

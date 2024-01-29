@@ -9,7 +9,7 @@ void cstart() {
     // descriptor(&gdt, 1, 0x00000000, 0xfffff, DA_CR | DA_32 | DA_LIMIT_4K);
     // descriptor(&gdt, 2, 0x00000000, 0xfffff, DA_DRW | DA_32 | DA_LIMIT_4K);
 
-    memcpy(&gdt, (void*)gdt_ptr.base, gdt_ptr.limit + 1);
+    memcpy(&gdt, (void *)gdt_ptr.base, gdt_ptr.limit + 1);
 
     gdt_ptr.limit = GDT_SIZE * sizeof(descriptor_t) - 1;
     gdt_ptr.base  = (u32)&gdt;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <container_of.h>
+#include <stddef.h>
 
 struct list_head {
     struct list_head *prev, *next;

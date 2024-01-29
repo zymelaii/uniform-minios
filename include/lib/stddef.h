@@ -15,5 +15,3 @@ typedef int32_t  intptr_t;
 typedef uint32_t uintptr_t;
 
 typedef int32_t ptrdiff_t;
-
-#define offsetof(TYPE, MEMBER)	__builtin_offsetof(TYPE, MEMBER)

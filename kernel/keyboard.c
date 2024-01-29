@@ -87,8 +87,8 @@ void mouse_handler(int irq) {
 
     //! drag
     if (tty->mouse.buttons & MOUSE_LEFT_BUTTON) {
-        u8 x_dir         = mouse_in.buf[0] & 0x10;
-        u8 y_dir         = mouse_in.buf[0] & 0x20;
+        u8 x_dir          = mouse_in.buf[0] & 0x10;
+        u8 y_dir          = mouse_in.buf[0] & 0x20;
         tty->mouse.off_x += x_dir == 0x10 ? -1 : +1;
         tty->mouse.off_y += y_dir == 0x20 ? -1 : +1;
     }

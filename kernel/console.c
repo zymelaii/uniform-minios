@@ -95,7 +95,7 @@ void vcon_scroll(console_t* con, int row_diff) {
     }
     row_diff += row_corrected;
 
-    int diff             = row_diff * state->width;
+    int diff              = row_diff * state->width;
     state->origin        += diff;
     state->cursor_pos    -= diff;
     state->last_char_pos -= diff;

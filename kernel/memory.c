@@ -44,7 +44,7 @@ static size_t get_critical_memsize() {
 void* unsafe_kmalloc(size_t size) {
     static void* base = 0;
     if (base == 0) { base = K_PHY2LIN(get_critical_memsize()); }
-    void* ptr = base;
+    void* ptr  = base;
     base      += size;
     return ptr;
 }
@@ -123,7 +123,7 @@ int mballoc_free(memblk_allocator_t* allocator, void* addr, size_t size) {
     if (index < allocator->nr_frees) {
         assert(addr + size <= after->addr);
         if (addr + size == after->addr) {
-            after->addr = addr;
+            after->addr  = addr;
             after->size += size;
             ++merged;
         }

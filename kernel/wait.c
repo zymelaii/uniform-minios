@@ -28,7 +28,7 @@ static int try_remove_killed_child(u32 pid) {
         --pcb->tree_info.child_k_num;
         return (int)pcb->tree_info.child_killed[i];
     }
-    panic("unreachable");
+    unreachable();
 }
 
 static void remove_zombie_child(u32 pid) {

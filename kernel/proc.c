@@ -21,7 +21,7 @@ process_t* proc_table[NR_PCBS];
 rwlock_t   proc_table_rwlock;
 
 #define TASK_ENTRY(handler) \
- { handler, #handler }
+    { handler, #handler }
 
 task_t task_table[NR_TASKS] = {
     TASK_ENTRY(tty_handler),

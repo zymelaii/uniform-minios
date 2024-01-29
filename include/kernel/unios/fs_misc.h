@@ -226,79 +226,79 @@ typedef struct file_desc {
  * Since all invocations of `rw_sector()' in FS look similar (most of the
  * params are the same), we use this macro to make code more readable.
  */
-#define RD_SECT(dev, sect_nr, fsbuf)                 \
- rw_sector(                                          \
-     DEV_READ,                                       \
-     dev,                                            \
-     (sect_nr)*SECTOR_SIZE,                          \
-     SECTOR_SIZE,              /* read one sector */ \
-     proc2pid(p_proc_current), /*TASK_A*/            \
-     fsbuf);
+#define RD_SECT(dev, sect_nr, fsbuf)                    \
+    rw_sector(                                          \
+        DEV_READ,                                       \
+        dev,                                            \
+        (sect_nr) * SECTOR_SIZE,                        \
+        SECTOR_SIZE,              /* read one sector */ \
+        proc2pid(p_proc_current), /*TASK_A*/            \
+        fsbuf);
 
-#define WR_SECT(dev, sect_nr, fsbuf)     \
- rw_sector(                              \
-     DEV_WRITE,                          \
-     dev,                                \
-     (sect_nr)*SECTOR_SIZE,              \
-     SECTOR_SIZE, /* write one sector */ \
-     proc2pid(p_proc_current),           \
-     fsbuf);
-
-// modified by mingxuan 2020-10-27
-#define RD_SECT_FAT(dev, buf, sect_nr)               \
- rw_sector_fat(                                      \
-     DEV_READ,                                       \
-     dev,                                            \
-     (sect_nr)*SECTOR_SIZE,                          \
-     SECTOR_SIZE,              /* read one sector */ \
-     proc2pid(p_proc_current), /*TASK_A*/            \
-     buf);
+#define WR_SECT(dev, sect_nr, fsbuf)        \
+    rw_sector(                              \
+        DEV_WRITE,                          \
+        dev,                                \
+        (sect_nr) * SECTOR_SIZE,            \
+        SECTOR_SIZE, /* write one sector */ \
+        proc2pid(p_proc_current),           \
+        fsbuf);
 
 // modified by mingxuan 2020-10-27
-#define WR_SECT_FAT(dev, buf, sect_nr)   \
- rw_sector_fat(                          \
-     DEV_WRITE,                          \
-     dev,                                \
-     (sect_nr)*SECTOR_SIZE,              \
-     SECTOR_SIZE, /* write one sector */ \
-     proc2pid(p_proc_current),           \
-     buf);
+#define RD_SECT_FAT(dev, buf, sect_nr)                  \
+    rw_sector_fat(                                      \
+        DEV_READ,                                       \
+        dev,                                            \
+        (sect_nr) * SECTOR_SIZE,                        \
+        SECTOR_SIZE,              /* read one sector */ \
+        proc2pid(p_proc_current), /*TASK_A*/            \
+        buf);
+
+// modified by mingxuan 2020-10-27
+#define WR_SECT_FAT(dev, buf, sect_nr)      \
+    rw_sector_fat(                          \
+        DEV_WRITE,                          \
+        dev,                                \
+        (sect_nr) * SECTOR_SIZE,            \
+        SECTOR_SIZE, /* write one sector */ \
+        proc2pid(p_proc_current),           \
+        buf);
 
 // added by xw, 18/8/27
-#define RD_SECT_SCHED(dev, sect_nr, fsbuf)           \
- rw_sector_sched(                                    \
-     DEV_READ,                                       \
-     dev,                                            \
-     (sect_nr)*SECTOR_SIZE,                          \
-     SECTOR_SIZE,              /* read one sector */ \
-     proc2pid(p_proc_current), /*TASK_A*/            \
-     fsbuf);
+#define RD_SECT_SCHED(dev, sect_nr, fsbuf)              \
+    rw_sector_sched(                                    \
+        DEV_READ,                                       \
+        dev,                                            \
+        (sect_nr) * SECTOR_SIZE,                        \
+        SECTOR_SIZE,              /* read one sector */ \
+        proc2pid(p_proc_current), /*TASK_A*/            \
+        fsbuf);
 
-#define WR_SECT_SCHED(dev, sect_nr, fsbuf) \
- rw_sector_sched(                          \
-     DEV_WRITE,                            \
-     dev,                                  \
-     (sect_nr)*SECTOR_SIZE,                \
-     SECTOR_SIZE, /* write one sector */   \
-     proc2pid(p_proc_current),             \
-     fsbuf);
+#define WR_SECT_SCHED(dev, sect_nr, fsbuf)  \
+    rw_sector_sched(                        \
+        DEV_WRITE,                          \
+        dev,                                \
+        (sect_nr) * SECTOR_SIZE,            \
+        SECTOR_SIZE, /* write one sector */ \
+        proc2pid(p_proc_current),           \
+        fsbuf);
 
 // modified by mingxuan 2020-10-27
-#define RD_SECT_SCHED_FAT(dev, buf, sect_nr)         \
- rw_sector_sched_fat(                                \
-     DEV_READ,                                       \
-     dev,                                            \
-     (sect_nr)*SECTOR_SIZE,                          \
-     SECTOR_SIZE,              /* read one sector */ \
-     proc2pid(p_proc_current), /*TASK_A*/            \
-     buf);
+#define RD_SECT_SCHED_FAT(dev, buf, sect_nr)            \
+    rw_sector_sched_fat(                                \
+        DEV_READ,                                       \
+        dev,                                            \
+        (sect_nr) * SECTOR_SIZE,                        \
+        SECTOR_SIZE,              /* read one sector */ \
+        proc2pid(p_proc_current), /*TASK_A*/            \
+        buf);
 
 // modified by mingxuan 2020-10-27
 #define WR_SECT_SCHED_FAT(dev, buf, sect_nr) \
- rw_sector_sched_fat(                        \
-     DEV_WRITE,                              \
-     dev,                                    \
-     (sect_nr)*SECTOR_SIZE,                  \
-     SECTOR_SIZE, /* write one sector */     \
-     proc2pid(p_proc_current),               \
-     buf);
+    rw_sector_sched_fat(                     \
+        DEV_WRITE,                           \
+        dev,                                 \
+        (sect_nr) * SECTOR_SIZE,             \
+        SECTOR_SIZE, /* write one sector */  \
+        proc2pid(p_proc_current),            \
+        buf);

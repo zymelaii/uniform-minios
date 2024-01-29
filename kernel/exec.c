@@ -248,7 +248,7 @@ static void fix_broken_flatten_str_array(int total, char** array) {
     assert(array != NULL);
     char* str = (char*)(array + total + 1);
     for (int i = 0; i < total; ++i) {
-        array[i] = str;
+        array[i]  = str;
         str      += strlen(str) + 1;
     }
     array[total] = NULL;
@@ -321,7 +321,7 @@ static int exec_replace_argv_and_envp(
     }
     assert(nr_env != -1);
 
-    int size_argv = sizeof_flatten_str_array(argc - 1, argv);
+    int size_argv  = sizeof_flatten_str_array(argc - 1, argv);
     size_argv     += sizeof(void*) + strlen(path) + 1;
     //! align to 4 bytes ~ pointer size
     size_argv = (size_argv + 3) & ~0b11;

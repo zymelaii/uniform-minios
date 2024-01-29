@@ -171,7 +171,7 @@ typedef char *STBSP_SPRINTFCB(char *buf, void *user, int len);
 
 #ifndef STB_SPRINTF_DECORATE
 #define STB_SPRINTF_DECORATE(name) \
- stbsp_##name // define this before including if you want to change the names
+    stbsp_##name // define this before including if you want to change the names
 #endif
 
 STBSP__PUBLICDEF int
@@ -315,28 +315,28 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(
         stbsp__uint32 fl;
 
 // macros for the callback buffer stuff
-#define stbsp__chk_cb_bufL(bytes)                             \
- {                                                            \
-  int len = (int)(bf - buf);                                  \
-  if ((len + (bytes)) >= buf_min_len) {                       \
-   tlen += len;                                               \
-   if (0 == (bf = buf = callback(buf, user, len))) goto done; \
-  }                                                           \
- }
-#define stbsp__chk_cb_buf(bytes)               \
- {                                             \
-  if (callback) { stbsp__chk_cb_bufL(bytes); } \
- }
-#define stbsp__flush_cb()              \
- {                                     \
-  stbsp__chk_cb_bufL(buf_min_len - 1); \
- } // flush if there is even one byte in the buffer
-#define stbsp__cb_buf_clamp(cl, v)        \
- cl = v;                                  \
- if (callback) {                          \
-  int lg = buf_min_len - (int)(bf - buf); \
-  if (cl > lg) cl = lg;                   \
- }
+#define stbsp__chk_cb_bufL(bytes)                                      \
+    {                                                                  \
+        int len = (int)(bf - buf);                                     \
+        if ((len + (bytes)) >= buf_min_len) {                          \
+            tlen += len;                                               \
+            if (0 == (bf = buf = callback(buf, user, len))) goto done; \
+        }                                                              \
+    }
+#define stbsp__chk_cb_buf(bytes)                     \
+    {                                                \
+        if (callback) { stbsp__chk_cb_bufL(bytes); } \
+    }
+#define stbsp__flush_cb()                    \
+    {                                        \
+        stbsp__chk_cb_bufL(buf_min_len - 1); \
+    } // flush if there is even one byte in the buffer
+#define stbsp__cb_buf_clamp(cl, v)              \
+    cl = v;                                     \
+    if (callback) {                             \
+        int lg = buf_min_len - (int)(bf - buf); \
+        if (cl > lg) cl = lg;                   \
+    }
 
         // fast copy everything up to the next % (or end of string)
         for (;;) {
@@ -632,7 +632,7 @@ ld:
                 lead[2 + lead[0]]  = 'x';
                 lead[0]           += 2;
 #endif
-                *s++ = h[(n64 >> 60) & 15];
+                *s++   = h[(n64 >> 60) & 15];
                 n64  <<= 4;
                 if (pr) *s++ = stbsp__period;
                 sn = s;
@@ -643,7 +643,7 @@ ld:
                 if (pr > (stbsp__int32)n) tz = pr - n;
                 pr = 0;
                 while (n--) {
-                    *s++ = h[(n64 >> 60) & 15];
+                    *s++   = h[(n64 >> 60) & 15];
                     n64  <<= 4;
                 }
 
@@ -720,7 +720,7 @@ doexpfromg:
                 tail[0] = 0;
                 stbsp__lead_sign(fl, lead);
                 if (dp == STBSP__SPECIAL) {
-                    s = (char *)sn;
+                    s  = (char *)sn;
                     cs = 0;
                     pr = 0;
                     goto scopy;
@@ -738,17 +738,17 @@ doexpfromg:
                 tz = pr - (l - 1);
                 pr = 0;
                 // dump expo
-                tail[1] = h[0xe];
-                dp -= 1;
+                tail[1]  = h[0xe];
+                dp      -= 1;
                 if (dp < 0) {
                     tail[2] = '-';
-                    dp = -dp;
+                    dp      = -dp;
                 } else
                     tail[2] = '+';
 #ifdef STB_SPRINTF_MSVC_MODE
                 n = 5;
 #else
-                n                  = (dp >= 100) ? 5 : 4;
+                n = (dp >= 100) ? 5 : 4;
 #endif
                 tail[0] = (char)n;
                 for (;;) {
@@ -782,7 +782,7 @@ dofloatfromg:
                 tail[0] = 0;
                 stbsp__lead_sign(fl, lead);
                 if (dp == STBSP__SPECIAL) {
-                    s = (char *)sn;
+                    s  = (char *)sn;
                     cs = 0;
                     pr = 0;
                     goto scopy;
@@ -804,9 +804,9 @@ dofloatfromg:
                         --i;
                     }
                     while (i >= 4) {
-                        *(stbsp__uint32 *)s = 0x30303030;
-                        s += 4;
-                        i -= 4;
+                        *(stbsp__uint32 *)s  = 0x30303030;
+                        s                   += 4;
+                        i                   -= 4;
                     }
                     while (i) {
                         *s++ = '0';
@@ -830,7 +830,7 @@ dofloatfromg:
                         n = 0;
                         for (;;) {
                             if ((fl & STBSP__TRIPLET_COMMA) && (++cs == 4)) {
-                                cs = 0;
+                                cs   = 0;
                                 *s++ = stbsp__comma;
                             } else {
                                 *s++ = sn[n];
@@ -847,15 +847,15 @@ dofloatfromg:
                                     --n;
                                 }
                                 while (n >= 4) {
-                                    *(stbsp__uint32 *)s = 0x30303030;
-                                    s += 4;
-                                    n -= 4;
+                                    *(stbsp__uint32 *)s  = 0x30303030;
+                                    s                   += 4;
+                                    n                   -= 4;
                                 }
                             }
                             while (n) {
                                 if ((fl & STBSP__TRIPLET_COMMA)
                                     && (++cs == 4)) {
-                                    cs = 0;
+                                    cs   = 0;
                                     *s++ = stbsp__comma;
                                 } else {
                                     *s++ = '0';
@@ -867,14 +867,14 @@ dofloatfromg:
                            + (3 << 24); // cs is how many tens
                         if (pr) {
                             *s++ = stbsp__period;
-                            tz = pr;
+                            tz   = pr;
                         }
                     } else {
                         // handle xxxxx.xxxx000*000
                         n = 0;
                         for (;;) {
                             if ((fl & STBSP__TRIPLET_COMMA) && (++cs == 4)) {
-                                cs = 0;
+                                cs   = 0;
                                 *s++ = stbsp__comma;
                             } else {
                                 *s++ = sn[n];
@@ -952,7 +952,7 @@ flt_lead:
 
             case 'p': // pointer
                 fl |= (sizeof(void *) == 8) ? STBSP__INTMAX : 0;
-                pr = sizeof(void *) * 2;
+                pr  = sizeof(void *) * 2;
                 fl &= ~STBSP__LEADINGZERO; // 'p' only prints the pointer with
                                            // zeros fall through - to X
 
@@ -987,7 +987,7 @@ radixnum:
                 }
                 // convert to string
                 for (;;) {
-                    *--s = h[n64 & ((1 << (l >> 8)) - 1)];
+                    *--s   = h[n64 & ((1 << (l >> 8)) - 1)];
                     n64  >>= (l >> 8);
                     if (!((n64)
                           || ((stbsp__int32)((num + STBSP__NUMSZ) - s) < pr)))
@@ -996,7 +996,7 @@ radixnum:
                         ++l;
                         if ((l & 15) == ((l >> 4) & 15)) {
                             l    &= ~15;
-                            *--s = stbsp__comma;
+                            *--s  = stbsp__comma;
                         }
                     }
                 };
@@ -1016,14 +1016,14 @@ radixnum:
                     stbsp__int64 i64 = va_arg(va, stbsp__int64);
                     n64              = (stbsp__uint64)i64;
                     if ((f[0] != 'u') && (i64 < 0)) {
-                        n64 = (stbsp__uint64)-i64;
+                        n64  = (stbsp__uint64)-i64;
                         fl  |= STBSP__NEGATIVE;
                     }
                 } else {
                     stbsp__int32 i = va_arg(va, stbsp__int32);
                     n64            = (stbsp__uint32)i;
                     if ((f[0] != 'u') && (i < 0)) {
-                        n64 = (stbsp__uint32)-i;
+                        n64  = (stbsp__uint32)-i;
                         fl  |= STBSP__NEGATIVE;
                     }
                 }
@@ -1048,7 +1048,7 @@ radixnum:
                     // with constant denominators)
                     char *o = s - 8;
                     if (n64 >= 100000000) {
-                        n   = (stbsp__uint32)(n64 % 100000000);
+                        n    = (stbsp__uint32)(n64 % 100000000);
                         n64 /= 100000000;
                     } else {
                         n   = (stbsp__uint32)n64;
@@ -1069,7 +1069,7 @@ radixnum:
                             *--s = stbsp__comma;
                             --o;
                         } else {
-                            *--s = (char)(n % 10) + '0';
+                            *--s  = (char)(n % 10) + '0';
                             n    /= 10;
                         }
                     }
@@ -1136,7 +1136,7 @@ scopy:
                                 --i;
                             }
                             while (i >= 4) {
-                                *(stbsp__uint32 *)bf = 0x20202020;
+                                *(stbsp__uint32 *)bf  = 0x20202020;
                                 bf                   += 4;
                                 i                    -= 4;
                             }
@@ -1160,11 +1160,11 @@ scopy:
                     }
 
                     // copy leading zeros
-                    c  = cs >> 24;
+                    c   = cs >> 24;
                     cs &= 0xffffff;
-                    cs = (fl & STBSP__TRIPLET_COMMA)
-                           ? ((stbsp__uint32)(c - ((pr + cs) % (c + 1))))
-                           : 0;
+                    cs  = (fl & STBSP__TRIPLET_COMMA)
+                            ? ((stbsp__uint32)(c - ((pr + cs) % (c + 1))))
+                            : 0;
                     while (pr > 0) {
                         stbsp__cb_buf_clamp(i, pr);
                         pr -= i;
@@ -1175,7 +1175,7 @@ scopy:
                                 --i;
                             }
                             while (i >= 4) {
-                                *(stbsp__uint32 *)bf = 0x30303030;
+                                *(stbsp__uint32 *)bf  = 0x30303030;
                                 bf                   += 4;
                                 i                    -= 4;
                             }
@@ -1212,7 +1212,7 @@ scopy:
                     stbsp__cb_buf_clamp(i, n);
                     n -= i;
                     STBSP__UNALIGNED(while (i >= 4) {
-                        *(stbsp__uint32 *)bf = *(stbsp__uint32 *)s;
+                        *(stbsp__uint32 *)bf  = *(stbsp__uint32 *)s;
                         bf                   += 4;
                         s                    += 4;
                         i                    -= 4;
@@ -1235,7 +1235,7 @@ scopy:
                         --i;
                     }
                     while (i >= 4) {
-                        *(stbsp__uint32 *)bf = 0x30303030;
+                        *(stbsp__uint32 *)bf  = 0x30303030;
                         bf                   += 4;
                         i                    -= 4;
                     }
@@ -1272,7 +1272,7 @@ scopy:
                                 --i;
                             }
                             while (i >= 4) {
-                                *(stbsp__uint32 *)bf = 0x20202020;
+                                *(stbsp__uint32 *)bf  = 0x20202020;
                                 bf                   += 4;
                                 i                    -= 4;
                             }
@@ -1433,11 +1433,11 @@ STBSP__PUBLICDEF int
 #ifndef STB_SPRINTF_NOFLOAT
 
 // copies d to bits w/ strict aliasing (this compiles to nothing on /Ox)
-#define STBSP__COPYFP(dest, src)                                       \
- {                                                                     \
-  int cn;                                                              \
-  for (cn = 0; cn < 8; cn++) ((char *)&dest)[cn] = ((char *)&src)[cn]; \
- }
+#define STBSP__COPYFP(dest, src)                                             \
+    {                                                                        \
+        int cn;                                                              \
+        for (cn = 0; cn < 8; cn++) ((char *)&dest)[cn] = ((char *)&src)[cn]; \
+    }
 
 // get float info
 static stbsp__int32
@@ -1581,40 +1581,40 @@ static stbsp__uint64 const stbsp__powten[20] = {
 #define stbsp__tento19th (1000000000000000000ULL)
 #endif
 
-#define stbsp__ddmulthi(oh, ol, xh, yh)                         \
- {                                                              \
-  double       ahi = 0, alo, bhi = 0, blo;                      \
-  stbsp__int64 bt;                                              \
-  oh = xh * yh;                                                 \
-  STBSP__COPYFP(bt, xh);                                        \
-  bt &= ((~(stbsp__uint64)0) << 27);                            \
-  STBSP__COPYFP(ahi, bt);                                       \
-  alo = xh - ahi;                                               \
-  STBSP__COPYFP(bt, yh);                                        \
-  bt &= ((~(stbsp__uint64)0) << 27);                            \
-  STBSP__COPYFP(bhi, bt);                                       \
-  blo = yh - bhi;                                               \
-  ol  = ((ahi * bhi - oh) + ahi * blo + alo * bhi) + alo * blo; \
- }
+#define stbsp__ddmulthi(oh, ol, xh, yh)                               \
+    {                                                                 \
+        double       ahi = 0, alo, bhi = 0, blo;                      \
+        stbsp__int64 bt;                                              \
+        oh = xh * yh;                                                 \
+        STBSP__COPYFP(bt, xh);                                        \
+        bt &= ((~(stbsp__uint64)0) << 27);                            \
+        STBSP__COPYFP(ahi, bt);                                       \
+        alo = xh - ahi;                                               \
+        STBSP__COPYFP(bt, yh);                                        \
+        bt &= ((~(stbsp__uint64)0) << 27);                            \
+        STBSP__COPYFP(bhi, bt);                                       \
+        blo = yh - bhi;                                               \
+        ol  = ((ahi * bhi - oh) + ahi * blo + alo * bhi) + alo * blo; \
+    }
 
-#define stbsp__ddtoS64(ob, xh, xl)              \
- {                                              \
-  double ahi = 0, alo, vh, t;                   \
-  ob         = (stbsp__int64)ph;                \
-  vh         = (double)ob;                      \
-  ahi        = (xh - vh);                       \
-  t          = (ahi - xh);                      \
-  alo        = (xh - (ahi - t)) - (vh + t);     \
-  ob         += (stbsp__int64)(ahi + alo + xl); \
- }
+#define stbsp__ddtoS64(ob, xh, xl)                    \
+    {                                                 \
+        double ahi  = 0, alo, vh, t;                  \
+        ob          = (stbsp__int64)ph;               \
+        vh          = (double)ob;                     \
+        ahi         = (xh - vh);                      \
+        t           = (ahi - xh);                     \
+        alo         = (xh - (ahi - t)) - (vh + t);    \
+        ob         += (stbsp__int64)(ahi + alo + xl); \
+    }
 
 #define stbsp__ddrenorm(oh, ol) \
- {                              \
-  double s;                     \
-  s  = oh + ol;                 \
-  ol = ol - (s - oh);           \
-  oh = s;                       \
- }
+    {                           \
+        double s;               \
+        s  = oh + ol;           \
+        ol = ol - (s - oh);     \
+        oh = s;                 \
+    }
 
 #define stbsp__ddmultlo(oh, ol, xh, xl, yh, yl) ol = ol + (xh * yl + xl * yh);
 
@@ -1796,14 +1796,14 @@ donez:;
 
     // convert to string
     out += 64;
-    e   = 0;
+    e    = 0;
     for (;;) {
         stbsp__uint32 n;
         char         *o = out - 8;
         // do the conversion in chunks of U32s (avoid most 64-bit divides, worth
         // it, constant denomiators be damned)
         if (bits >= 100000000) {
-            n    = (stbsp__uint32)(bits % 100000000);
+            n     = (stbsp__uint32)(bits % 100000000);
             bits /= 100000000;
         } else {
             n    = (stbsp__uint32)bits;

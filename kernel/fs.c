@@ -498,8 +498,9 @@ static struct inode *get_inode(int dev, int num) {
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
     RD_SECT(dev, blk_nr, fsbuf);
     struct inode *pinode =
-        (struct inode
-             *)((u8 *)fsbuf + ((num - 1) % (SECTOR_SIZE / INODE_SIZE)) * INODE_SIZE);
+        (struct inode *)((u8 *)fsbuf
+                         + ((num - 1) % (SECTOR_SIZE / INODE_SIZE))
+                               * INODE_SIZE);
     q->i_mode       = pinode->i_mode;
     q->i_size       = pinode->i_size;
     q->i_start_sect = pinode->i_start_sect;
@@ -541,8 +542,9 @@ static struct inode *get_inode_sched(int dev, int num) {
                              // added by xw, 18/12/27
     RD_SECT_SCHED(dev, blk_nr, fsbuf);
     struct inode *pinode =
-        (struct inode
-             *)((u8 *)fsbuf + ((num - 1) % (SECTOR_SIZE / INODE_SIZE)) * INODE_SIZE);
+        (struct inode *)((u8 *)fsbuf
+                         + ((num - 1) % (SECTOR_SIZE / INODE_SIZE))
+                               * INODE_SIZE);
     q->i_mode       = pinode->i_mode;
     q->i_size       = pinode->i_size;
     q->i_start_sect = pinode->i_start_sect;
@@ -583,9 +585,9 @@ static void sync_inode(struct inode *p) {
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
                              // added by xw, 18/12/27
     RD_SECT(p->i_dev, blk_nr, fsbuf);
-    pinode =
-        (struct inode
-             *)((u8 *)fsbuf + (((p->i_num - 1) % (SECTOR_SIZE / INODE_SIZE)) * INODE_SIZE));
+    pinode               = (struct inode *)((u8 *)fsbuf
+                              + (((p->i_num - 1) % (SECTOR_SIZE / INODE_SIZE))
+                                 * INODE_SIZE));
     pinode->i_mode       = p->i_mode;
     pinode->i_size       = p->i_size;
     pinode->i_start_sect = p->i_start_sect;
@@ -670,7 +672,7 @@ static void
             break;
     }
     if (!new_de) { /* reached the end of the dir */
-        new_de            = pde;
+        new_de             = pde;
         dir_inode->i_size += DIR_ENTRY_SIZE;
     }
     new_de->inode_nr = inode_nr;
@@ -703,7 +705,7 @@ static int alloc_imap_bit(int dev) {
             for (k = 0; ((fsbuf[j] >> k) & 1) != 0; k++) {}
 
             /* i: sector index; j: byte index; k: bit index */
-            inode_nr = (i * SECTOR_SIZE + j) * 8 + k;
+            inode_nr  = (i * SECTOR_SIZE + j) * 8 + k;
             fsbuf[j] |= (1 << k);
 
             /* write the bit to imap */
@@ -944,7 +946,7 @@ static int do_rdwt(MESSAGE *fs_msg) {
                 proc2pid(p_proc_current),
                 fsbuf);
         }
-        off                                  = 0;
+        off                                   = 0;
         bytes_rw                             += bytes;
         p_proc_current->pcb.filp[fd]->fd_pos += bytes;
         bytes_left                           -= bytes;

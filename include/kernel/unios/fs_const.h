@@ -119,12 +119,12 @@ enum msgtype {
 #define NR_PART_PER_DRIVE 4 // 每块硬盘(驱动器)只能有4个主分区, mingxuan
 #define NR_SUB_PER_PART   16 // 每个扩展分区最多有16个逻辑分区, mingxuan
 #define NR_SUB_PER_DRIVE \
- (NR_SUB_PER_PART * NR_PART_PER_DRIVE) // 每块硬盘(驱动器)最多有16 * 4 =
-                                       // 64个逻辑分区, mingxuan
+    (NR_SUB_PER_PART * NR_PART_PER_DRIVE) // 每块硬盘(驱动器)最多有16 * 4 =
+                                          // 64个逻辑分区, mingxuan
 #define NR_PRIM_PER_DRIVE \
- (NR_PART_PER_DRIVE       \
-  + 1) // 表示的是hd[0～4]这5个分区，因为有些代码中我们把整块硬盘（hd0）和主分区（hd[1～4]）放在一起看待,
-       // mingxuan
+    (NR_PART_PER_DRIVE    \
+     + 1) // 表示的是hd[0～4]这5个分区，因为有些代码中我们把整块硬盘（hd0）和主分区（hd[1～4]）放在一起看待,
+          // mingxuan
 
 /**
  * @def MAX_PRIM
@@ -136,9 +136,9 @@ enum msgtype {
 // 所以MAX_PRIM为9，我们定义的hd1a的设备号应大于它，这样通过与MAX_PRIM比较，我们就可以知道一个设备是主分区还是逻辑分区
 // mingxuan
 #define MAX_PRIM \
- (MAX_DRIVES * NR_PRIM_PER_DRIVE - 1) // MAX_PRIM = 2 * 4 - 1 = 9
+    (MAX_DRIVES * NR_PRIM_PER_DRIVE - 1) // MAX_PRIM = 2 * 4 - 1 = 9
 #define MAX_SUBPARTITIONS \
- (NR_SUB_PER_DRIVE * MAX_DRIVES) // MAX_SUBPARTITIONS = 64 * 2 = 128
+    (NR_SUB_PER_DRIVE * MAX_DRIVES) // MAX_SUBPARTITIONS = 64 * 2 = 128
 
 /*	name of drives	*/
 //	added by mingxuan 2020-10-27
@@ -178,9 +178,9 @@ enum msgtype {
 #define I_CHAR_SPECIAL  0020000
 #define I_NAMED_PIPE    0010000
 
-#define is_special(m)                    \
- ((((m)&I_TYPE_MASK) == I_BLOCK_SPECIAL) \
-  || (((m)&I_TYPE_MASK) == I_CHAR_SPECIAL))
+#define is_special(m)                         \
+    ((((m) & I_TYPE_MASK) == I_BLOCK_SPECIAL) \
+     || (((m) & I_TYPE_MASK) == I_CHAR_SPECIAL))
 
 #define NR_DEFAULT_FILE_SECTS 2048 /* 2048 * 512 = 1MB */
 
