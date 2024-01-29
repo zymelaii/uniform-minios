@@ -41,7 +41,7 @@ static void tty_init(tty_t *tty) {
     memset(&tty->mouse, 0, sizeof(tty->mouse));
 }
 
-static bool tty_buf_push(tty_t *tty, u32 code) {
+static bool tty_buf_push(tty_t *tty, uint32_t code) {
     if (tty->cnt_wr >= TTY_BUFSZ) { return false; }
     *tty->ibuf_next = code;
     tty->ibuf_next  = &tty->ibuf[(tty->ibuf_next - tty->ibuf + 1) % TTY_BUFSZ];
@@ -56,9 +56,9 @@ static void tty_buf_pop(tty_t *tty) {
         return;
     }
 
-    u32 *last      = tty->ibuf_next;
-    int  offset    = tty->ibuf_next - tty->ibuf;
-    tty->ibuf_next = &tty->ibuf[(offset + TTY_BUFSZ - 1) % TTY_BUFSZ];
+    uint32_t *last   = tty->ibuf_next;
+    int       offset = tty->ibuf_next - tty->ibuf;
+    tty->ibuf_next   = &tty->ibuf[(offset + TTY_BUFSZ - 1) % TTY_BUFSZ];
 
     if (tty->ibuf_wr == last) {
         assert(tty->cnt_wr == 0);
@@ -75,7 +75,7 @@ static void tty_buf_pop(tty_t *tty) {
     }
 }
 
-static bool tty_rdbuf_next(tty_t *tty, u32 *code) {
+static bool tty_rdbuf_next(tty_t *tty, uint32_t *code) {
     if (tty->cnt_rd == 0) {
         assert(tty->ibuf_wr == tty->ibuf_next);
         return false;
@@ -86,7 +86,7 @@ static bool tty_rdbuf_next(tty_t *tty, u32 *code) {
     return true;
 }
 
-static bool tty_wrbuf_next(tty_t *tty, u32 *code) {
+static bool tty_wrbuf_next(tty_t *tty, uint32_t *code) {
     if (tty->cnt_wr == 0) {
         assert(tty->ibuf_wr == tty->ibuf_next);
         return false;
@@ -126,7 +126,7 @@ static bool tty_wrbuf_erase_first(tty_t *tty) {
 }
 
 //! put one key to the target tty
-static void tty_put_key(tty_t *tty, u32 key) {
+static void tty_put_key(tty_t *tty, uint32_t key) {
     bool ok = tty_buf_push(tty, key);
     assert(ok && "not enough space in tty buffer");
 }
@@ -144,8 +144,8 @@ int tty_read(tty_t *tty, char *buf, int len) {
     assert(buf != NULL);
     assert(len >= 0);
 
-    int total_rd = 0;
-    u32 code     = 0;
+    int      total_rd = 0;
+    uint32_t code     = 0;
 
     while (total_rd < len) {
         if (tty->cnt_rd == 0) { tty->status |= TTY_WAIT_ENTER; }
@@ -162,7 +162,7 @@ int tty_read(tty_t *tty, char *buf, int len) {
     return total_rd;
 }
 
-void tty_keyboard_proc(tty_t *tty, u32 key) {
+void tty_keyboard_proc(tty_t *tty, uint32_t key) {
     if (!(key & FLAG_EXT)) {
         tty_put_key(tty, key);
         return;
@@ -200,9 +200,9 @@ static void tty_dev_write(tty_t *tty) {
     assert(tty != NULL);
 
     //! represent an invalid code
-    const u32 NONE      = ~0;
-    u32       code      = NONE;
-    u32       prev_code = NONE;
+    const uint32_t NONE      = ~0;
+    uint32_t       code      = NONE;
+    uint32_t       prev_code = NONE;
 
     //! rewind to get the prev code
     bool ok = tty_wrbuf_rewind_once(tty);

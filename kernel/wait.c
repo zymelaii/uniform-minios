@@ -12,7 +12,7 @@
 #include <atomic.h>
 #include <string.h>
 
-static pcb_t* try_get_zombie_child(u32 pid) {
+static pcb_t* try_get_zombie_child(uint32_t pid) {
     pcb_t* pcb = (pcb_t*)pid2proc(pid);
     for (int i = 0; i < pcb->tree_info.child_p_num; ++i) {
         pcb_t* exit_child = (pcb_t*)pid2proc(pcb->tree_info.child_process[i]);
@@ -21,7 +21,7 @@ static pcb_t* try_get_zombie_child(u32 pid) {
     return NULL;
 }
 
-static int try_remove_killed_child(u32 pid) {
+static int try_remove_killed_child(uint32_t pid) {
     pcb_t* pcb = (pcb_t*)pid2proc(pid);
     if (pcb->tree_info.child_k_num == 0) { return -1; }
     for (int i = pcb->tree_info.child_k_num - 1; i >= 0; --i) {
@@ -31,7 +31,7 @@ static int try_remove_killed_child(u32 pid) {
     unreachable();
 }
 
-static void remove_zombie_child(u32 pid) {
+static void remove_zombie_child(uint32_t pid) {
     pcb_t* pcb    = &p_proc_current->pcb;
     bool   cpyflg = false;
     for (int i = 0; i < pcb->tree_info.child_p_num; ++i) {
@@ -48,7 +48,7 @@ static void remove_zombie_child(u32 pid) {
     return;
 }
 
-static void wait_recycle_memory(u32 recy_pid) {
+static void wait_recycle_memory(uint32_t recy_pid) {
     assert(recy_pid != p_proc_current->pcb.pid);
     disable_int();
     recycle_proc_memory(pid2proc(recy_pid));

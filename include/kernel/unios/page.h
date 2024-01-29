@@ -23,7 +23,7 @@
  *
  * \return succeed or not, always return true currently
  */
-bool pg_free_page_table(u32 cr3);
+bool pg_free_page_table(uint32_t cr3);
 
 /*!
  * \brief unmap all pte table in the given cr3(pde) table
@@ -33,7 +33,7 @@ bool pg_free_page_table(u32 cr3);
  *
  * \return succeed or not, always return true currently
  */
-bool pg_clear_page_table(u32 cr3, bool free);
+bool pg_clear_page_table(uint32_t cr3, bool free);
 
 /*!
  * \brief unmap laddr in page table
@@ -44,7 +44,7 @@ bool pg_clear_page_table(u32 cr3, bool free);
  *
  * \return succeed or not, always return true currently
  */
-bool pg_unmap_laddr(u32 cr3, u32 laddr, bool free);
+bool pg_unmap_laddr(uint32_t cr3, uint32_t laddr, bool free);
 
 /*!
  * \brief map laddr in page table
@@ -65,7 +65,12 @@ bool pg_unmap_laddr(u32 cr3, u32 laddr, bool free);
  * occurs on the way, the succeeded part will not be cancelled, and you should
  * explicitly deal with the mess if you need it
  */
-bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr);
+bool pg_map_laddr(
+    uint32_t cr3,
+    uint32_t laddr,
+    uint32_t phyaddr,
+    uint32_t pde_attr,
+    uint32_t pte_attr);
 
 /*!
  * \brief unmap range of laddr in page table
@@ -76,7 +81,8 @@ bool pg_map_laddr(u32 cr3, u32 laddr, u32 phyaddr, u32 pde_attr, u32 pte_attr);
  *
  * \return succeed or not, always return true currently
  */
-bool pg_unmap_laddr_range(u32 cr3, u32 laddr_base, u32 laddr_limit, bool free);
+bool pg_unmap_laddr_range(
+    uint32_t cr3, uint32_t laddr_base, uint32_t laddr_limit, bool free);
 
 /*!
  * \brief map range of laddr in page table
@@ -94,7 +100,11 @@ bool pg_unmap_laddr_range(u32 cr3, u32 laddr_base, u32 laddr_limit, bool free);
  * pg_map_laddr, pg_map_laddr_range do not actively flush the tlb cache
  */
 bool pg_map_laddr_range(
-    u32 cr3, u32 laddr_base, u32 laddr_limit, u32 pde_attr, u32 pte_attr);
+    uint32_t cr3,
+    uint32_t laddr_base,
+    uint32_t laddr_limit,
+    uint32_t pde_attr,
+    uint32_t pte_attr);
 
 /*!
  * \brief flush tlb cache
@@ -108,75 +118,75 @@ void pg_refresh();
  *
  * \return successful or not
  */
-bool pg_create_and_init(u32 *p_cr3);
+bool pg_create_and_init(uint32_t *p_cr3);
 
 //! NOTE: address of cr3 pde pte always located in kernel memory space, since we
 //! always mapping it for the program in the initilization stage, access to
 //! these should never cause a page fault, otherwise maybe something wrong in
 //! the page table setup stage.
 
-static u32  pg_offset(u32 laddr);
-static u32  pg_pde_index(u32 laddr);
-static u32  pg_pte_index(u32 laddr);
-static u32  pg_frame_phyaddr(u32 entry);
-static u32 *pg_pde_ptr(u32 cr3, u32 laddr);
-static u32 *pg_pte_ptr(u32 pde, u32 laddr);
-static u32  pg_pde(u32 cr3, u32 laddr);
-static u32  pg_pte(u32 pde, u32 laddr);
-static u32  pg_pde_attr(u32 cr3, u32 laddr, u32 mask);
-static u32  pg_pte_attr(u32 pde, u32 laddr, u32 mask);
-static bool pg_pde_exist(u32 cr3, u32 laddr);
-static bool pg_pte_exist(u32 pde, u32 laddr);
+static uint32_t  pg_offset(uint32_t laddr);
+static uint32_t  pg_pde_index(uint32_t laddr);
+static uint32_t  pg_pte_index(uint32_t laddr);
+static uint32_t  pg_frame_phyaddr(uint32_t entry);
+static uint32_t *pg_pde_ptr(uint32_t cr3, uint32_t laddr);
+static uint32_t *pg_pte_ptr(uint32_t pde, uint32_t laddr);
+static uint32_t  pg_pde(uint32_t cr3, uint32_t laddr);
+static uint32_t  pg_pte(uint32_t pde, uint32_t laddr);
+static uint32_t  pg_pde_attr(uint32_t cr3, uint32_t laddr, uint32_t mask);
+static uint32_t  pg_pte_attr(uint32_t pde, uint32_t laddr, uint32_t mask);
+static bool      pg_pde_exist(uint32_t cr3, uint32_t laddr);
+static bool      pg_pte_exist(uint32_t pde, uint32_t laddr);
 
-u32  pg_laddr_phyaddr(u32 cr3, u32 laddr);
-bool pg_addr_pte_exist(u32 cr3, u32 laddr);
+uint32_t pg_laddr_phyaddr(uint32_t cr3, uint32_t laddr);
+bool     pg_addr_pte_exist(uint32_t cr3, uint32_t laddr);
 
 #define PGBASE_CALL __attribute__((optimize("O3"), always_inline)) inline
 
-PGBASE_CALL u32 pg_offset(u32 laddr) {
+PGBASE_CALL uint32_t pg_offset(uint32_t laddr) {
     return laddr & 0xfff;
 }
 
-PGBASE_CALL u32 pg_pde_index(u32 laddr) {
+PGBASE_CALL uint32_t pg_pde_index(uint32_t laddr) {
     return (laddr >> 22) & 0x3ff;
 }
 
-PGBASE_CALL u32 pg_pte_index(u32 laddr) {
+PGBASE_CALL uint32_t pg_pte_index(uint32_t laddr) {
     return (laddr >> 12) & 0x3ff;
 }
 
-PGBASE_CALL u32 pg_frame_phyaddr(u32 entry) {
+PGBASE_CALL uint32_t pg_frame_phyaddr(uint32_t entry) {
     return entry & 0xfffff000;
 }
 
-PGBASE_CALL u32 *pg_pde_ptr(u32 cr3, u32 laddr) {
-    return (u32 *)K_PHY2LIN(pg_frame_phyaddr(cr3)) + pg_pde_index(laddr);
+PGBASE_CALL uint32_t *pg_pde_ptr(uint32_t cr3, uint32_t laddr) {
+    return (uint32_t *)K_PHY2LIN(pg_frame_phyaddr(cr3)) + pg_pde_index(laddr);
 }
 
-PGBASE_CALL u32 *pg_pte_ptr(u32 pde, u32 laddr) {
-    return (u32 *)K_PHY2LIN(pg_frame_phyaddr(pde)) + pg_pte_index(laddr);
+PGBASE_CALL uint32_t *pg_pte_ptr(uint32_t pde, uint32_t laddr) {
+    return (uint32_t *)K_PHY2LIN(pg_frame_phyaddr(pde)) + pg_pte_index(laddr);
 }
 
-PGBASE_CALL u32 pg_pde(u32 cr3, u32 laddr) {
+PGBASE_CALL uint32_t pg_pde(uint32_t cr3, uint32_t laddr) {
     return *pg_pde_ptr(cr3, laddr);
 }
 
-PGBASE_CALL u32 pg_pte(u32 pde, u32 laddr) {
+PGBASE_CALL uint32_t pg_pte(uint32_t pde, uint32_t laddr) {
     return *pg_pte_ptr(pde, laddr);
 }
 
-PGBASE_CALL u32 pg_pde_attr(u32 cr3, u32 laddr, u32 mask) {
+PGBASE_CALL uint32_t pg_pde_attr(uint32_t cr3, uint32_t laddr, uint32_t mask) {
     return pg_pde(cr3, laddr) & mask;
 }
 
-PGBASE_CALL u32 pg_pte_attr(u32 pde, u32 laddr, u32 mask) {
+PGBASE_CALL uint32_t pg_pte_attr(uint32_t pde, uint32_t laddr, uint32_t mask) {
     return pg_pte(pde, laddr) & mask;
 }
 
-PGBASE_CALL bool pg_pde_exist(u32 cr3, u32 laddr) {
+PGBASE_CALL bool pg_pde_exist(uint32_t cr3, uint32_t laddr) {
     return pg_pde_attr(cr3, laddr, PG_MASK_P) == PG_P;
 }
 
-PGBASE_CALL bool pg_pte_exist(u32 pde, u32 laddr) {
+PGBASE_CALL bool pg_pte_exist(uint32_t pde, uint32_t laddr) {
     return pg_pte_attr(pde, laddr, PG_MASK_P) == PG_P;
 }

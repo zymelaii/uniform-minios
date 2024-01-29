@@ -6,7 +6,7 @@
 #include <stddef.h>
 
 void recycle_memory_part(phyaddr_t cr3, void* base, void* limit) {
-    bool ok = pg_unmap_laddr_range(cr3, (u32)base, (u32)limit, true);
+    bool ok = pg_unmap_laddr_range(cr3, (uint32_t)base, (uint32_t)limit, true);
     assert(ok);
 }
 

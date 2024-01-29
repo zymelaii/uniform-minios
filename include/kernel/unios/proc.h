@@ -77,43 +77,43 @@ enum process_stat {
 #define TYPE_THREAD  1
 
 typedef struct stack_frame_s {
-    u32 gs;         //<! ━┓
-    u32 fs;         //<!  ┃
-    u32 es;         //<!  ┃
-    u32 ds;         //<!  ┃
-    u32 edi;        //<!  ┃
-    u32 esi;        //<!  ┣━┫ push by `save`
-    u32 ebp;        //<!  ┃
-    u32 kernel_esp; //<!  ┣ ignored by popad
-    u32 ebx;        //<!  ┃
-    u32 edx;        //<!  ┃
-    u32 ecx;        //<!  ┃
-    u32 eax;        //<! ━┫
-    u32 retaddr;    //<!  ┣ retaddr for `save`
-    u32 eip;        //<! ━┫
-    u32 cs;         //<!  ┃
-    u32 eflags;     //<!  ┣━┫ push by interrupt
-    u32 esp;        //<!  ┃
-    u32 ss;         //<! ━┛
+    uint32_t gs;         //<! ━┓
+    uint32_t fs;         //<!  ┃
+    uint32_t es;         //<!  ┃
+    uint32_t ds;         //<!  ┃
+    uint32_t edi;        //<!  ┃
+    uint32_t esi;        //<!  ┣━┫ push by `save`
+    uint32_t ebp;        //<!  ┃
+    uint32_t kernel_esp; //<!  ┣ ignored by popad
+    uint32_t ebx;        //<!  ┃
+    uint32_t edx;        //<!  ┃
+    uint32_t ecx;        //<!  ┃
+    uint32_t eax;        //<! ━┫
+    uint32_t retaddr;    //<!  ┣ retaddr for `save`
+    uint32_t eip;        //<! ━┫
+    uint32_t cs;         //<!  ┃
+    uint32_t eflags;     //<!  ┣━┫ push by interrupt
+    uint32_t esp;        //<!  ┃
+    uint32_t ss;         //<! ━┛
 } stack_frame_t;
 
 typedef struct tree_info_s {
-    int type;                        //<! type of task
-    u32 real_ppid;                   //<! pid of creator task
-    u32 ppid;                        //<! pid of current parent task
-    u32 child_p_num;                 //<! total child proc
-    u32 child_process[NR_CHILD_MAX]; //<! child proc list
-    u32 child_t_num;                 //<! total child thread
-    u32 child_thread[NR_CHILD_MAX];  //<! child thread list
-    u32 child_k_num;                 //<! total killed child proc/thread
-    u32 child_killed[NR_CHILD_MAX];  //<! child killed list
-    int text_hold;                   //<! owner of text or not
-    int data_hold;                   //<! owner of data or not
+    int      type;                        //<! type of task
+    uint32_t real_ppid;                   //<! pid of creator task
+    uint32_t ppid;                        //<! pid of current parent task
+    uint32_t child_p_num;                 //<! total child proc
+    uint32_t child_process[NR_CHILD_MAX]; //<! child proc list
+    uint32_t child_t_num;                 //<! total child thread
+    uint32_t child_thread[NR_CHILD_MAX];  //<! child thread list
+    uint32_t child_k_num;                 //<! total killed child proc/thread
+    uint32_t child_killed[NR_CHILD_MAX];  //<! child killed list
+    int      text_hold;                   //<! owner of text or not
+    int      data_hold;                   //<! owner of data or not
 } tree_info_t;
 
 typedef struct ph_info_s {
-    u32               base;
-    u32               limit;
+    uint32_t          base;
+    uint32_t          limit;
     struct ph_info_s* next;
     struct ph_info_s* before;
 } ph_info_t;
@@ -121,26 +121,26 @@ typedef struct ph_info_s {
 typedef struct lin_memmap_s {
     ph_info_t* ph_info;
     //! heap
-    u32 heap_lin_base;
-    u32 heap_lin_limit;
+    uint32_t heap_lin_base;
+    uint32_t heap_lin_limit;
     //! kernel space
-    u32 kernel_lin_base;
-    u32 kernel_lin_limit;
+    uint32_t kernel_lin_base;
+    uint32_t kernel_lin_limit;
     //! where to store exec argv & envp
-    u32 arg_lin_base;
-    u32 arg_lin_limit;
+    uint32_t arg_lin_base;
+    uint32_t arg_lin_limit;
     //! stack
-    u32 stack_lin_base;
-    u32 stack_lin_limit;
+    uint32_t stack_lin_base;
+    uint32_t stack_lin_limit;
     //! stack limit for child thread
-    u32 stack_child_limit;
+    uint32_t stack_child_limit;
 } lin_memmap_t;
 
 typedef struct pcb_s {
     //! WARNING: offset 0 is reserved for user context regs
     stack_frame_t regs;
 
-    u16          ldt_sel;
+    uint16_t     ldt_sel;
     descriptor_t ldts[LDT_SIZE];
 
     char* esp_save_int;
@@ -157,17 +157,17 @@ typedef struct pcb_s {
     int         live_ticks;
     int         priority;
 
-    u32  pid;
-    char name[16];
+    uint32_t pid;
+    char     name[16];
 
     int                 stat;
-    u32                 cr3;
+    uint32_t            cr3;
     memblk_allocator_t* allocator;
-    u32                 heap_lock;
+    uint32_t            heap_lock;
 
     file_desc_t* filp[NR_FILES];
-    u32          lock;
-    u32          exit_code;
+    uint32_t     lock;
+    uint32_t     exit_code;
 } pcb_t;
 
 typedef union {
@@ -184,7 +184,7 @@ typedef struct task_s {
 } task_t;
 
 bool init_locked_pcb(
-    process_t* proc, const char* name, void* entry_point, u32 rpl);
+    process_t* proc, const char* name, void* entry_point, uint32_t rpl);
 process_t* try_lock_free_pcb();
 ph_info_t* clone_ph_info(ph_info_t* src);
 int        ldt_seg_linear(process_t* p, int idx);

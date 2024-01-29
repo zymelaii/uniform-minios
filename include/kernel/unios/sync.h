@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <atomic.h>
 
-typedef i32 spinlock_t;
-typedef i32 rwlock_t;
+typedef int32_t spinlock_t;
+typedef int32_t rwlock_t;
 
 enum krnlobj_req_type {
     KRNLOBJ_CREATE,

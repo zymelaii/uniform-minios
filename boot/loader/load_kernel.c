@@ -248,7 +248,7 @@ void load_and_enter_kernel(void) {
         fat32_entry_t *buf_end = read_clus(BUF_DATA_ADDR, root_clus);
         for (fat32_entry_t *p = BUF_DATA_ADDR; p < buf_end; p++) {
             if (strncmp((void *)p->name, KERNEL_NAME_IN_FAT, 11) == 0) {
-                elf_clus = (u32)p->start_clus_hi << 16 | p->start_clus_lo;
+                elf_clus = (uint32_t)p->start_clus_hi << 16 | p->start_clus_lo;
                 break;
             }
         }

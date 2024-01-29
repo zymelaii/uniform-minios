@@ -128,8 +128,8 @@ void* va2la(int pid, void* va) {
     if (kstate_on_init) { return va; }
     process_t* proc = proc_table[pid];
     assert(proc != NULL);
-    u32 seg_base = ldt_seg_linear(proc, INDEX_LDT_RW);
-    u32 la       = seg_base + (u32)va;
+    uint32_t seg_base = ldt_seg_linear(proc, INDEX_LDT_RW);
+    uint32_t la       = seg_base + (uint32_t)va;
     return (void*)la;
 }
 
@@ -152,7 +152,7 @@ int proc2pid(process_t* proc) {
 }
 
 bool init_locked_pcb(
-    process_t* proc, const char* name, void* entry_point, u32 rpl) {
+    process_t* proc, const char* name, void* entry_point, uint32_t rpl) {
     assert(proc != NULL);
     assert(name != NULL);
     assert(proc->pcb.stat == IDLE);
@@ -193,8 +193,8 @@ bool init_locked_pcb(
     //! 1. kernel space
     ok = get_phymem_bound(KernelSpace, &phy_base, &phy_limit);
     assert(ok);
-    mmap->kernel_lin_base  = (u32)K_PHY2LIN(phy_base);
-    mmap->kernel_lin_limit = (u32)K_PHY2LIN(phy_limit);
+    mmap->kernel_lin_base  = (uint32_t)K_PHY2LIN(phy_base);
+    mmap->kernel_lin_limit = (uint32_t)K_PHY2LIN(phy_limit);
 
     //! 2. arg page, save argv & envp
     mmap->arg_lin_base  = ArgLinBase;
@@ -230,21 +230,21 @@ bool init_locked_pcb(
     pcb->regs.ss  = ((8 * 1) & SA_MASK_RPL & SA_MASK_TI) | SA_TIL | rpl;
     pcb->regs.gs  = (SELECTOR_KERNEL_GS & SA_MASK_RPL) | rpl;
     pcb->regs.esp = mmap->stack_lin_base;
-    pcb->regs.eip = (u32)entry_point;
+    pcb->regs.eip = (uint32_t)entry_point;
 
     //! NOTE: assign task proc iopl=1, user's iopl=0
     pcb->regs.eflags =
         EFLAGS_RESERVED | EFLAGS_IF | EFLAGS_IOPL(rpl == RPL_USER ? 0 : 1);
 
     //! kernel space stack frame
-    u32* stack = (void*)(proc + 1);
-    u32* frame = (void*)stack - P_STACKTOP;
+    uint32_t* stack = (void*)(proc + 1);
+    uint32_t* frame = (void*)stack - P_STACKTOP;
     memcpy(frame, &pcb->regs, P_STACKTOP);
 
     //! represent: popad + popfd + ret
     pcb->esp_save_context = (void*)(frame - 10);
-    memset(pcb->esp_save_context, 0, sizeof(u32) * 10);
-    frame[-1] = (u32)restart_restore; //<! ret -> retaddr
+    memset(pcb->esp_save_context, 0, sizeof(uint32_t) * 10);
+    frame[-1] = (uint32_t)restart_restore; //<! ret -> retaddr
     //! NOTE: proc inited here always start from kernel space, so allow iopl=1
     //! here
     //! represent: popfd -> eflags

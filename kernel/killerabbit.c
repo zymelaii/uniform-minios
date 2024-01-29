@@ -14,7 +14,7 @@
 #include <string.h>
 #include <atomic.h>
 
-static int killerabbit_find_child_proc(u32 pid) {
+static int killerabbit_find_child_proc(uint32_t pid) {
     pcb_t* fa_pcb = (pcb_t*)pid2proc(pid);
     for (int i = 0; i < fa_pcb->tree_info.child_p_num; ++i) {
         return fa_pcb->tree_info.child_process[i];
@@ -22,7 +22,7 @@ static int killerabbit_find_child_proc(u32 pid) {
     return -1;
 }
 
-static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
+static void transfer_child_proc(uint32_t src_pid, uint32_t dst_pid) {
     assert(src_pid != dst_pid);
     pcb_t* src_pcb = (pcb_t*)pid2proc(src_pid);
     pcb_t* dst_pcb = (pcb_t*)pid2proc(dst_pid);
@@ -45,15 +45,15 @@ static void transfer_child_proc(u32 src_pid, u32 dst_pid) {
     src_pcb->tree_info.child_p_num = 0;
 }
 
-static void killerabbit_handle_child_thread_proc(u32 pid) {
+static void killerabbit_handle_child_thread_proc(uint32_t pid) {
     //! NOTE:fixed, now recursive delete
     pcb_t* pcb      = (pcb_t*)pid2proc(pid);
     pcb_t* recy_pcb = (pcb_t*)pid2proc(NR_RECY_PROC);
     for (int i = 0; i < pcb->tree_info.child_t_num; ++i) {
-        pcb_t* child_pcb = (pcb_t*)pid2proc(pcb->tree_info.child_thread[i]);
-        u32    cr3       = ((pcb_t*)pid2proc(pid))->cr3;
-        u32    laddr     = child_pcb->memmap.stack_lin_limit;
-        u32    limit     = child_pcb->memmap.stack_lin_base;
+        pcb_t*   child_pcb = (pcb_t*)pid2proc(pcb->tree_info.child_thread[i]);
+        uint32_t cr3       = ((pcb_t*)pid2proc(pid))->cr3;
+        uint32_t laddr     = child_pcb->memmap.stack_lin_limit;
+        uint32_t limit     = child_pcb->memmap.stack_lin_base;
         while (laddr < limit) {
             bool ok = pg_unmap_laddr(cr3, laddr, true);
             assert(ok);
@@ -72,7 +72,7 @@ static void killerabbit_handle_child_thread_proc(u32 pid) {
     return;
 }
 
-static void remove_killed_child(u32 ppid, u32 pid) {
+static void remove_killed_child(uint32_t ppid, uint32_t pid) {
     pcb_t* fa_pcb  = (pcb_t*)pid2proc(ppid);
     bool   cpyflg  = false;
     bool   killflg = false;
@@ -102,14 +102,14 @@ static void remove_killed_child(u32 ppid, u32 pid) {
     return;
 }
 
-static void killerabbit_recycle_memory(u32 recy_pid) {
+static void killerabbit_recycle_memory(uint32_t recy_pid) {
     assert(recy_pid != p_proc_current->pcb.pid);
     disable_int();
     recycle_proc_memory(pid2proc(recy_pid));
     enable_int();
 }
 
-static bool killerabbit_kill_one(u32 kill_pid, u32 fa_pid) {
+static bool killerabbit_kill_one(uint32_t kill_pid, uint32_t fa_pid) {
     pcb_t* kill_pcb = (pcb_t*)pid2proc(kill_pid);
     pcb_t* fa_pcb   = (pcb_t*)pid2proc(fa_pid);
     pcb_t* recy_pcb = (pcb_t*)pid2proc(NR_RECY_PROC);

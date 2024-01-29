@@ -18,8 +18,8 @@ void clock_handler(int irq) {
 void init_sysclk() {
     //! use 8253 PIT timer0 as system clock
     outb(TIMER_MODE, RATE_GENERATOR);
-    outb(TIMER0, (u8)((TIMER_FREQ / SYSCLK_FREQ_HZ) >> 0));
-    outb(TIMER0, (u8)((TIMER_FREQ / SYSCLK_FREQ_HZ) >> 8));
+    outb(TIMER0, (uint8_t)((TIMER_FREQ / SYSCLK_FREQ_HZ) >> 0));
+    outb(TIMER0, (uint8_t)((TIMER_FREQ / SYSCLK_FREQ_HZ) >> 8));
     system_ticks = 0;
 
     //! enable clock irq for 8259A

@@ -23,80 +23,80 @@
  *   http://en.wikipedia.org/wiki/Extended_boot_record for details.
  */
 struct part_ent {
-    u8 boot_ind; /**
-                  * boot indicator
-                  *   Bit 7 is the active partition flag,
-                  *   bits 6-0 are zero (when not zero this
-                  *   byte is also the drive number of the
-                  *   drive to boot so the active partition
-                  *   is always found on drive 80H, the first
-                  *   hard disk).
-                  */
+    uint8_t boot_ind; /**
+                       * boot indicator
+                       *   Bit 7 is the active partition flag,
+                       *   bits 6-0 are zero (when not zero this
+                       *   byte is also the drive number of the
+                       *   drive to boot so the active partition
+                       *   is always found on drive 80H, the first
+                       *   hard disk).
+                       */
 
-    u8 start_head; /**
-                    * Starting Head
-                    */
+    uint8_t start_head; /**
+                         * Starting Head
+                         */
 
-    u8 start_sector; /**
-                      * Starting Sector.
-                      *   Only bits 0-5 are used. Bits 6-7 are
-                      *   the upper two bits for the Starting
-                      *   Cylinder field.
-                      */
+    uint8_t start_sector; /**
+                           * Starting Sector.
+                           *   Only bits 0-5 are used. Bits 6-7 are
+                           *   the upper two bits for the Starting
+                           *   Cylinder field.
+                           */
 
-    u8 start_cyl; /**
-                   * Starting Cylinder.
-                   *   This field contains the lower 8 bits
-                   *   of the cylinder value. Starting cylinder
-                   *   is thus a 10-bit number, with a maximum
-                   *   value of 1023.
-                   */
+    uint8_t start_cyl; /**
+                        * Starting Cylinder.
+                        *   This field contains the lower 8 bits
+                        *   of the cylinder value. Starting cylinder
+                        *   is thus a 10-bit number, with a maximum
+                        *   value of 1023.
+                        */
 
-    u8 sys_id; /**
-                * System ID
-                * e.g.
-                *   01: FAT12
-                *   81: MINIX
-                *   83: Linux
-                */
-
-    u8 end_head; /**
-                  * Ending Head
-                  */
-
-    u8 end_sector; /**
-                    * Ending Sector.
-                    *   Only bits 0-5 are used. Bits 6-7 are
-                    *   the upper two bits for the Ending
-                    *    Cylinder field.
-                    */
-
-    u8 end_cyl; /**
-                 * Ending Cylinder.
-                 *   This field contains the lower 8 bits
-                 *   of the cylinder value. Ending cylinder
-                 *   is thus a 10-bit number, with a maximum
-                 *   value of 1023.
-                 */
-
-    u32 start_sect; /**
-                     * starting sector counting from
-                     * 0 / Relative Sector. / start in LBA
+    uint8_t sys_id; /**
+                     * System ID
+                     * e.g.
+                     *   01: FAT12
+                     *   81: MINIX
+                     *   83: Linux
                      */
 
-    u32 nr_sects; /**
-                   * nr of sectors in partition
-                   */
+    uint8_t end_head; /**
+                       * Ending Head
+                       */
+
+    uint8_t end_sector; /**
+                         * Ending Sector.
+                         *   Only bits 0-5 are used. Bits 6-7 are
+                         *   the upper two bits for the Ending
+                         *    Cylinder field.
+                         */
+
+    uint8_t end_cyl; /**
+                      * Ending Cylinder.
+                      *   This field contains the lower 8 bits
+                      *   of the cylinder value. Ending cylinder
+                      *   is thus a 10-bit number, with a maximum
+                      *   value of 1023.
+                      */
+
+    uint32_t start_sect; /**
+                          * starting sector counting from
+                          * 0 / Relative Sector. / start in LBA
+                          */
+
+    uint32_t nr_sects; /**
+                        * nr of sectors in partition
+                        */
 };
 
 // added by mingxuan 2020-10-27
 struct fs_flags {
-    u8 orange_flag;
-    // u8 reserved1;
-    // u8 reserved2;
-    u16 reserved;
-    u32 fat32_flag1;
-    u32 fat32_flag2;
+    uint8_t orange_flag;
+    // uint8_t reserved1;
+    // uint8_t reserved2;
+    uint16_t reserved;
+    uint32_t fat32_flag1;
+    uint32_t fat32_flag2;
 };
 
 /********************************************/
@@ -239,13 +239,13 @@ struct fs_flags {
 #define REG_DRV_ADDR 0x3F7 /*	Drive Address			I		*/
 
 struct hd_cmd {
-    u8 features;
-    u8 count;
-    u8 lba_low;
-    u8 lba_mid;
-    u8 lba_high;
-    u8 device;
-    u8 command;
+    uint8_t features;
+    uint8_t count;
+    uint8_t lba_low;
+    uint8_t lba_mid;
+    uint8_t lba_high;
+    uint8_t device;
+    uint8_t command;
 };
 
 // added by mingxuan 2020-10-27
@@ -255,9 +255,9 @@ struct hd_cmd {
 #define TTY_FS_TYPE 0x3 // added by mingxuan 2020-10-30
 
 typedef struct part_info {
-    u32 base;    /* # of start sector (NOT byte offset, but SECTOR) */
-    u32 size;    /* how many sectors in this partition */
-    u32 fs_type; // added by mingxuan 2020-10-27
+    uint32_t base;    /* # of start sector (NOT byte offset, but SECTOR) */
+    uint32_t size;    /* how many sectors in this partition */
+    uint32_t fs_type; // added by mingxuan 2020-10-27
 } part_info_t;
 
 /* main drive struct, one entry per drive */

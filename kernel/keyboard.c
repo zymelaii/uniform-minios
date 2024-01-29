@@ -26,15 +26,15 @@ static int num_lock;    /* Num Lock		*/
 static int scroll_lock; /* Scroll Lock		*/
 static int column;
 
-static u8   get_byte_from_kb_buf();
-static void set_leds();
-static void set_mouse_leds();
-static void kb_wait();
+static uint8_t get_byte_from_kb_buf();
+static void    set_leds();
+static void    set_mouse_leds();
+static void    kb_wait();
 
 // static void	kb_ack();
 
 void kb_handler(int irq) {
-    u8 scan_code = inb(0x60);
+    uint8_t scan_code = inb(0x60);
     if (kb_in.count < KB_IN_BYTES) {
         *(kb_in.p_head) = scan_code;
         kb_in.p_head++;
@@ -46,7 +46,7 @@ void kb_handler(int irq) {
 };
 
 void mouse_handler(int irq) {
-    u8 scan_code = inb(0x60);
+    uint8_t scan_code = inb(0x60);
     if (!mouse_init) {
         mouse_init = 1;
         return;
@@ -87,8 +87,8 @@ void mouse_handler(int irq) {
 
     //! drag
     if (tty->mouse.buttons & MOUSE_LEFT_BUTTON) {
-        u8 x_dir          = mouse_in.buf[0] & 0x10;
-        u8 y_dir          = mouse_in.buf[0] & 0x20;
+        uint8_t x_dir     = mouse_in.buf[0] & 0x10;
+        uint8_t y_dir     = mouse_in.buf[0] & 0x20;
         tty->mouse.off_x += x_dir == 0x10 ? -1 : +1;
         tty->mouse.off_y += y_dir == 0x20 ? -1 : +1;
     }
@@ -126,7 +126,7 @@ void init_keyboard() {
 }
 
 void keyboard_read(tty_t* p_tty) {
-    u8 scan_code;
+    uint8_t scan_code;
 
     /**
      * 1 : make
@@ -139,13 +139,13 @@ void keyboard_read(tty_t* p_tty) {
      * For instance, if the key HOME is pressed, key will be evaluated to
      * `HOME' defined in keyboard.h.
      */
-    u32 key = 0;
+    uint32_t key = 0;
 
     /**
      * This var points to a row in keymap[]. I don't use two-dimension
      * array because I don't like it.
      */
-    u32* keyrow;
+    uint32_t* keyrow;
 
     while (kb_in.count > 0) {
         code_with_E0 = 0;
@@ -153,9 +153,10 @@ void keyboard_read(tty_t* p_tty) {
 
         /* parse the scan code below */
         if (scan_code == 0xE1) {
-            int i;
-            u8  pausebreak_scan_code[] = {0xE1, 0x1D, 0x45, 0xE1, 0x9D, 0xC5};
-            int is_pausebreak          = 1;
+            int     i;
+            uint8_t pausebreak_scan_code[] = {
+                0xE1, 0x1D, 0x45, 0xE1, 0x9D, 0xC5};
+            int is_pausebreak = 1;
             for (i = 1; i < 6; i++) {
                 if (get_byte_from_kb_buf() != pausebreak_scan_code[i]) {
                     is_pausebreak = 0;
@@ -345,8 +346,8 @@ void keyboard_read(tty_t* p_tty) {
  *
  * @return The byte read.
  *****************************************************************************/
-static u8 get_byte_from_kb_buf() {
-    u8 scan_code;
+static uint8_t get_byte_from_kb_buf() {
+    uint8_t scan_code;
 
     while (kb_in.count <= 0) {} /* wait for a byte to arrive */
 
@@ -369,7 +370,7 @@ static u8 get_byte_from_kb_buf() {
  *****************************************************************************/
 static void kb_wait() /* 等待 8042 的输入缓冲区空 */
 {
-    u8 kb_stat;
+    uint8_t kb_stat;
     do { kb_stat = inb(KB_CMD); } while (kb_stat & 0x02);
 }
 
@@ -382,7 +383,7 @@ static void kb_wait() /* 等待 8042 的输入缓冲区空 */
  *****************************************************************************/
 // static void kb_ack()
 // {
-// 	u8 kb_read;
+// 	uint8_t kb_read;
 
 // 	do {
 // 		kb_read = inb(KB_DATA);

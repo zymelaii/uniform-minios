@@ -7,12 +7,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static void exit_handle_child_killed_proc(u32 pid) {
+static void exit_handle_child_killed_proc(uint32_t pid) {
     pcb_t* pcb                 = (pcb_t*)pid2proc(pid);
     pcb->tree_info.child_k_num = 0;
 }
 
-static int transfer_child_proc(u32 src_pid, u32 dst_pid) {
+static int transfer_child_proc(uint32_t src_pid, uint32_t dst_pid) {
     int number = 0;
     assert(src_pid != dst_pid);
     pcb_t* src_pcb = (pcb_t*)pid2proc(src_pid);
@@ -34,15 +34,15 @@ static int transfer_child_proc(u32 src_pid, u32 dst_pid) {
     return number;
 }
 
-static void exit_handle_child_thread_proc(u32 pid, bool lock_recy) {
+static void exit_handle_child_thread_proc(uint32_t pid, bool lock_recy) {
     //! NOTE:fixed, now recursive delete
     pcb_t* pcb      = (pcb_t*)pid2proc(pid);
     pcb_t* recy_pcb = (pcb_t*)pid2proc(NR_RECY_PROC);
     for (int i = 0; i < pcb->tree_info.child_t_num; ++i) {
-        pcb_t* child_pcb = (pcb_t*)pid2proc(pcb->tree_info.child_thread[i]);
-        u32    cr3       = ((pcb_t*)pid2proc(pid))->cr3;
-        u32    laddr     = child_pcb->memmap.stack_lin_limit;
-        u32    limit     = child_pcb->memmap.stack_lin_base;
+        pcb_t*   child_pcb = (pcb_t*)pid2proc(pcb->tree_info.child_thread[i]);
+        uint32_t cr3       = ((pcb_t*)pid2proc(pid))->cr3;
+        uint32_t laddr     = child_pcb->memmap.stack_lin_limit;
+        uint32_t limit     = child_pcb->memmap.stack_lin_base;
         while (laddr < limit) {
             bool ok = pg_unmap_laddr(cr3, laddr, true);
             assert(ok);

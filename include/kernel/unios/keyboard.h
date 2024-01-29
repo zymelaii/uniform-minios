@@ -141,22 +141,22 @@
 
 /* Keyboard structure, 1 per console. */
 /**
- * @todo change u8 into char
+ * @todo change uint8_t into char
  *
  */
 
 typedef struct kb_inbuf {
-    u8* p_head; /**< points to the next free slot */
-    u8* p_tail; /**< points to the byte to be handled */
-    int count;  /**< how many bytes to be handled in the buffer */
-    u8  buf[KB_IN_BYTES];
+    uint8_t* p_head; /**< points to the next free slot */
+    uint8_t* p_tail; /**< points to the byte to be handled */
+    int      count;  /**< how many bytes to be handled in the buffer */
+    uint8_t  buf[KB_IN_BYTES];
 } KB_INPUT;
 
 #define MOUSE_UPDOWN_BOUND 15
 
 typedef struct mouse_inbuf {
-    int count;
-    u8  buf[MOUSE_IN_BYTES];
+    int     count;
+    uint8_t buf[MOUSE_IN_BYTES];
 } MOUSE_INPUT;
 
 void init_keyboard();

@@ -26,8 +26,8 @@ static struct inode  inode_table[NR_INODE];
 
 static void mkfs();
 
-static int
-    rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
+static int rw_sector(
+    int io_type, int dev, uint64_t pos, int bytes, int proc_nr, void *buf);
 static int rw_sector_sched(
     int io_type, int dev, int pos, int bytes, int proc_nr, void *buf);
 
@@ -259,9 +259,9 @@ static void mkfs() {
  *
  * @return Zero if success.
  *****************************************************************************/
-/// zcr: change the "u64 pos" to "int pos"
+/// zcr: change the "uint64_t pos" to "int pos"
 static int rw_sector(
-    int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf) {
+    int io_type, int dev, uint64_t pos, int bytes, int proc_nr, void *buf) {
     MESSAGE driver_msg;
 
     driver_msg.type     = io_type;
@@ -498,7 +498,7 @@ static struct inode *get_inode(int dev, int num) {
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
     RD_SECT(dev, blk_nr, fsbuf);
     struct inode *pinode =
-        (struct inode *)((u8 *)fsbuf
+        (struct inode *)((uint8_t *)fsbuf
                          + ((num - 1) % (SECTOR_SIZE / INODE_SIZE))
                                * INODE_SIZE);
     q->i_mode       = pinode->i_mode;
@@ -542,7 +542,7 @@ static struct inode *get_inode_sched(int dev, int num) {
                              // added by xw, 18/12/27
     RD_SECT_SCHED(dev, blk_nr, fsbuf);
     struct inode *pinode =
-        (struct inode *)((u8 *)fsbuf
+        (struct inode *)((uint8_t *)fsbuf
                          + ((num - 1) % (SECTOR_SIZE / INODE_SIZE))
                                * INODE_SIZE);
     q->i_mode       = pinode->i_mode;
@@ -585,7 +585,7 @@ static void sync_inode(struct inode *p) {
     char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
                              // added by xw, 18/12/27
     RD_SECT(p->i_dev, blk_nr, fsbuf);
-    pinode               = (struct inode *)((u8 *)fsbuf
+    pinode               = (struct inode *)((uint8_t *)fsbuf
                               + (((p->i_num - 1) % (SECTOR_SIZE / INODE_SIZE))
                                  * INODE_SIZE));
     pinode->i_mode       = p->i_mode;
@@ -801,8 +801,8 @@ static int do_open(MESSAGE *fs_msg) {
     assert(0 <= fd && fd < NR_FILES);
 
     //! find a free slot in file_desc_table
-    int        index = 0;
-    static u32 lock  = 0;
+    int             index = 0;
+    static uint32_t lock  = 0;
     lock_or(&lock, schedule);
     while (index < NR_FILE_DESC) {
         if (file_desc_table[index].flag == 0) { break; }

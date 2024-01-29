@@ -11,9 +11,12 @@ descptr_t         idt_ptr;
 gate_descriptor_t idt[IDT_SIZE];
 
 void init_idt_desc(
-    unsigned char vector, u8 type, int_handler_t handler, unsigned char rpl) {
+    unsigned char vector,
+    uint8_t       type,
+    int_handler_t handler,
+    unsigned char rpl) {
     gate_descriptor_t* gate = &idt[vector];
-    u32                base = (u32)handler;
+    uint32_t           base = (uint32_t)handler;
     gate->offset_low        = base & 0xFFFF;
     gate->selector          = SELECTOR_KERNEL_CS;
     gate->reserved          = 0;
@@ -21,12 +24,13 @@ void init_idt_desc(
     gate->offset_high       = (base >> 16) & 0xFFFF;
 }
 
-u32 seg2phys(u16 seg) {
+uint32_t seg2phys(uint16_t seg) {
     descriptor_t* desc = &gdt[seg >> 3];
     return (desc->base2 << 24) | (desc->base1 << 16) | (desc->base0);
 }
 
-void init_descriptor(descriptor_t* desc, u32 base, u32 limit, u16 attr) {
+void init_descriptor(
+    descriptor_t* desc, uint32_t base, uint32_t limit, uint16_t attr) {
     desc->limit0       = limit & 0xffff;
     desc->base0        = base & 0xffff;
     desc->base1        = (base >> 16) & 0xff;
@@ -88,7 +92,10 @@ void init_protect_mode() {
     init_idt_desc(INT_VECTOR_SYSCALL, DA_386IGate, syscall_handler, RPL_USER);
 
     init_descriptor(
-        &gdt[INDEX_VIDEO], (u32)K_PHY2LIN(0x0B8000), 0x0ffff, DA_DRW | DA_DPL3);
+        &gdt[INDEX_VIDEO],
+        (uint32_t)K_PHY2LIN(0x0B8000),
+        0x0ffff,
+        DA_DRW | DA_DPL3);
 
     memset(&tss, 0, sizeof(tss));
     tss.ss0 = SELECTOR_KERNEL_DS;

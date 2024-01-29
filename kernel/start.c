@@ -12,9 +12,9 @@ void cstart() {
     memcpy(&gdt, (void *)gdt_ptr.base, gdt_ptr.limit + 1);
 
     gdt_ptr.limit = GDT_SIZE * sizeof(descriptor_t) - 1;
-    gdt_ptr.base  = (u32)&gdt;
+    gdt_ptr.base  = (uint32_t)&gdt;
     idt_ptr.limit = IDT_SIZE * sizeof(gate_descriptor_t) - 1;
-    idt_ptr.base  = (u32)&idt;
+    idt_ptr.base  = (uint32_t)&idt;
 
     init_protect_mode();
 

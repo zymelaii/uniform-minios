@@ -18,14 +18,14 @@ enum mouse_buttons {
 };
 
 typedef struct tty_s {
-    u32  ibuf[TTY_BUFSZ]; //<! tty buffer, shared by in/out
-    u32* ibuf_next;       //<! next free buffer pos
+    uint32_t  ibuf[TTY_BUFSZ]; //<! tty buffer, shared by in/out
+    uint32_t* ibuf_next;       //<! next free buffer pos
 
     //! NOTE: there's always cnt_wr <= cnt_rd
-    u32* ibuf_wr; //<! current wrbuf pos
-    u32* ibuf_rd; //<! current rdbuf pos
-    int  cnt_wr;  //<! wrbuf size
-    int  cnt_rd;  //<! rdbuf size
+    uint32_t* ibuf_wr; //<! current wrbuf pos
+    uint32_t* ibuf_rd; //<! current rdbuf pos
+    int       cnt_wr;  //<! wrbuf size
+    int       cnt_rd;  //<! rdbuf size
 
     int status;
 
@@ -44,7 +44,7 @@ void tty_notify_shell();
 bool tty_select(int index);
 void tty_write(tty_t* tty, char* buf, int len);
 int  tty_read(tty_t* tty, char* buf, int len);
-void tty_keyboard_proc(tty_t* tty, u32 key);
+void tty_keyboard_proc(tty_t* tty, uint32_t key);
 
 void tty_handler();
 

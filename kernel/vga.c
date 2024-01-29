@@ -106,7 +106,7 @@ void vgatm_sync_cursor_unsafe(_state_t *state) {
 #pragma GCC pop_options
 
 void vgatm_flush_vmem(_state_t *state, uint16_t raw) {
-    u16 *vmem = state->vmem_base;
+    uint16_t *vmem = state->vmem_base;
     for (int i = 0; i < state->capacity; ++i) { vmem[i] = raw; }
 }
 

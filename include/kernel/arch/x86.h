@@ -5,8 +5,8 @@
 
 #define ASMCALL __attribute__((optimize("O3"))) static inline
 
-ASMCALL u8 inb(int port) {
-    u8 data;
+ASMCALL uint8_t inb(int port) {
+    uint8_t data;
     asm volatile("inb %w1, %0"
                  : "=a"(data)
                  : "d"(port));
@@ -22,8 +22,8 @@ ASMCALL void insb(int port, void *addr, int cnt) {
                  : "memory", "cc");
 }
 
-ASMCALL u16 inw(int port) {
-    u16 data;
+ASMCALL uint16_t inw(int port) {
+    uint16_t data;
     asm volatile("inw %w1, %0"
                  : "=a"(data)
                  : "d"(port));
@@ -39,8 +39,8 @@ ASMCALL void insw(int port, void *addr, int cnt) {
                  : "memory", "cc");
 }
 
-ASMCALL u32 inl(int port) {
-    u32 data;
+ASMCALL uint32_t inl(int port) {
+    uint32_t data;
     asm volatile("inl %w1, %0"
                  : "=a"(data)
                  : "d"(port));
@@ -56,7 +56,7 @@ ASMCALL void insl(int port, void *addr, int cnt) {
                  : "memory", "cc");
 }
 
-ASMCALL void outb(int port, u8 data) {
+ASMCALL void outb(int port, uint8_t data) {
     asm volatile("outb %0, %w1"
                  :
                  : "a"(data), "d"(port));
@@ -71,7 +71,7 @@ ASMCALL void outsb(int port, const void *addr, int cnt) {
                  : "cc");
 }
 
-ASMCALL void outw(int port, u16 data) {
+ASMCALL void outw(int port, uint16_t data) {
     asm volatile("outw %0, %w1"
                  :
                  : "a"(data), "d"(port));
@@ -95,53 +95,53 @@ ASMCALL void outsl(int port, const void *addr, int cnt) {
                  : "cc");
 }
 
-ASMCALL void outl(int port, u32 data) {
+ASMCALL void outl(int port, uint32_t data) {
     asm volatile("outl %0, %w1"
                  :
                  : "a"(data), "d"(port));
 }
 
-ASMCALL void lcr0(u32 val) {
+ASMCALL void lcr0(uint32_t val) {
     asm volatile("movl %0, %%cr0"
                  :
                  : "r"(val));
 }
 
-ASMCALL u32 rcr0() {
-    u32 val;
+ASMCALL uint32_t rcr0() {
+    uint32_t val;
     asm volatile("movl %%cr0, %0"
                  : "=r"(val));
     return val;
 }
 
-ASMCALL u32 rcr2() {
-    u32 val;
+ASMCALL uint32_t rcr2() {
+    uint32_t val;
     asm volatile("movl %%cr2, %0"
                  : "=r"(val));
     return val;
 }
 
-ASMCALL void lcr3(u32 val) {
+ASMCALL void lcr3(uint32_t val) {
     asm volatile("movl %0, %%cr3"
                  :
                  : "r"(val));
 }
 
-ASMCALL u32 rcr3() {
-    u32 val;
+ASMCALL uint32_t rcr3() {
+    uint32_t val;
     asm volatile("movl %%cr3, %0"
                  : "=r"(val));
     return val;
 }
 
-ASMCALL void lcr4(u32 val) {
+ASMCALL void lcr4(uint32_t val) {
     asm volatile("movl %0, %%cr4"
                  :
                  : "r"(val));
 }
 
-ASMCALL u32 rcr4() {
-    u32 cr4;
+ASMCALL uint32_t rcr4() {
+    uint32_t cr4;
     asm volatile("movl %%cr4, %0"
                  : "=r"(cr4));
     return cr4;
@@ -152,44 +152,44 @@ ASMCALL void tlbflush() {
                  "mov %eax, %cr3\n");
 }
 
-ASMCALL u32 read_eflags() {
-    u32 eflags;
+ASMCALL uint32_t read_eflags() {
+    uint32_t eflags;
     asm volatile("pushfl\n"
                  "popl %0\n"
                  : "=r"(eflags));
     return eflags;
 }
 
-ASMCALL void write_eflags(u32 eflags) {
+ASMCALL void write_eflags(uint32_t eflags) {
     asm volatile("pushl %0\n"
                  "popfl\n"
                  :
                  : "r"(eflags));
 }
 
-ASMCALL u32 read_ebp() {
-    u32 ebp;
+ASMCALL uint32_t read_ebp() {
+    uint32_t ebp;
     asm volatile("movl %%ebp, %0"
                  : "=r"(ebp));
     return ebp;
 }
 
-ASMCALL u32 read_esp() {
-    u32 esp;
+ASMCALL uint32_t read_esp() {
+    uint32_t esp;
     asm volatile("movl %%esp, %0"
                  : "=r"(esp));
     return esp;
 }
 
-ASMCALL u64 read_tsc() {
-    u64 tsc;
+ASMCALL uint64_t read_tsc() {
+    uint64_t tsc;
     asm volatile("rdtsc"
                  : "=A"(tsc));
     return tsc;
 }
 
-ASMCALL u32 xchg(volatile u32 *addr, u32 newval) {
-    u32 result;
+ASMCALL uint32_t xchg(volatile uint32_t *addr, uint32_t newval) {
+    uint32_t result;
     asm volatile("lock\n"
                  "xchgl %0, %1\n"
                  : "+m"(*addr), "=a"(result)

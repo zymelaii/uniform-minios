@@ -191,21 +191,3 @@ syscall_handler:
     mov     esi, [edx + ESP_SAVE_SYSCALL]
     mov     [esi + EAXREG - P_STACKBASE], eax
     ret
-
-; u32 get_arg(void *uesp, int order)
-; used to get the specified argument of the syscall from user space stack
-; NOTE: let order = n to get the nth argument
-; TODO: abandon this
-    global get_arg
-get_arg:
-    push    ebp
-    mov     ebp, esp
-    push    esi
-    push    edi
-    mov     esi, dword [ebp + 8]    ; void *uesp
-    mov     edi, dword [ebp + 12]   ; int order
-    mov     eax, dword [esi + edi * 4 + 4]
-    pop     edi
-    pop     esi
-    pop     ebp
-    ret

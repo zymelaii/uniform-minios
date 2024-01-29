@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-static int syscall0(u32 NR_syscall) {
+static int syscall0(uint32_t NR_syscall) {
     int ret = 0;
     asm volatile("int $0x80"
                  : "=a"(ret)
@@ -15,7 +15,7 @@ static int syscall0(u32 NR_syscall) {
     return ret;
 }
 
-static int syscall1(u32 NR_syscall, u32 p1) {
+static int syscall1(uint32_t NR_syscall, uint32_t p1) {
     int ret = 0;
     asm volatile("int $0x80"
                  : "=a"(ret)
@@ -24,7 +24,7 @@ static int syscall1(u32 NR_syscall, u32 p1) {
     return ret;
 }
 
-static int syscall2(u32 NR_syscall, u32 p1, u32 p2) {
+static int syscall2(uint32_t NR_syscall, uint32_t p1, uint32_t p2) {
     int ret = 0;
     asm volatile("int $0x80"
                  : "=a"(ret)
@@ -33,7 +33,8 @@ static int syscall2(u32 NR_syscall, u32 p1, u32 p2) {
     return ret;
 }
 
-static int syscall3(u32 NR_syscall, u32 p1, u32 p2, u32 p3) {
+static int
+    syscall3(uint32_t NR_syscall, uint32_t p1, uint32_t p2, uint32_t p3) {
     int ret = 0;
     asm volatile("int $0x80"
                  : "=a"(ret)
@@ -42,7 +43,8 @@ static int syscall3(u32 NR_syscall, u32 p1, u32 p2, u32 p3) {
     return ret;
 }
 
-static int syscall4(u32 NR_syscall, u32 p1, u32 p2, u32 p3, u32 p4) {
+static int syscall4(
+    uint32_t NR_syscall, uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4) {
     int ret = 0;
     asm volatile("int $0x80"
                  : "=a"(ret)
@@ -51,7 +53,13 @@ static int syscall4(u32 NR_syscall, u32 p1, u32 p2, u32 p3, u32 p4) {
     return ret;
 }
 
-static int syscall5(u32 NR_syscall, u32 p1, u32 p2, u32 p3, u32 p4, u32 p5) {
+static int syscall5(
+    uint32_t NR_syscall,
+    uint32_t p1,
+    uint32_t p2,
+    uint32_t p3,
+    uint32_t p4,
+    uint32_t p5) {
     int ret = 0;
     asm volatile("int $0x80"
                  : "=a"(ret)
@@ -65,7 +73,7 @@ int get_ticks() {
 }
 
 int execve(const char *path, char *const *argv, char *const *envp) {
-    return syscall3(NR_execve, (u32)path, (u32)argv, (u32)envp);
+    return syscall3(NR_execve, (uint32_t)path, (uint32_t)argv, (uint32_t)envp);
 }
 
 int fork() {
@@ -73,27 +81,29 @@ int fork() {
 }
 
 int wait(int *wstatus) {
-    return syscall1(NR_wait, (u32)wstatus);
+    return syscall1(NR_wait, (uint32_t)wstatus);
 }
 
 handle_t krnlobj_lookup(int user_id) {
-    return (handle_t)syscall2(NR_krnlobj_request, KRNLOBJ_LOOKUP, (u32)user_id);
+    return (handle_t)syscall2(
+        NR_krnlobj_request, KRNLOBJ_LOOKUP, (uint32_t)user_id);
 }
 
 handle_t krnlobj_create(int user_id) {
-    return (handle_t)syscall2(NR_krnlobj_request, KRNLOBJ_CREATE, (u32)user_id);
+    return (handle_t)syscall2(
+        NR_krnlobj_request, KRNLOBJ_CREATE, (uint32_t)user_id);
 }
 
 void krnlobj_destroy(handle_t handle) {
-    syscall2(NR_krnlobj_request, KRNLOBJ_DESTROY, (u32)handle);
+    syscall2(NR_krnlobj_request, KRNLOBJ_DESTROY, (uint32_t)handle);
 }
 
 void krnlobj_lock(int user_id) {
-    syscall2(NR_krnlobj_request, KRNLOBJ_LOCK, (u32)user_id);
+    syscall2(NR_krnlobj_request, KRNLOBJ_LOCK, (uint32_t)user_id);
 }
 
 void krnlobj_unlock(int user_id) {
-    syscall2(NR_krnlobj_request, KRNLOBJ_UNLOCK, (u32)user_id);
+    syscall2(NR_krnlobj_request, KRNLOBJ_UNLOCK, (uint32_t)user_id);
 }
 
 void exit(int exit_code) {
@@ -125,11 +135,11 @@ void *malloc(int size) {
 }
 
 void free(void *ptr) {
-    syscall1(NR_free, (u32)ptr);
+    syscall1(NR_free, (uint32_t)ptr);
 }
 
 int open(const char *path, int flags) {
-    return syscall2(NR_open, (u32)path, flags);
+    return syscall2(NR_open, (uint32_t)path, flags);
 }
 
 int close(int fd) {
@@ -137,11 +147,11 @@ int close(int fd) {
 }
 
 int read(int fd, void *buf, int count) {
-    return syscall3(NR_read, fd, (u32)buf, count);
+    return syscall3(NR_read, fd, (uint32_t)buf, count);
 }
 
 int write(int fd, const void *buf, int count) {
-    return syscall3(NR_write, fd, (u32)buf, count);
+    return syscall3(NR_write, fd, (uint32_t)buf, count);
 }
 
 int lseek(int fd, int offset, int whence) {
@@ -149,36 +159,36 @@ int lseek(int fd, int offset, int whence) {
 }
 
 int unlink(const char *path) {
-    return syscall1(NR_unlink, (u32)path);
+    return syscall1(NR_unlink, (uint32_t)path);
 }
 
 int create(const char *path) {
-    return syscall1(NR_create, (u32)path);
+    return syscall1(NR_create, (uint32_t)path);
 }
 
 int delete(const char *path) {
-    return syscall1(NR_delete, (u32)path);
+    return syscall1(NR_delete, (uint32_t)path);
 }
 
 int opendir(const char *path) {
-    return syscall1(NR_opendir, (u32)path);
+    return syscall1(NR_opendir, (uint32_t)path);
 }
 
 int createdir(const char *path) {
-    return syscall1(NR_createdir, (u32)path);
+    return syscall1(NR_createdir, (uint32_t)path);
 }
 
 int deletedir(const char *path) {
-    return syscall1(NR_deletedir, (u32)path);
+    return syscall1(NR_deletedir, (uint32_t)path);
 }
 
 bool putenv(char *const *envp) {
-    bool ok = syscall2(NR_environ, ENVIRON_PUT, (u32)&envp);
+    bool ok = syscall2(NR_environ, ENVIRON_PUT, (uint32_t)&envp);
     return ok;
 }
 
 char *const *getenv() {
     char **envp = NULL;
-    bool   ok   = syscall2(NR_environ, ENVIRON_GET, (u32)&envp);
+    bool   ok   = syscall2(NR_environ, ENVIRON_GET, (uint32_t)&envp);
     return envp;
 }

@@ -235,8 +235,8 @@ int main(int arg, char *argv[]) {
 
         ok = route(cmd_argc, cmd_argv);
         while (!ok) {
-            const u32 ENOTFOUND = 114;
-            pid_t     pid       = fork();
+            const uint32_t ENOTFOUND = 114;
+            pid_t          pid       = fork();
             if (pid < 0) {
                 printf("warn: pcb res not available\n");
                 ok = true;

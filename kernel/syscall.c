@@ -25,9 +25,9 @@
         (t3)get_syscall_argument(2), (t4)get_syscall_argument(3), \
         (t5)get_syscall_argument(4), (t6)get_syscall_argument(5)
 
-static u32 get_syscall_argument(int index) {
+static uint32_t get_syscall_argument(int index) {
     //! FIXME: p_proc_current may not from the caller proc?
-    u32 *frame = (u32 *)p_proc_current->pcb.esp_save_syscall;
+    uint32_t *frame = (uint32_t *)p_proc_current->pcb.esp_save_syscall;
     switch (index) {
         case 0: {
             return frame[NR_EBXREG];
@@ -51,107 +51,107 @@ static u32 get_syscall_argument(int index) {
     panic("syscall argument out of range");
 }
 
-static u32 sys_get_ticks() {
+static uint32_t sys_get_ticks() {
     return do_get_ticks();
 }
 
-static u32 sys_execve() {
+static uint32_t sys_execve() {
     return do_execve(SYSCALL_ARGS3(const char *, char *const *, char *const *));
 }
 
-static u32 sys_fork() {
+static uint32_t sys_fork() {
     return do_fork();
 }
 
-static u32 sys_exit() {
+static uint32_t sys_exit() {
     do_exit(SYSCALL_ARGS1(int));
     return 0;
 }
 
-static u32 sys_killerabbit() {
+static uint32_t sys_killerabbit() {
     return do_killerabbit(SYSCALL_ARGS1(int));
 }
 
-static u32 sys_wait() {
+static uint32_t sys_wait() {
     return do_wait(SYSCALL_ARGS1(int *));
 }
 
-static u32 sys_get_pid() {
+static uint32_t sys_get_pid() {
     return do_get_pid();
 }
 
-static u32 sys_get_ppid() {
+static uint32_t sys_get_ppid() {
     return do_get_ppid();
 }
 
-static u32 sys_yield() {
+static uint32_t sys_yield() {
     do_yield();
     return 0;
 }
 
-static u32 sys_sleep() {
+static uint32_t sys_sleep() {
     do_sleep(SYSCALL_ARGS1(int));
     return 0;
 }
 
-static u32 sys_malloc(int size) {
-    return (u32)do_malloc(SYSCALL_ARGS1(int));
+static uint32_t sys_malloc(int size) {
+    return (uint32_t)do_malloc(SYSCALL_ARGS1(int));
 }
 
-static u32 sys_free(void *ptr) {
+static uint32_t sys_free(void *ptr) {
     do_free(SYSCALL_ARGS1(void *));
     return 0;
 }
 
-static u32 sys_open() {
+static uint32_t sys_open() {
     return do_open(SYSCALL_ARGS2(const char *, int));
 }
 
-static u32 sys_close() {
+static uint32_t sys_close() {
     return do_close(SYSCALL_ARGS1(int));
 }
 
-static u32 sys_read() {
+static uint32_t sys_read() {
     return do_read(SYSCALL_ARGS3(int, void *, int));
 }
 
-static u32 sys_write() {
+static uint32_t sys_write() {
     return do_write(SYSCALL_ARGS3(int, const void *, int));
 }
 
-static u32 sys_lseek() {
+static uint32_t sys_lseek() {
     return do_lseek(SYSCALL_ARGS3(int, int, int));
 }
 
-static u32 sys_unlink() {
+static uint32_t sys_unlink() {
     return do_unlink(SYSCALL_ARGS1(const char *));
 }
 
-static u32 sys_create() {
+static uint32_t sys_create() {
     return do_create(SYSCALL_ARGS1(const char *));
 }
 
-static u32 sys_delete() {
+static uint32_t sys_delete() {
     return do_delete(SYSCALL_ARGS1(const char *));
 }
 
-static u32 sys_opendir() {
+static uint32_t sys_opendir() {
     return do_opendir(SYSCALL_ARGS1(const char *));
 }
 
-static u32 sys_createdir() {
+static uint32_t sys_createdir() {
     return do_createdir(SYSCALL_ARGS1(const char *));
 }
 
-static u32 sys_deletedir() {
+static uint32_t sys_deletedir() {
     return do_deletedir(SYSCALL_ARGS1(const char *));
 }
 
-static u32 sys_environ() {
+static uint32_t sys_environ() {
     return do_environ(SYSCALL_ARGS2(int, char *const **));
 }
 
-static u32 sys_krnlobj_request() {
+static uint32_t sys_krnlobj_request() {
     return do_krnlobj_request(SYSCALL_ARGS2(int, void *));
 }
 

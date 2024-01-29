@@ -12,45 +12,45 @@
 //! ┃ descriptor index                     ┃TI┃ RPL ┃
 //! ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━┻━━━━━┛
 typedef struct selector_s {
-    u16 rpl   : 2;
-    u16 ti    : 1;
-    u16 index : 13;
+    uint16_t rpl   : 2;
+    uint16_t ti    : 1;
+    uint16_t index : 13;
 } __attribute__((packed)) selector_t;
 
 //! descriptor of GDT & SDT
 typedef struct descriptor_s {
-    u16 limit0;
-    u16 base0;
-    u8  base1;
-    u8  attr0;
-    u8  attr1_limit1;
-    u8  base2;
+    uint16_t limit0;
+    uint16_t base0;
+    uint8_t  base1;
+    uint8_t  attr0;
+    uint8_t  attr1_limit1;
+    uint8_t  base2;
 } __attribute__((packed)) descriptor_t;
 
 //! gate descriptor
 typedef struct gate_descriptor_s {
-    u16 offset_low;
-    u16 selector;
-    u8  reserved;
+    uint16_t offset_low;
+    uint16_t selector;
+    uint8_t  reserved;
 
     union {
-        u8 attr;
+        uint8_t attr;
 
         struct {
-            u8 attr_type    : 4;
-            u8 attr_s       : 1;
-            u8 attr_dpl     : 2;
-            u8 attr_present : 1;
+            uint8_t attr_type    : 4;
+            uint8_t attr_s       : 1;
+            uint8_t attr_dpl     : 2;
+            uint8_t attr_present : 1;
         };
     };
 
-    u16 offset_high;
+    uint16_t offset_high;
 } __attribute__((packed)) gate_descriptor_t;
 
 //! pointer to descriptor table
 typedef struct descptr_s {
-    u16 limit;
-    u32 base;
+    uint16_t limit;
+    uint32_t base;
 } __attribute__((packed)) descptr_t;
 
 extern descptr_t         gdt_ptr;
@@ -59,33 +59,33 @@ extern descriptor_t      gdt[GDT_SIZE];
 extern gate_descriptor_t idt[IDT_SIZE];
 
 typedef struct tss_s {
-    u32 backlink;
-    u32 esp0;
-    u32 ss0;
-    u32 esp1;
-    u32 ss1;
-    u32 esp2;
-    u32 ss2;
-    u32 cr3;
-    u32 eip;
-    u32 flags;
-    u32 eax;
-    u32 ecx;
-    u32 edx;
-    u32 ebx;
-    u32 esp;
-    u32 ebp;
-    u32 esi;
-    u32 edi;
-    u32 es;
-    u32 cs;
-    u32 ss;
-    u32 ds;
-    u32 fs;
-    u32 gs;
-    u32 ldt;
-    u16 trap;
-    u16 iobase;
+    uint32_t backlink;
+    uint32_t esp0;
+    uint32_t ss0;
+    uint32_t esp1;
+    uint32_t ss1;
+    uint32_t esp2;
+    uint32_t ss2;
+    uint32_t cr3;
+    uint32_t eip;
+    uint32_t flags;
+    uint32_t eax;
+    uint32_t ecx;
+    uint32_t edx;
+    uint32_t ebx;
+    uint32_t esp;
+    uint32_t ebp;
+    uint32_t esi;
+    uint32_t edi;
+    uint32_t es;
+    uint32_t cs;
+    uint32_t ss;
+    uint32_t ds;
+    uint32_t fs;
+    uint32_t gs;
+    uint32_t ldt;
+    uint16_t trap;
+    uint16_t iobase;
 } tss_t;
 
 //! indicies to GDT descriptor, defined in loader
@@ -155,8 +155,10 @@ typedef struct tss_s {
 #define RPL_TASK   SA_RPL1
 #define RPL_USER   SA_RPL3
 
-#define vir2phys(seg_base, vir) (u32)(((u32)seg_base) + (u32)(vir))
+#define vir2phys(seg_base, vir) \
+    (uint32_t)(((uint32_t)seg_base) + (uint32_t)(vir))
 
 void init_protect_mode();
-void init_descriptor(descriptor_t* desc, u32 base, u32 limit, u16 attr);
-u32  seg2phys(u16 seg);
+void init_descriptor(
+    descriptor_t* desc, uint32_t base, uint32_t limit, uint16_t attr);
+uint32_t seg2phys(uint16_t seg);

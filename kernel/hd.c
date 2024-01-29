@@ -21,8 +21,8 @@ struct part_ent PARTITION_ENTRY;
 
 static HDQueue      hdque;
 static volatile int hd_int_waiting_flag;
-static u8           hd_status;
-static u8           hdbuf[SECTOR_SIZE * 2];
+static uint8_t      hd_status;
+static uint8_t      hdbuf[SECTOR_SIZE * 2];
 hd_info_t           hd_info[1];
 
 static void init_hd_queue(HDQueue *hdq);
@@ -34,7 +34,7 @@ static void get_part_table(int drive, int sect_nr, struct part_ent *entry);
 static void partition(int device, int style);
 static void print_hdinfo(hd_info_t *hdi);
 static void hd_identify(int drive);
-static void print_identify_info(u16 *hdinfo);
+static void print_identify_info(uint16_t *hdinfo);
 static void hd_cmd_out(struct hd_cmd *cmd);
 
 static void inform_int();
@@ -70,7 +70,7 @@ void hd_open(int drive) {
     kdebug("read hd info");
 
     /* Get the number of drives from the BIOS data area */
-    // u8 * pNrDrives = (u8*)(0x475);
+    // uint8_t * pNrDrives = (uint8_t*)(0x475);
     hd_identify(drive);
 
     if (hd_info[drive].open_cnt++ == 0) {
@@ -87,18 +87,19 @@ void hd_close(int device) {
 }
 
 void hd_rdwt(MESSAGE *p) {
-    static u32 lock = 0;
+    static uint32_t lock = 0;
     lock_or(&lock, schedule);
     int drive = DRV_OF_DEV(p->DEVICE);
 
-    u64 pos = p->POSITION;
+    uint64_t pos = p->POSITION;
 
     // We only allow to R/W from a SECTOR boundary:
 
-    u32 sect_nr  = (u32)(pos >> SECTOR_SIZE_SHIFT); // pos / SECTOR_SIZE
-    int logidx   = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-    sect_nr     += p->DEVICE < MAX_PRIM ? hd_info[drive].primary[p->DEVICE].base
-                                        : hd_info[drive].logical[logidx].base;
+    uint32_t sect_nr =
+        (uint32_t)(pos >> SECTOR_SIZE_SHIFT); // pos / SECTOR_SIZE
+    int logidx  = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+    sect_nr    += p->DEVICE < MAX_PRIM ? hd_info[drive].primary[p->DEVICE].base
+                                       : hd_info[drive].logical[logidx].base;
 
     struct hd_cmd cmd;
     cmd.features = 0;
@@ -151,15 +152,16 @@ void hd_service() {
 static void hd_rdwt_real(RWInfo *p) {
     int drive = DRV_OF_DEV(p->msg->DEVICE);
 
-    u64 pos = p->msg->POSITION;
+    uint64_t pos = p->msg->POSITION;
 
     // We only allow to R/W from a SECTOR boundary:
 
-    u32 sect_nr  = (u32)(pos >> SECTOR_SIZE_SHIFT); // pos / SECTOR_SIZE
-    int logidx   = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-    sect_nr     += p->msg->DEVICE < MAX_PRIM
-                     ? hd_info[drive].primary[p->msg->DEVICE].base
-                     : hd_info[drive].logical[logidx].base;
+    uint32_t sect_nr =
+        (uint32_t)(pos >> SECTOR_SIZE_SHIFT); // pos / SECTOR_SIZE
+    int logidx  = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+    sect_nr    += p->msg->DEVICE < MAX_PRIM
+                    ? hd_info[drive].primary[p->msg->DEVICE].base
+                    : hd_info[drive].logical[logidx].base;
 
     struct hd_cmd cmd;
     cmd.features = 0;
@@ -463,9 +465,9 @@ static void hd_identify(int drive) {
     interrupt_wait();
     insw(REG_DATA, hdbuf, SECTOR_SIZE);
 
-    print_identify_info((u16 *)hdbuf);
+    print_identify_info((uint16_t *)hdbuf);
 
-    u16 *hdinfo = (u16 *)hdbuf;
+    uint16_t *hdinfo = (uint16_t *)hdbuf;
 
     hd_info[drive].primary[0].base = 0;
     /* Total Nr of User Addressable Sectors */
@@ -480,7 +482,7 @@ static void hd_identify(int drive) {
  *
  * @param hdinfo  The buffer read from the disk i/o port.
  *****************************************************************************/
-static void print_identify_info(u16 *hdinfo) {
+static void print_identify_info(uint16_t *hdinfo) {
     int  i, k;
     char s[64];
 

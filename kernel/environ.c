@@ -26,7 +26,7 @@ char **kgetenvp(process_t *proc) {
     if (*arg == NULL) {
         envp = &arg[1];
     } else {
-        uintptr_t addr = (u32)*arg + strlen(*arg) + 1;
+        uintptr_t addr = (uint32_t)*arg + strlen(*arg) + 1;
         //! align to 4 bytes ~ sizeof pointer
         envp = (void *)((addr + 3) & ~0b11);
     }
@@ -80,8 +80,8 @@ static bool do_putenv(char **envp) {
 
     bool ok = pg_map_laddr_range(
         cr3,
-        (u32)dst_envp,
-        (u32)(env_base + len),
+        (uint32_t)dst_envp,
+        (uint32_t)(env_base + len),
         PG_P | PG_U | PG_RWX,
         PG_P | PG_U | PG_RWX);
     assert(ok);
@@ -112,13 +112,13 @@ bool do_environ(int op, char *const **p_envp) {
 
     //! NOTE: memory for args not allocated, neither do argv, that is, argv
     //! is empty
-    if (!pg_addr_pte_exist(cr3, (u32)argv)) {
+    if (!pg_addr_pte_exist(cr3, (uint32_t)argv)) {
         //! FIXME: a empty argv usually indicates that the current proc is
         //! manually inited during kernel initialization, and we decide to make
         //! argc=0 in this case, maybe there is a better solution
         bool ok = pg_map_laddr(
             cr3,
-            (u32)argv,
+            (uint32_t)argv,
             PG_INVALID,
             PG_P | PG_U | PG_RWX,
             PG_P | PG_U | PG_RWX);
@@ -130,7 +130,7 @@ bool do_environ(int op, char *const **p_envp) {
 
     char **envp = kgetenvp(p_proc_current);
     if (should_init) {
-        assert(pg_addr_pte_exist(cr3, (u32)envp));
+        assert(pg_addr_pte_exist(cr3, (uint32_t)envp));
         envp[0] = NULL;
     }
 

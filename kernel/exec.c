@@ -16,17 +16,18 @@
 #include <limits.h>
 #include <math.h>
 
-static u32 exec_elfcpy(u32 fd, elf_proghdr_t elf_progh, u32 pte_attr) {
-    u32  laddr   = elf_progh.va;
-    u32  llimit  = elf_progh.va + elf_progh.memsz;
-    u32  foffset = elf_progh.offset;
-    u32  flimit  = elf_progh.offset + elf_progh.filesz;
-    bool ok      = pg_map_laddr_range(
+static uint32_t
+    exec_elfcpy(uint32_t fd, elf_proghdr_t elf_progh, uint32_t pte_attr) {
+    uint32_t laddr   = elf_progh.va;
+    uint32_t llimit  = elf_progh.va + elf_progh.memsz;
+    uint32_t foffset = elf_progh.offset;
+    uint32_t flimit  = elf_progh.offset + elf_progh.filesz;
+    bool     ok      = pg_map_laddr_range(
         p_proc_current->pcb.cr3, laddr, llimit, PG_P | PG_U | PG_RWX, pte_attr);
     assert(ok);
     pg_refresh();
 
-    u32 size = min(llimit - laddr, flimit - foffset);
+    uint32_t size = min(llimit - laddr, flimit - foffset);
     do_lseek(fd, foffset, SEEK_SET);
     do_read(fd, (void*)laddr, size);
     laddr += size;
@@ -35,12 +36,14 @@ static u32 exec_elfcpy(u32 fd, elf_proghdr_t elf_progh, u32 pte_attr) {
     return 0;
 }
 
-static u32 exec_load(
-    u32 fd, const elf_header_t* elf_header, const elf_proghdr_t* elf_proghs) {
+static uint32_t exec_load(
+    uint32_t             fd,
+    const elf_header_t*  elf_header,
+    const elf_proghdr_t* elf_proghs) {
     assert(elf_header->phnum > 0);
 
     lin_memmap_t* memmap = &p_proc_current->pcb.memmap;
-    u32           cr3    = p_proc_current->pcb.cr3;
+    uint32_t      cr3    = p_proc_current->pcb.cr3;
 
     ph_info_t* ph_info = memmap->ph_info;
     while (ph_info != NULL) {
@@ -67,7 +70,7 @@ static u32 exec_load(
             return -1;
         }
         //! TODO: more detailed page privilege
-        u32 pte_attr = PG_P | PG_U;
+        uint32_t pte_attr = PG_P | PG_U;
         if (flag_write) {
             pte_attr |= PG_RWX;
         } else {
@@ -110,7 +113,7 @@ static int exec_pcb_init(const char* path) {
     pcb->regs.gs       = (pcb->regs.gs & SA_MASK_RPL) | RPL_USER;
     pcb->regs.eflags   = EFLAGS_RESERVED | EFLAGS_IF | EFLAGS_IOPL(0);
 
-    u32* frame = (void*)(p_proc_current + 1) - P_STACKTOP;
+    uint32_t* frame = (void*)(p_proc_current + 1) - P_STACKTOP;
     memcpy(frame, &pcb->regs, sizeof(pcb->regs));
 
     //! NOTE: pcb only comes from fork or init_locked_pcb, so simply keep the
@@ -253,7 +256,7 @@ static void fix_broken_flatten_str_array(int total, char** array) {
 }
 
 static int take_consecutive_laddr_range_ptes(
-    u32 cr3, u32 base, u32 limit, u32** p_ptes) {
+    uint32_t cr3, uint32_t base, uint32_t limit, uint32_t** p_ptes) {
     assert(p_ptes != NULL);
     *p_ptes = NULL;
 
@@ -270,13 +273,13 @@ static int take_consecutive_laddr_range_ptes(
         return 0;
     }
 
-    u32* ptes = kmalloc(total * sizeof(u32));
+    uint32_t* ptes = kmalloc(total * sizeof(uint32_t));
     if (ptes == NULL) { return -ENOMEM; }
 
     for (int addr = base, i = 0; i < total; addr += NUM_4K, ++i) {
-        u32 pde = pg_pde(cr3, addr);
+        uint32_t pde = pg_pde(cr3, addr);
         assert((pde & PG_MASK_P) == PG_P);
-        u32* p_pte = pg_pte_ptr(pde, addr);
+        uint32_t* p_pte = pg_pte_ptr(pde, addr);
         assert(p_pte != NULL);
         assert((*p_pte & PG_MASK_P) == PG_P);
         ptes[i] = *p_pte;
@@ -292,7 +295,7 @@ static int exec_replace_argv_and_envp(
     int*        p_argc,
     char***     p_argv,
     char***     p_envp,
-    u32**       p_old_ptes,
+    uint32_t**  p_old_ptes,
     int*        p_nr_old_ptes) {
     assert(path != NULL);
     assert(p_argc != NULL);
@@ -405,11 +408,11 @@ static int exec_replace_argv_and_envp(
 }
 
 int do_execve(const char* path, char* const* argv, char* const* envp) {
-    int  errno        = 0;
-    u32* old_ptes     = NULL;
-    int  nr_old_ptes  = 0;
-    int  fd           = -1;
-    bool unrestorable = false;
+    int       errno        = 0;
+    uint32_t* old_ptes     = NULL;
+    int       nr_old_ptes  = 0;
+    int       fd           = -1;
+    bool      unrestorable = false;
 
     pcb_t*        pcb    = &p_proc_current->pcb;
     lin_memmap_t* memmap = &pcb->memmap;
@@ -421,7 +424,7 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
             break;
         }
 
-        u32 fd = try_open_executable(path);
+        uint32_t fd = try_open_executable(path);
         if (fd == -1) {
             errno = ENOENT;
             break;
@@ -471,15 +474,15 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
         }
         pg_refresh();
 
-        u32* frame        = (void*)(p_proc_current + 1) - P_STACKTOP;
-        u32* callee_stack = (u32*)memmap->stack_lin_base;
-        callee_stack[-1]  = (u32)new_envp;
-        callee_stack[-2]  = (u32)new_argv;
-        callee_stack[-3]  = (u32)new_argc;
-        pcb->regs.esp     = (u32)&callee_stack[-3];
-        pcb->regs.eip     = (u32)entry_point;
-        frame[NR_EIPREG]  = pcb->regs.eip;
-        frame[NR_ESPREG]  = pcb->regs.esp;
+        uint32_t* frame        = (void*)(p_proc_current + 1) - P_STACKTOP;
+        uint32_t* callee_stack = (uint32_t*)memmap->stack_lin_base;
+        callee_stack[-1]       = (uint32_t)new_envp;
+        callee_stack[-2]       = (uint32_t)new_argv;
+        callee_stack[-3]       = (uint32_t)new_argc;
+        pcb->regs.esp          = (uint32_t)&callee_stack[-3];
+        pcb->regs.eip          = (uint32_t)entry_point;
+        frame[NR_EIPREG]       = pcb->regs.eip;
+        frame[NR_ESPREG]       = pcb->regs.esp;
     } while (0);
 
     if (fd != -1) { do_close(fd); }
@@ -491,12 +494,12 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
         bool ok = pg_unmap_laddr_range(
             pcb->cr3, memmap->arg_lin_base, memmap->arg_lin_limit, true);
         assert(ok);
-        u32 addr = memmap->arg_lin_base;
-        for (u32 i = 0; i < nr_old_ptes; ++i, addr += NUM_4K) {
-            u32 pde = pg_pde(pcb->cr3, addr);
+        uint32_t addr = memmap->arg_lin_base;
+        for (uint32_t i = 0; i < nr_old_ptes; ++i, addr += NUM_4K) {
+            uint32_t pde = pg_pde(pcb->cr3, addr);
             assert((pde & PG_MASK_P) == PG_P);
-            u32* pte_ptr = pg_pte_ptr(pde, addr);
-            *pte_ptr     = old_ptes[i];
+            uint32_t* pte_ptr = pg_pte_ptr(pde, addr);
+            *pte_ptr          = old_ptes[i];
         }
         pg_refresh();
     }

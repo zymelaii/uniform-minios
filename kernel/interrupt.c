@@ -67,14 +67,14 @@ bool is_irq_masked(int irq) {
 }
 
 void enable_irq(int irq) {
-    u8  mask = 1 << (irq % 8);
-    int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
+    uint8_t mask = 1 << (irq % 8);
+    int     port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
     outb(port, inb(port) & ~mask);
 }
 
 void disable_irq(int irq) {
-    u8  mask = 1 << (irq % 8);
-    int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
+    uint8_t mask = 1 << (irq % 8);
+    int     port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
     outb(port, inb(port) | mask);
 }
 

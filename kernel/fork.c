@@ -11,27 +11,28 @@
 #include <string.h>
 #include <atomic.h>
 
-static bool fork_clone_part_rwx(u32 ppid, u32 pid, u32 base, u32 limit) {
+static bool fork_clone_part_rwx(
+    uint32_t ppid, uint32_t pid, uint32_t base, uint32_t limit) {
     //! FIXME: risky action, this is relevant to current cr3, but ppid may be
     //! not the expected one
     //! FIXME: pid allocation method may changes
-    u32 cr3_ppid = ((pcb_t*)pid2proc(ppid))->cr3;
-    u32 cr3_pid  = ((pcb_t*)pid2proc(pid))->cr3;
+    uint32_t cr3_ppid = ((pcb_t*)pid2proc(ppid))->cr3;
+    uint32_t cr3_pid  = ((pcb_t*)pid2proc(pid))->cr3;
 
-    u32 attr        = PG_P | PG_U | PG_RWX;
-    u32 laddr_share = SharePageBase;
+    uint32_t attr        = PG_P | PG_U | PG_RWX;
+    uint32_t laddr_share = SharePageBase;
     assert(laddr_share == pg_frame_phyaddr(laddr_share));
 
-    u32  laddr = base;
-    bool ok    = false;
+    uint32_t laddr = base;
+    bool     ok    = false;
     while (laddr < limit) {
         assert(!pg_addr_pte_exist(cr3_ppid, laddr_share));
         bool ok = pg_map_laddr(cr3_ppid, laddr_share, PG_INVALID, attr, attr);
         if (!ok) { return false; }
         pg_refresh();
         memcpy((void*)laddr_share, (void*)pg_frame_phyaddr(laddr), NUM_4K);
-        u32 phyaddr = pg_laddr_phyaddr(cr3_ppid, laddr_share);
-        ok          = pg_map_laddr(cr3_pid, laddr, phyaddr, attr, attr);
+        uint32_t phyaddr = pg_laddr_phyaddr(cr3_ppid, laddr_share);
+        ok               = pg_map_laddr(cr3_pid, laddr, phyaddr, attr, attr);
         if (!ok) { return false; }
         laddr = pg_frame_phyaddr(laddr) + NUM_4K;
         ok    = pg_unmap_laddr(cr3_ppid, laddr_share, false);
@@ -59,7 +60,7 @@ static int fork_update_proc_info(process_t* p_child) {
     return 0;
 }
 
-static bool fork_memory_clone(u32 ppid, u32 pid) {
+static bool fork_memory_clone(uint32_t ppid, uint32_t pid) {
     lin_memmap_t* memmap = &p_proc_current->pcb.memmap;
     ph_info_t*    ph_ptr = memmap->ph_info;
     //! clone elf part
@@ -97,8 +98,8 @@ static int fork_pcb_clone(process_t* p_child) {
     pcb_t* fa = &p_proc_current->pcb;
     pcb_t* ch = &p_child->pcb;
 
-    u32* ch_frame = (void*)(p_child + 1) - P_STACKTOP;
-    u32* fa_frame = (void*)(p_proc_current + 1) - P_STACKTOP;
+    uint32_t* ch_frame = (void*)(p_child + 1) - P_STACKTOP;
+    uint32_t* fa_frame = (void*)(p_proc_current + 1) - P_STACKTOP;
 
     //! shared part
     ch->regs             = fa->regs;
@@ -147,8 +148,8 @@ static int fork_pcb_clone(process_t* p_child) {
     //! `init_locked_pcb` for more details
     ch->esp_save_int     = (void*)ch_frame;
     ch->esp_save_context = (void*)(ch_frame - 10);
-    memset(ch->esp_save_context, 0, sizeof(u32) * 10);
-    ch_frame[-1] = (u32)restart_restore;
+    memset(ch->esp_save_context, 0, sizeof(uint32_t) * 10);
+    ch_frame[-1] = (uint32_t)restart_restore;
     ch_frame[-2] = ch_frame[NR_EFLAGSREG];
 
     //! NOTE: proc family tree will be maintained later
@@ -185,7 +186,7 @@ int do_fork() {
     }
     fork_update_proc_info(ch);
 
-    u32* frame       = (void*)(ch + 1) - P_STACKTOP;
+    uint32_t* frame  = (void*)(ch + 1) - P_STACKTOP;
     ch->pcb.regs.eax = 0;
     //! update retval address in stack to be safe
     frame[NR_EAXREG] = ch->pcb.regs.eax;

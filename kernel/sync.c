@@ -16,10 +16,10 @@ enum krnl_obj_status {
 };
 
 typedef struct krnl_obj_s {
-    u32   id;
-    int   user_id;
-    int   status;
-    void *func;
+    uint32_t id;
+    int      user_id;
+    int      status;
+    void    *func;
 } krnl_obj_t;
 
 //! NOTE: only support spin lock currently
@@ -48,13 +48,13 @@ static handle_t krnlobj_create(int user_id) {
     if (index == NR_KRNL_OBJS) { return (handle_t)-1; }
 
     krnl_obj_table[index].id      = index;
-    krnl_obj_table[index].func    = kmalloc(sizeof(u32));
+    krnl_obj_table[index].func    = kmalloc(sizeof(uint32_t));
     krnl_obj_table[index].user_id = user_id;
     return (handle_t)krnl_obj_table[index].id;
 }
 
 static void krnlobj_destroy(handle_t handle) {
-    u32 id = (u32)handle;
+    uint32_t id = (uint32_t)handle;
     assert(id >= 0 && id < NR_KRNL_OBJS);
 
     int old = 0;
@@ -72,7 +72,7 @@ static void krnlobj_destroy(handle_t handle) {
 }
 
 static void krnlobj_lock(int user_id) {
-    u32 id = (u32)krnlobj_lookup(user_id);
+    uint32_t id = (uint32_t)krnlobj_lookup(user_id);
     assert(id >= 0 && id < NR_KRNL_OBJS);
 
     int old = 0;
@@ -93,7 +93,7 @@ static void krnlobj_lock(int user_id) {
 }
 
 static void krnlobj_unlock(int user_id) {
-    u32 id = (u32)krnlobj_lookup(user_id);
+    uint32_t id = (uint32_t)krnlobj_lookup(user_id);
     assert(id >= 0 && id < NR_KRNL_OBJS);
     int old = 0;
     while (true) {
@@ -113,10 +113,10 @@ static void krnlobj_unlock(int user_id) {
 int do_krnlobj_request(int req, void *arg) {
     switch (req) {
         case KRNLOBJ_CREATE: {
-            return (u32)krnlobj_create((int)arg);
+            return (uint32_t)krnlobj_create((int)arg);
         } break;
         case KRNLOBJ_LOOKUP: {
-            return (u32)krnlobj_lookup((int)arg);
+            return (uint32_t)krnlobj_lookup((int)arg);
         } break;
         case KRNLOBJ_DESTROY: {
             krnlobj_destroy((handle_t)arg);
