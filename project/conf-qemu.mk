@@ -1,11 +1,14 @@
 # [in, out] QEMU qemu-system-? executable
-# [in] QEMU qemu display graphics
+# [in] QEMU_DISPLAY qemu display graphics
+# [in] MEMORY physical memory conf, in MB
 # [out] QEMU_FLAGS options for qemu-system-?
 
 QEMU    ?= qemu-system-i386
-DISPLAY :=
+
+QEMU_DISPLAY :=
+MEMORY       := 128
 
 QEMU_FLAGS := -boot order=a
 QEMU_FLAGS += -serial file:serial.log
-QEMU_FLAGS += -m 128m
-QEMU_FLAGS += $(if $(DISPLAY),-display $(DISPLAY),)
+QEMU_FLAGS += -m $(MEMORY)m
+QEMU_FLAGS += $(if $(QEMU_DISPLAY),-display $(QEMU_DISPLAY),)
