@@ -41,4 +41,9 @@
         "--pch-storage=disk",
         "-j=8",
     ],
+    //! doc
+    "[restructuredtext]": {
+        "editor.wordWrap": "on",
+        "editor.acceptSuggestionOnEnter": "off",
+    },
 }

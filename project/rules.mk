@@ -9,7 +9,7 @@ clean:
 	@\
 	if [ ! -d $(OBJDIR) ]; then exit; fi;		\
 	echo -ne "[PROC] clean-up all stuffs\r";	\
-	if rm -rf $(OBJDIR) 2> /dev/null; then						\
+	if rm -rf $(OBJDIR) 2> /dev/null; then		\
 		echo -e "\e[1K\r\e[32m[DONE]\e[0m clean-up all stuffs";	\
 	else														\
 		echo -e "\e[1K\r\e[31m[FAIL]\e[0m clean-up all stuffs";	\
@@ -84,6 +84,21 @@ format:
 	echo -e "\e[1K\r\e[32m[DONE]\e[0m format sources";
 .PHONY: format
 
+# doc rules
+pre-doc: doc/requirements.txt
+	@\
+	if ! pip install -r $< 2> /dev/null; then				\
+		msg="try to install deps via sys package manager";	\
+		echo -e "\e[31m[FAIL]\e[0m $${msg}";				\
+		msg="install sphinx and python-libs listed in $<";	\
+		echo -e "\e[90m[HINT]\e[0m $${msg}";				\
+	fi
+.PHONY: pre-doc
+
+doc:
+	@sphinx-autobuild doc $(OBJDIR)/doc
+.PHONY: doc
+
 # install rules
 install:
 	@\
@@ -128,7 +143,6 @@ b: build
 r: run
 d: debug
 i: install
-gdb: monitor
 mon: monitor
 mon-real: monitor-real
 lib: $(LIBRT_FILE)
