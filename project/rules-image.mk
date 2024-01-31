@@ -10,7 +10,7 @@ $(IMAGE_FILE)p0: $(RAW_HD_IMAGE) $(MBR_FILE) $(BOOT_FILE)
 
 	@\
 	echo -ne "[PROC] make fat32 fs\r";									\
-	loop_device=`losetup -f`;											\
+	loop_device=`sudo losetup -f`;										\
 	sudo losetup -P $${loop_device} $@;									\
 	sudo mkfs.vfat -F 32 $${loop_device}p1 > /dev/null 2>&1;			\
 	echo -e "\e[1K\r\e[32m[DONE]\e[0m make fat32 fs -> $(notdir $@)";	\
