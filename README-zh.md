@@ -60,13 +60,14 @@ unios，全名 uniform-minios，由 NWPU miniOS 派生而来，旨在提供一�
   <summary><b>推荐工作区配置</b></summary>
 
 - Visual Studio Code
-- \[插件] llvm-vs-code-extensions.vscode-clangd
-- \[插件] Gruntfuggly.todo-tree
-- \[插件] lextudio.restructuredtext
-- \[插件] ms-python.python
-- \[插件] usernamehw.errorlens
-- \[插件] alefragnani.Bookmarks
-- \[插件] kevinkyang.auto-comment-blocks
+- \[拓展] llvm-vs-code-extensions.vscode-clangd
+- \[拓展] Gruntfuggly.todo-tree
+- \[拓展] lextudio.restructuredtext
+- \[拓展] ms-python.python
+- \[拓展] usernamehw.errorlens
+- \[拓展] alefragnani.Bookmarks
+- \[拓展] kevinkyang.auto-comment-blocks
+- \[拓展] xaver.clang-format
 
 </details>
 

@@ -66,6 +66,7 @@ unios, full name union-miniOS, is derived from nwpu miniOS. unios aims to provid
 - \[Extension] usernamehw.errorlens
 - \[Extension] alefragnani.Bookmarks
 - \[Extension] kevinkyang.auto-comment-blocks
+- \[Extension] xaver.clang-format
 
 </details>
 

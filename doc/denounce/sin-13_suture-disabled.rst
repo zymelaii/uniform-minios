@@ -62,7 +62,7 @@
 
 - do_malloc 与 do_free 借助 memman 实现内存的管理
 - vmalloc 通过进程的堆地址实现内存的分配
-- sys_malloc 与 sys_free 构成了把从 **堆地址分配** 的地址空间交给 **memman 释放** 的处理过程
+- sys_malloc 与 sys_free 构成了把从\ **堆地址分配**\ 的地址空间交给 **memman 释放**\ 的处理过程
 
 6（一个象征着吉祥的数字）。
 
