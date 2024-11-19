@@ -152,3 +152,4 @@ obj/*
 *.log
 
 !.vscode/settings.json
+!/libgcc*.a

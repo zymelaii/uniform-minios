@@ -69,4 +69,6 @@ LIBGCC_FILE := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 ifeq ($(LIBGCC_FILE),)
     $(error unios requires `gcc-multilib` to complete the build)
 endif
-LIBGCC_FILE := libgcc.x86_64-32-13.2.1.a
+ifeq ($(shell nm $(LIBGCC_FILE) 2> /dev/null | grep 'T __divdi3'),)
+    LIBGCC_FILE := libgcc.x86_64-32-13.2.1.a
+endif
