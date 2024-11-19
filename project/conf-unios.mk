@@ -27,13 +27,16 @@ LIBRT_FILE := $(OBJDIR)/lib/lib$(LIBRT).a
 INSTALL_FILENAME := "$(USER_PROG_ARCHIVE)"
 
 # hardcoded image assignment arguments
-OSBOOT_START_OFFSET    := $(shell echo $$[0x0010005a])
-ORANGE_FS_START_OFFSET := $(shell echo $$[0x00300200])
-PART_START_SECTOR      := 6144
-INSTALL_PHY_SECTOR     := 7095
-INSTALL_NR_SECTORS     := 1000
+OSBOOT_START_OFFSET    := $(shell echo $$[ 0x0010005a ]) #<! [FIXED] fat32 boot sector boot code offset
+ORANGE_FS_PART_START   := 6144                           #<! [FIXED] orangefs start sector
+ORANGE_FS_SB_OFFSET    := $(shell echo $$[ 6145 * 512 ]) #<! [FIXED] orangefs superblock offset
+ORANGE_FS_PART_SECTORS := 43857                          #<! [FIXED] orangefs total sectors
+ORANGE_FS_IMAP_SECTORS := 1                              #<! [FIXED] orangefs inode bitmap sectors
+INSTALL_PHY_SECTOR     := 7095                           #<! where to start installing user app tar
+INSTALL_NR_SECTORS     := 4000                           #<! total sectors reserved for user app tar
 
-INSTALL_START_SECTOR := $(shell echo $$[$(INSTALL_PHY_SECTOR) - $(PART_START_SECTOR)])
+# start sector of user programs relative to orangefs partition
+INSTALL_START_SECTOR := $(shell echo $$[$(INSTALL_PHY_SECTOR) - $(ORANGE_FS_PART_START)])
 
 DEVICE_INFO_ADDR := 0x90000
 
@@ -66,3 +69,4 @@ LIBGCC_FILE := $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 ifeq ($(LIBGCC_FILE),)
     $(error unios requires `gcc-multilib` to complete the build)
 endif
+LIBGCC_FILE := libgcc.x86_64-32-13.2.1.a

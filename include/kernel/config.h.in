@@ -1,8 +1,9 @@
 #pragma once
 
-#define INSTALL_FILENAME     @INSTALL_FILENAME@
-#define INSTALL_NR_SECTORS   @INSTALL_NR_SECTORS@
-#define INSTALL_START_SECTOR @INSTALL_START_SECTOR@
+#define INSTALL_FILENAME       @INSTALL_FILENAME@
+#define ORANGE_FS_IMAP_SECTORS @ORANGE_FS_IMAP_SECTORS@
+#define INSTALL_NR_SECTORS     @INSTALL_NR_SECTORS@
+#define INSTALL_START_SECTOR   @INSTALL_START_SECTOR@
 
 //! NOTE: this var is closely integrated with loader, so if you should read
 //! loader carefully before modifying this var.

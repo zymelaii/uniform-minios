@@ -58,7 +58,7 @@ $(IMAGE_FILE)p3: $(IMAGE_FILE)p2 $(ORANGE_FS_FLAG_FILE)
 	@mkdir -p $(@D)
 	@cp -f $< $@
 	@dd if=$(ORANGE_FS_FLAG_FILE) of=$@ bs=1 count=1	\
-		seek=$(ORANGE_FS_START_OFFSET) conv=notrunc > /dev/null 2>&1
+		seek=$(ORANGE_FS_SB_OFFSET) conv=notrunc > /dev/null 2>&1
 	@echo -e "\e[1K\r\e[32m[DONE]\e[0m write fs flags -> $(notdir $@)"
 
 # image sha1sum for outdated detection
