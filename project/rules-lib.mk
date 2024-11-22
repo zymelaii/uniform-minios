@@ -1,6 +1,6 @@
 # build runtime library
-$(LIBRT_FILE): $(filter $(OBJDIR)/lib/%.obj,$(OBJECT_FILES))
-	@echo -ne "[PROC] ar $(notdir $@)\r"
+$(LIBRT_FILE): $(filter $(OBJDIR)lib/%.obj,$(OBJECT_FILES))
+	@$(call begin-job,ar,$(notdir $@))
 	@mkdir -p $(@D)
 	@$(AR) $(ARFLAGS) -o $@ $^ > /dev/null 2>&1
-	@echo -e "\e[1K\r\e[32m[DONE]\e[0m ar $(notdir $@)"
+	@$(call end-job,done,ar,$(notdir $@))

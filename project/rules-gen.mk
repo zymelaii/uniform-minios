@@ -1,5 +1,17 @@
-ENVS         := $(OBJDIR)/.cache/.envs
+ENVS         := $(OBJDIR).cache/.envs
 CACHED_FILES += $(ENVS)
+
+define configure-file
+	vars=`cat $(1) | grep -Po '(?<=@)\w+(?=@)' | tr '\n' ' '`;     \
+	cat $(ENVS) | while IFS= read -r row; do                       \
+		read -r key value <<<                                      \
+			`echo "$${row}" | awk -F' = ' '{print $$1, $$2}'`;     \
+		if [[ " $${vars} " =~ " $${key} " ]]; then                 \
+			subst=$$(echo "$${value}" | sed -r 's/([/\])/\\\1/g'); \
+			sed -i "s/@$${key}@/$${subst}/g" $(1);                 \
+		fi;                                                        \
+	done
+endef
 
 dup-envs:
 	@$(foreach v, $(.VARIABLES), $(info $(v) = $($(v)))):
@@ -7,32 +19,22 @@ dup-envs:
 
 # make environs
 $(ENVS): force
-	@echo -ne "[PROC] write out make envs\r"
+	@$(call begin-job,write out make envs,)
 	@mkdir -p $(@D)
 	@$(MAKE) -s dup-envs | grep -P '^\w+\s*=.*$$' > $@.swp
 	@cmp -s $@ $@.swp || cp $@.swp $@
-	@echo -e "\e[1K\r\e[32m[DONE]\e[0m write out make envs";
+	@$(call end-job,done,write out make envs,)
 .PHONY: force
 
-# config.h for kernel
-# NOTE: $(ENVS) is very sensitive to the envs, be careful to update the config.h
-$(GENERATED_INCDIR)/config.h: include/kernel/config.h.in $(ENVS)
-	@echo -ne "[PROC] generate $(notdir $@)\r"
+# generated headers for kernel
+$(GENERATED_INCDIR)/%.h: include/kernel/%.h.in $(ENVS)
+	@$(call begin-job,generate,$(notdir $@))
 	@mkdir -p $(@D)
 	@cp $< $@.swp
-	@\
-	vars=`cat $< | grep -Po '(?<=@)\w+(?=@)' | tr '\n' ' '`;	\
-	cat $(ENVS) | while IFS= read -r row; do					\
-		read -r key value <<< 									\
-			`echo "$${row}" | awk -F' = ' '{print $$1, $$2}'`;	\
-		if [[ " $${vars} " =~ " $${key} " ]]; then				\
-			sed -i "s/@$${key}@/$${value}/g" $@.swp;			\
-		fi;														\
-	done;
-	@\
-	if cmp -s $@ $@.swp; then 										\
-		echo -e "\e[1K\r\e[33m[SKIP]\e[0m generate $(notdir $@)";	\
-	else															\
-		cp $@.swp $@;												\
-		echo -e "\e[1K\r\e[32m[DONE]\e[0m generate $(notdir $@)";	\
+	@$(call configure-file,$@.swp);                    \
+	if cmp -s $@ $@.swp; then                          \
+		$(call end-job,skip,generate,$(notdir $@));    \
+	else                                               \
+		cp $@.swp $@;                                  \
+		$(call end-job,done,generate,$(notdir $@));    \
 	fi

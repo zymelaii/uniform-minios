@@ -1,11 +1,11 @@
-$(OBJDIR)/%.bin: %.asm $(filter %.inc,$(GENERATED_FILES)) $(CACHED_FLAG_FILES)
-	@echo -ne "[PROC] as $(notdir $@)\r"
+$(OBJDIR)%.bin: %.asm $(filter %.inc,$(GENERATED_FILES)) $(CACHED_FLAG_FILES)
+	@$(call begin-job,as,$(notdir $@))
 	@mkdir -p $(@D)
 	@$(AS) $(ASFLAGS) -MD $(patsubst %.bin, %.asm.d, $@) -o $@ $<
-	@echo -e "\e[1K\r\e[32m[DONE]\e[0m as $(notdir $@)"
+	@$(call end-job,done,as,$(notdir $@))
 
 $(LOADER_FILE): $(LOADER_OBJECTS) $(LOADER_LINKER) $(CACHED_FLAG_FILES)
-	@echo -ne "[PROC] ld $(notdir $@)\r"
+	@$(call begin-job,ld,$(notdir $@))
 	@mkdir -p $(@D)
 	@$(LD) $(LDFLAGS) -T $(LOADER_LINKER) -s --oformat binary -o $@ $(LOADER_OBJECTS)
-	@echo -e "\e[1K\r\e[32m[DONE]\e[0m ld $(notdir $@)"
+	@$(call end-job,done,ld,$(notdir $@))

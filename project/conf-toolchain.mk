@@ -49,7 +49,7 @@ ASFLAGS += -Ikernel
 ASFLAGS += -Iboot/include
 ASFLAGS += -I$(GENERATED_INCDIR)
 
-LDFLAGS	?=
+LDFLAGS ?=
 LDFLAGS += -m elf_i386
 LDFLAGS += -nostdlib
 LDFLAGS += $(addprefix -L,$(LINKDIRS))

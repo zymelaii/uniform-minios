@@ -2,7 +2,7 @@
 PROJMK_PREFIX ?=
 
 # configure output dir
-OBJDIR ?= build
+OBJDIR ?= build/
 
 # uniform-os image
 IMAGE_NAME ?= unios

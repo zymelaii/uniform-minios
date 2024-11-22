@@ -9,7 +9,6 @@
 
 set confirm off
 set verbose off
-set prompt \033[31mreal-mode-gdb$ \033[0m
 
 set output-radix 0d10
 set input-radix 0d10
@@ -17,11 +16,6 @@ set input-radix 0d10
 # These make gdb never pause in its output
 set height 0
 set width 0
-
-# Intel syntax
-set disassembly-flavor intel
-# Real mode
-#set architecture i8086
 
 set $SHOW_CONTEXT = 1
 
@@ -225,16 +219,6 @@ define context
 end
 document context
 Print context window, i.e. regs, stack, ds:esi and disassemble cs:eip.
-end
-
-define hook-stop
-  compute_regs
-  if ($SHOW_CONTEXT > 0)
-    context
-  end
-end
-document hook-stop
-!!! FOR INTERNAL USE ONLY - DO NOT CALL !!!
 end
 
 # add a breakpoint on an interrupt
@@ -479,4 +463,28 @@ define step_until_code
 
   set $SHOW_CONTEXT = 1
   context
+end
+
+# Provide mode switching commands
+
+define enter-real-mode
+  tui disable
+  set architecture i8086
+  set prompt \033[31mreal-mode-gdb$ \033[0m
+  define hook-stop
+   compute_regs
+   if ($SHOW_CONTEXT > 0)
+     context
+   end
+ end
+end
+
+define leave-real-mode
+  set architecture auto
+  layout src
+  layout asm
+  layout-sac
+  set prompt (gdb) \033[0m
+  define hook-stop
+  end
 end

@@ -2,58 +2,9 @@
 PROJMK_PREFIX ?=
 
 # general rules
-all: $(IMAGE_FILE) $(KERNEL_DEBUG_FILE) $(TOOLS_EXECUTABLE)
+all: image kernel tools
 .PHONY: all
 
-clean:
-	@\
-	if [ ! -d $(OBJDIR) ]; then exit; fi;		\
-	echo -ne "[PROC] clean-up all stuffs\r";	\
-	if rm -rf $(OBJDIR) 2> /dev/null; then		\
-		echo -e "\e[1K\r\e[32m[DONE]\e[0m clean-up all stuffs";	\
-	else														\
-		echo -e "\e[1K\r\e[31m[FAIL]\e[0m clean-up all stuffs";	\
-	fi
-.PHONY: clean
-
-# run & debug rules
-run: $(IMAGE_FILE)
-	@$(QEMU) $(QEMU_FLAGS) -drive file=$<,format=raw
-.PHONY: run
-
-debug: $(IMAGE_FILE) $(KERNEL_DEBUG_FILE)
-	@$(QEMU) $(QEMU_FLAGS) -drive file=$<,format=raw -s -S
-.PHONY: debug
-
-monitor:
-	@\
-	dbg="$(KERNEL_DEBUG_FILE)";							\
-	if [ -e "$${dbg}" ]; then 							\
-		$(GDB) $(GDB_FLAGS)								\
-			-ex 'layout-sac'							\
-			-ex "file $${dbg}"							\
-			-ex 'b _start'								\
-			-ex 'c';									\
-	else												\
-		echo -e "\e[31m[FAIL]\e[0m missing debug file";	\
-	fi
-.PHONY: monitor
-
-monitor-real: $(GDB_REALMODE_XML)
-	@\
-	dbg="$(KERNEL_DEBUG_FILE)";							\
-	if [ -e "$${dbg}" ]; then 							\
-		$(GDB) $(GDB_FLAGS)								\
-			-ex 'layout-rac'							\
-			-ex "file $${dbg}"							\
-			-ex 'set tdesc filename $<'					\
-			-ex 'b *0x7c00'								\
-			-ex 'c';									\
-	else												\
-		echo -e "\e[31m[FAIL]\e[0m missing debug file";	\
-	fi
-
-# unios rules
 include $(PROJMK_PREFIX)rules-gen.mk
 include $(PROJMK_PREFIX)rules-obj.mk
 include $(PROJMK_PREFIX)rules-asbin.mk
@@ -64,91 +15,143 @@ include $(PROJMK_PREFIX)rules-image.mk
 include $(PROJMK_PREFIX)rules-tools.mk
 include $(PROJMK_PREFIX)rules-deps.mk
 
-# format rules
-format:
+$(OBJDIR)compile_commands.json: force
+	@$(call begin-job,dump,$(notdir $@))
+	@mkdir -p $(@D)
+	@bear --output $@ -- $(MAKE) -B > /dev/null 2>&1
+	@$(call end-job,done,dump,$(notdir $@))
+.PHONY: force
+
+help: #<! display this information
+	@awk 'BEGIN {FS = ":.*?#<! "} /^[a-zA-Z_-]+:.*?#<! / {sub("\\\\n",sprintf("\n%22c"," "), $$2);printf " \033[36m%-12s\033[0m  %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+.PHONY: help
+
+clean: #<! clean output files
 	@\
-	TARGET="clang-format";											\
-	MINVER=17;														\
-	echo -ne "[PROC] format sources\r";								\
-	FORMATTER=`which $${TARGET} 2> /dev/null`;						\
-	if [ -z "$${FORMATTER}" ]; then 								\
-		echo -e "\e[31m[FAIL]\e[0m $${TARGET} is not available";	\
-		exit;														\
-	fi;																\
-	VERSION=`$${FORMATTER} --version | grep -Po '(\d+)(?=\.\d+\.\d+)'`;		\
-	if [ "$${VERSION}" -lt $${MINVER} ]; then								\
-		echo -e "\e[31m[FAIL]\e[0m requires $${TARGET} >= $${MINVER}.0.0";	\
-		exit;																\
-	fi;																		\
-	$${FORMATTER} -i `git ls-files '*.c' '*.h'`;							\
-	echo -e "\e[1K\r\e[32m[DONE]\e[0m format sources";
+	if [ ! -d $(OBJDIR) ]; then exit; fi;          \
+	$(call begin-job,clean-up all stuffs,);        \
+	if rm -rf $(OBJDIR) 2> /dev/null; then         \
+		$(call end-job,done,clean-up all stuffs,); \
+	else                                           \
+		$(call end-job,fail,clean-up all stuffs,); \
+	fi
+.PHONY: clean
+
+run: $(IMAGE_FILE) #<! run qemu with image
+	@$(QEMU) $(QEMU_FLAGS) -drive file=$<,format=raw
+.PHONY: run
+
+debug: $(IMAGE_FILE) $(KERNEL_DEBUG_FILE) #<! run qemu with image in debug mode
+	@$(QEMU) $(QEMU_FLAGS) -drive file=$<,format=raw -s -S
+.PHONY: debug
+
+monitor: $(KERNEL_DEBUG_FILE) #<! run monitor for qemu
+	@\
+	if [ ! -e "$<" ]; then                        \
+		$(call end-job,fail,missing debug file,); \
+		exit;                                     \
+	fi;                                           \
+	$(GDB) $(GDB_FLAGS)  \
+		-ex 'layout-sac' \
+		-ex "file $<"    \
+		-ex 'b _start'   \
+		-ex 'c'
+.PHONY: monitor
+
+monitor-real: $(KERNEL_DEBUG_FILE) $(GDB_REALMODE_XML) $(GDB_REALMODE_SCRIPT) #<! run monitor for qemu in real mode
+	@\
+	if [ ! -e "$<" ]; then                        \
+		$(call end-job,fail,missing debug file,); \
+		exit;                                     \
+	fi;                                           \
+	$(GDB) $(GDB_FLAGS)                           \
+		-ex 'set tdesc filename $(word 2,$^)'     \
+		-x '$(word 3,$^)'                         \
+		-ex 'file $<'                             \
+		-ex 'enter-real-mode'                     \
+		-ex 'b *0x7c00'                           \
+		-ex 'c'
+.PHONY: monitor-real
+
+format: #<! format *.c and *.h files using clang-format
+	@\
+	TARGET="clang-format";                                              \
+	MINVER=12;                                                          \
+	$(call begin-job,format sources);                                   \
+	FORMATTER=`which $${TARGET} 2> /dev/null`;                          \
+	if [ -z "$${FORMATTER}" ]; then                                     \
+		$(call end-job,fail,$${TARGET} is not available,);              \
+		exit;                                                           \
+	fi;                                                                 \
+	VERSION=`$${FORMATTER} --version | grep -Po '(\d+)(?=\.\d+\.\d+)'`; \
+	if [ "$${VERSION}" -lt $${MINVER} ]; then                           \
+		$(call end-job,fail,requires $${TARGET} >= $${MINVER}.0.0,);    \
+		exit;                                                           \
+	fi;                                                                 \
+	$${FORMATTER} -i `git ls-files '*.c' '*.h'`;                        \
+	$(call end-job,done,format sources,)
 .PHONY: format
 
-# doc rules
 pre-doc: doc/requirements.txt
 	@\
-	if ! pip install -r $< 2> /dev/null; then				\
-		msg="try to install deps via sys package manager";	\
-		echo -e "\e[31m[FAIL]\e[0m $${msg}";				\
-		msg="install sphinx and python-libs listed in $<";	\
-		echo -e "\e[90m[HINT]\e[0m $${msg}";				\
+	if ! pip install -r $< 2> /dev/null; then               \
+		msg="try to install deps via sys package manager";  \
+		echo -e "\e[31m[FAIL]\e[0m $${msg}";                \
+		msg="install sphinx and python-libs listed in $<";  \
+		echo -e "\e[90m[HINT]\e[0m $${msg}";                \
 	fi
 .PHONY: pre-doc
 
-doc:
-	@sphinx-autobuild doc $(OBJDIR)/doc
+doc: #<! deploy sphinx doc
+	@sphinx-autobuild doc $(OBJDIR)doc
 .PHONY: doc
 
 # install rules
 install:
 	@\
 	files=\
-	"		$(USER_PROG_FILES) 		\
-			$(KERNEL_FILE) 			\
-			$(KERNEL_DEBUG_FILE) 	\
-			$(LIBRT_FILE)			\
-			$(TOOLS_EXECUTABLE)		\
-	";								\
-	for file in $${files}; do 		\
-		target=`basename $${file}`;									\
-		echo -ne "[PROC] install $${target}\r";						\
-		if [ -e "$${file}" ]; then									\
-			cp -t $(OBJDIR) $${file}; 								\
-			echo -e "\e[1K\r\e[32m[DONE]\e[0m install $${target}";	\
-		else														\
-			echo -e "\e[1K\r\e[33m[SKIP]\e[0m install $${target}";	\
-		fi;															\
+	"       $(USER_PROG_FILES)      \
+			$(KERNEL_FILE)          \
+			$(KERNEL_DEBUG_FILE)    \
+			$(LIBRT_FILE)           \
+			$(TOOLS_EXECUTABLE)     \
+	";                              \
+	for file in $${files}; do       \
+		target=`basename $${file}`;                                 \
+		echo -ne "[PROC] install $${target}\r";                     \
+		if [ -e "$${file}" ]; then                                  \
+			cp -t $(OBJDIR) $${file};                               \
+			echo -e "\e[1K\r\e[32m[DONE]\e[0m install $${target}";  \
+		else                                                        \
+			echo -e "\e[1K\r\e[33m[SKIP]\e[0m install $${target}";  \
+		fi;                                                         \
 	done
 .PHONY: install
 
-# compile_commands.json rules
-$(OBJDIR)/compile_commands.json: force
-	@echo -ne "[PROC] dump $(notdir $@)\r"
-	@mkdir -p $(@D)
-	@bear --output $@ -- $(MAKE) -B > /dev/null 2>&1
-	@echo -e "\e[1K\r\e[32m[DONE]\e[0m dump $(notdir $@)"
-.PHONY: force
+dup-cc-win: $(OBJDIR)compile_commands.json #<! dump clangd compile_commands.json for windows
+	@sed -r -i 's/(\/[a-z]+)*\/?(gcc|g\+\+)/\2/g' $<
+	@sed -r -i 's/\/mnt\/([a-z])\//\1:\//g' $<
 
-dup-cc: $(OBJDIR)/compile_commands.json
+dup-cc: $(OBJDIR)compile_commands.json #<! dump clangd compile_commands.json
+config: dup-cc $(GENERATED_FILES) #<! configure project
+config-win: dup-cc-win $(GENERATED_FILES) #<! configure project for windows
+build: all #<! build all stuffs
+lib: $(LIBRT_FILE) #<! build library for kernel
+user: $(USER_TAR_FILE) #<! build user programs
+kernel: $(KERNEL_FILE) $(KERNEL_DEBUG_FILE) #<! build kernel file
+tools: $(TOOL_PROGRAM_FILES) #<! build tools
+image: $(IMAGE_FILE) #<! build image file
 
-# extra configures
+conf: config #<! alias for `config`
+conf-win: config-win #<! alias for `config-win`
+b: build #<! alias for `build`
+r: run #<! alias for `run`
+d: debug #<! alias for `debug`
+i: install #<! alias for `install`
+mon: monitor #<! alias for `monitor`
+mon-real: monitor-real #<! alias for `monitor-real`
+krnl: kernel #<! alias for `kernel`
+fmt: format #<! alias for `format`
+
 .DELETE_ON_ERROR:
 .PRECIOUS: $(OBJECT_FILES) $(CACHED_FILES)
-
-# target aliases
-config: dup-cc
-conf: config
-build: all
-b: build
-r: run
-d: debug
-i: install
-mon: monitor
-mon-real: monitor-real
-lib: $(LIBRT_FILE)
-user: $(USER_TAR_FILE)
-kernel: $(KERNEL_FILE) $(KERNEL_DEBUG_FILE)
-krnl: kernel
-image: $(IMAGE_FILE)
-tools: $(TOOLS_EXECUTABLE)
-fmt: format

@@ -1,7 +1,7 @@
-SOURCE_DEPS_FILE := $(OBJDIR)/.cache/.deps
+SOURCE_DEPS_FILE := $(OBJDIR).cache/.deps
 CACHED_FILES     += $(SOURCE_DEPS_FILE)
 
-MERGE_SCRIPT := misc/mergedep.pl
+MERGE_SCRIPT := scripts/mergedep.pl
 
 OBJDIRS := $(sort $(dir $(OBJECT_FILES)))
 
@@ -10,11 +10,12 @@ OBJDIRS := $(sort $(dir $(OBJECT_FILES)))
 # will always be executed, here we do extra work to reduce the load
 $(SOURCE_DEPS_FILE): $(foreach dir,$(OBJDIRS),$(wildcard $(dir)*.d))
 	@\
-	if [ ! -z "$^" ]; then										\
-		echo -ne "[PROC] analyze source deps\r";				\
-		mkdir -p $(@D);											\
-		perl $(MERGE_SCRIPT) $@ $^;								\
-		echo -e "\e[1K\r\e[32m[DONE]\e[0m analyze source deps";	\
+	if [ ! -z "$^" ]; then                         \
+		$(call begin-job,analyze source deps,);    \
+		mkdir -p $(@D);                            \
+		perl $(MERGE_SCRIPT) $@.swp $^;            \
+		cmp -s $@ $@.swp || cp $@.swp $@;          \
+		$(call end-job,done,analyze source deps,); \
 	fi
 
 -include $(SOURCE_DEPS_FILE)

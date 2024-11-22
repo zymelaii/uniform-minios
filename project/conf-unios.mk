@@ -4,24 +4,51 @@ ifeq ($(SHELL),)
     $(error unios requires `bash` to complete the build)
 endif
 
+# avoid using builtin `echo` command
+ECHO := $(shell which echo)
+
+# pretty print method for jobs
+define begin-job
+	printf "\e[?25l"; \
+	printf "%s.%03d [PROC] $(1) $(2)" "$$(date '+%Y-%m-%d %H:%M:%S')" "$$(echo "$$(date +%N) / 1000000" | bc)"
+endef
+
+define end-job-as-done
+	$(ECHO) -e "\e[32m[DONE]\e[0m $(1) $(2)"
+endef
+
+define end-job-as-skip
+	$(ECHO) -e "\e[33m[SKIP]\e[0m $(1) $(2)"
+endef
+
+define end-job-as-fail
+	$(ECHO) -e "\e[31m[FAIL]\e[0m $(1) $(2)"
+endef
+
+define end-job
+	printf "\r%s.%03d " "$$(date '+%Y-%m-%d %H:%M:%S')" "$$(echo "$$(date +%N) / 1000000" | bc)"; \
+	$(call end-job-as-$(1),$(2),$(3)); \
+	printf "\e[?25h"
+endef
+
 # path to project mk files
 PROJMK_PREFIX ?=
 
 # path to generated headers
-GENERATED_INCDIR := $(OBJDIR)/include
+GENERATED_INCDIR := $(OBJDIR)include
 
 # uniform-os image
-IMAGE_FILE := $(OBJDIR)/$(IMAGE_NAME).img
+IMAGE_FILE := $(OBJDIR)$(IMAGE_NAME).img
 
 # uniform-os kernel
-KERNEL_FILE       := $(OBJDIR)/kernel/$(KERNEL_NAME)
+KERNEL_FILE       := $(OBJDIR)kernel/$(KERNEL_NAME)
 KERNEL_DEBUG_FILE := $(KERNEL_FILE)d
 
 # start address of kernel .text
 KERNEL_START_ADDR := 0xc0200000
 
 # standard library for uniform-os
-LIBRT_FILE := $(OBJDIR)/lib/lib$(LIBRT).a
+LIBRT_FILE := $(OBJDIR)lib/lib$(LIBRT).a
 
 # file name of the user prog archive
 INSTALL_FILENAME := "$(USER_PROG_ARCHIVE)"
@@ -41,8 +68,8 @@ INSTALL_START_SECTOR := $(shell echo $$[$(INSTALL_PHY_SECTOR) - $(ORANGE_FS_PART
 DEVICE_INFO_ADDR := 0x90000
 
 KERNEL_NAME_IN_FAT := $(shell \
-    basename=$(shell echo -n $(basename $(notdir $(KERNEL_NAME))) | cut -c -8 | tr 'a-z' 'A-Z');	\
-	suffix=$(shell echo -n $(patsubst .%,%,$(suffix $(KERNEL_NAME))) | cut -c -3 | tr 'a-z' 'A-Z');	\
+    basename=$(shell echo -n $(basename $(notdir $(KERNEL_NAME))) | cut -c -8 | tr 'a-z' 'A-Z');    \
+	suffix=$(shell echo -n $(patsubst .%,%,$(suffix $(KERNEL_NAME))) | cut -c -3 | tr 'a-z' 'A-Z'); \
 	printf "\"%-*s%-*s\"" "8" "$${basename}" "3" "$${suffix}"                                       \
 )
 
@@ -54,14 +81,16 @@ INCDIRS  += include/kernel
 INCDIRS  += include/lib
 INCDIRS  += include/deps
 LINKDIRS ?=
-LINKDIRS += $(OBJDIR)/lib
+LINKDIRS += $(OBJDIR)lib
 include $(PROJMK_PREFIX)conf-toolchain.mk
 
 # configure qemu
+QEMU_ARCH   := i386
+QEMU_MEMORY := 256
 include $(PROJMK_PREFIX)conf-qemu.mk
 
 # configure gdb
-GDB_SCRIPTS_HOME ?= misc/gdb/
+GDB_SCRIPTS_HOME ?= share/gdb/
 include $(PROJMK_PREFIX)conf-gdb.mk
 
 # libgcc, introduced mainly for some useful built-in functions

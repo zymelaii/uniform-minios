@@ -1,14 +1,17 @@
-# [in, out] QEMU qemu-system-? executable
+# [in] QEMU_ARCH arch of qemu-system-? executable
+# [out] QEMU path to qemu-system-? executable
 # [in] QEMU_DISPLAY qemu display graphics
-# [in] MEMORY physical memory conf, in MB
+# [in] QEMU_MEMORY physical memory conf, in MB
 # [out] QEMU_FLAGS options for qemu-system-?
 
-QEMU    ?= qemu-system-i386
+QEMU_ARCH ?= i386
+QEMU      ?= qemu-system-$(QEMU_ARCH)
 
-QEMU_DISPLAY :=
-MEMORY       := 128
+QEMU_DISPLAY ?=
+QEMU_MEMORY  ?= 128
 
-QEMU_FLAGS := -boot order=a
-QEMU_FLAGS += -serial file:serial.log
-QEMU_FLAGS += -m $(MEMORY)m
+QEMU_FLAGS ?=
+QEMU_FLAGS += -boot order=c
+QEMU_FLAGS += -serial file:$(OBJDIR)serial-$(shell date +%Y%m%d%H%M).log
+QEMU_FLAGS += -m $(QEMU_MEMORY)m
 QEMU_FLAGS += $(if $(QEMU_DISPLAY),-display $(QEMU_DISPLAY),)
