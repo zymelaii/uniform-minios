@@ -1,6 +1,7 @@
 #include <unios/tracing.h>
 #include <unios/sync.h>
 #include <unios/schedule.h>
+#include <unios/assert.h>
 #include <arch/x86.h>
 
 static spinlock_t        klog_lock;
@@ -39,7 +40,7 @@ void kfatal(const char *fmt, ...) {
     _klog(KLOGLEVEL_FATAL, fmt, ap);
     va_end(ap);
     while (true) { halt(); }
-    __builtin_unreachable();
+    unreachable_silent();
 }
 
 void kvfatal(const char *fmt, va_list ap) {
@@ -47,5 +48,5 @@ void kvfatal(const char *fmt, va_list ap) {
     clear_dir_flag();
     _klog(KLOGLEVEL_FATAL, fmt, ap);
     while (true) { halt(); }
-    __builtin_unreachable();
+    unreachable_silent();
 }
