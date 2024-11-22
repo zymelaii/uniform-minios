@@ -86,24 +86,35 @@ unios 当前不支持安装至实体设备，你可以尝试按照 `project/rule
 该部分简单罗列了可用的 make 命令，关于更多细节请查阅文档。
 
 ```plain
-all:          same as build [DEFAULT]
-build:        build all, include unios image, kernel debug file and tools, alias `b`
-clean:        clean up the build dir
-config:       collect envs and generate compile_commands.json, alias `conf`
-debug:        run unios using qemu in debug mode, alias `b`
-doc:          build doc and serve continuously
-dup-cc:       generate compile_commands.json
-format:       format sources, alias `fmt`
-image:        build unios image
-install:      install targets to root of build dir, alias `i`
-kernel:       build unios kernel, alias `krnl`
-lib:          build unios runtime library
-monitor-real: same as monitor, but start up in real mode, alias `mon-real`
-monitor:      run gdb and connect to remote provided by qemu, alias `mon`
-pre-doc:      install deps for building the doc
-run:          run unios using qemu, alias `r`
-tools:        build tools
-user:         build user programs and create archive
+ help          display this information
+ clean         clean output files
+ run           run qemu with image
+ debug         run qemu with image in debug mode
+ monitor       run monitor for qemu
+ monitor-real  run monitor for qemu in real mode
+ format        format *.c and *.h files using clang-format
+ doc           deploy sphinx doc
+ install       install all stuffs to root of build dir
+ dup-cc-win    dump clangd compile_commands.json for windows
+ dup-cc        dump clangd compile_commands.json
+ config        configure project
+ config-win    configure project for windows
+ build         build all stuffs
+ lib           build library for kernel
+ user          build user programs
+ kernel        build kernel file
+ tools         build tools
+ image         build image file
+ conf          alias for `config`
+ conf-win      alias for `config-win`
+ b             alias for `build`
+ r             alias for `run`
+ d             alias for `debug`
+ i             alias for `install`
+ mon           alias for `monitor`
+ mon-real      alias for `monitor-real`
+ krnl          alias for `kernel`
+ fmt           alias for `format`
 ```
 
 ## 在 QEMU 中运行
