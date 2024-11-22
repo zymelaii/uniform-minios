@@ -106,25 +106,24 @@ doc: #<! deploy sphinx doc
 	@sphinx-autobuild doc $(OBJDIR)doc
 .PHONY: doc
 
-# install rules
-install:
+install: #<! install all stuffs to root of build dir
 	@\
-	files=\
-	"       $(USER_PROG_FILES)      \
-			$(KERNEL_FILE)          \
-			$(KERNEL_DEBUG_FILE)    \
-			$(LIBRT_FILE)           \
-			$(TOOLS_EXECUTABLE)     \
-	";                              \
-	for file in $${files}; do       \
-		target=`basename $${file}`;                                 \
-		echo -ne "[PROC] install $${target}\r";                     \
-		if [ -e "$${file}" ]; then                                  \
-			cp -t $(OBJDIR) $${file};                               \
-			echo -e "\e[1K\r\e[32m[DONE]\e[0m install $${target}";  \
-		else                                                        \
-			echo -e "\e[1K\r\e[33m[SKIP]\e[0m install $${target}";  \
-		fi;                                                         \
+	files="               \
+	$(USER_PROG_FILES)    \
+	$(KERNEL_FILE)        \
+	$(KERNEL_DEBUG_FILE)  \
+	$(LIBRT_FILE)         \
+	$(TOOL_PROGRAM_FILES) \
+	";                    \
+	for file in $${files}; do                        \
+		target=`basename $${file}`;                  \
+		$(call begin-job,install,$${target});        \
+		if [ -e "$${file}" ]; then                   \
+			cp -t $(OBJDIR) $${file};                \
+			$(call end-job,done,install,$${target}); \
+		else                                         \
+			$(call end-job,skip,install,$${target}); \
+		fi;                                          \
 	done
 .PHONY: install
 
