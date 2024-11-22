@@ -9,7 +9,7 @@ int  exec(const char *path);
 int  execve(const char *path, char *const *argv, char *const *envp);
 int  fork();
 int  wait(int *wstatus1);
-void exit(int exit_code);
+__attribute__((noreturn)) void exit(int exit_code);
 int  killerabbit(int pid);
 void yield();
 void sleep(int n);

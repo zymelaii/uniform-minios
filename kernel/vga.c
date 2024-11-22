@@ -1,7 +1,7 @@
 #include <unios/vga.h>
 #include <unios/assert.h>
 #include <arch/x86.h>
-#include <stdlib.h>
+#include <stdlib.h> // IWYU pragma: keep
 #include <math.h>
 
 typedef vga_textmode_char_t  _char_t;

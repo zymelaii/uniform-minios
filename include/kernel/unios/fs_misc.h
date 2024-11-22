@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <limits.h>
+#include <limits.h> // IWYU pragma: keep
 
 #define OK                1 // 正常返回
 #define SYSERROR          2 // 系统错误

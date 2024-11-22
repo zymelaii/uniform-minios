@@ -1,5 +1,5 @@
 ﻿#include <stdarg.h>
-#include <stddef.h>
+#include <stddef.h> // IWYU pragma: keep
 
 #define EOF -1
 
@@ -20,7 +20,7 @@ int write(int fd, const void *buf, int count);
 int lseek(int fd, int offset, int whence);
 int unlink(const char *path);
 int create(const char *path);
-int delete(const char *path);
+int delete (const char *path);
 int opendir(const char *path);
 int createdir(const char *path);
 int deletedir(const char *path);

@@ -3,7 +3,7 @@
 #include <unios/layout.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stddef.h>
+#include <stddef.h> // IWYU pragma: keep
 
 #define PG_INVALID (~(uintptr_t)0) //<! invalid phypage addr
 #define PG_MASK_P  0x1             //<! P

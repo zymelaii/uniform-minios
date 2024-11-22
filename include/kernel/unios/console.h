@@ -2,7 +2,7 @@
 
 #include <unios/vga.h>
 #include <unios/sync.h>
-#include <stddef.h>
+#include <stddef.h> // IWYU pragma: keep
 #include <stdbool.h>
 
 typedef struct console_s {

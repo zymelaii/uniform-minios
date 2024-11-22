@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stddef.h>
+#include <stddef.h> // IWYU pragma: keep
 #include <compiler.h>
 
 #define idiv_floor(x, ud)                          \

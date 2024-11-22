@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <stdint.h> // IWYU pragma: keep
 #include <stdbool.h>
 
 //! whether the kernel is being initialized
