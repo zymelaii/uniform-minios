@@ -58,12 +58,12 @@ static uint8_t get_byte_from_kb_buf() {
     //! wait for a byte to arrive
     while (kb_in.count <= 0) {}
 
-    disable_int();
+    disable_int_begin();
     scan_code = *(kb_in.p_tail);
     kb_in.p_tail++;
     if (kb_in.p_tail == kb_in.buf + KB_IN_BYTES) { kb_in.p_tail = kb_in.buf; }
     kb_in.count--;
-    enable_int();
+    disable_int_end();
 
     return scan_code;
 }

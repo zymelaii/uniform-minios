@@ -6,6 +6,7 @@
 #include <unios/schedule.h>
 #include <unios/protect.h>
 #include <unios/tracing.h>
+#include <unios/interrupt.h>
 #include <arch/x86.h>
 #include <stdint.h>
 #include <string.h>
@@ -166,9 +167,12 @@ int do_fork() {
         release(&fa->pcb.lock);
         return -1;
     }
-    disable_int();
-    bool ok = pg_create_and_init(&ch->pcb.cr3);
-    enable_int();
+
+    bool ok = false;
+
+    disable_int_begin();
+    ok = pg_create_and_init(&ch->pcb.cr3);
+    disable_int_end();
     if (!ok) {
         kwarn("fork %d: low memory", fa->pcb.pid);
         release(&ch->pcb.lock);
@@ -177,9 +181,9 @@ int do_fork() {
     }
 
     fork_pcb_clone(ch);
-    disable_int();
+    disable_int_begin();
     ok = fork_memory_clone(fa->pcb.pid, ch->pcb.pid);
-    enable_int();
+    disable_int_end();
     if (!ok) {
         //! TODO: put ch on scavenger
         todo("rollback!!!");
@@ -191,11 +195,11 @@ int do_fork() {
     //! update retval address in stack to be safe
     frame[NR_EAXREG] = ch->pcb.regs.eax;
 
-    //! done
-    disable_int();
+    disable_int_begin();
     ch->pcb.stat = READY;
+    disable_int_end();
+
     release(&ch->pcb.lock);
     release(&fa->pcb.lock);
-    enable_int();
     return ch->pcb.pid;
 }

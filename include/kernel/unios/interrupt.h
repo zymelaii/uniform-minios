@@ -1,6 +1,8 @@
 #pragma once
 
+#include <unios/regs.h>
 #include <sys/types.h>
+#include <arch/x86.h>
 #include <stdbool.h>
 
 //! 8259A interrupt controller ports
@@ -54,6 +56,15 @@ void init_interrupt_controller();
 #define INV_VECTOR_FP_EXCEPTION 0x10
 
 #define INT_VECTOR_SYSCALL 0x80
+
+#define disable_int_begin()                                      \
+    {                                                            \
+        int __scoped_interrupt_flag = read_eflags() & EFLAGS_IF; \
+        if (__scoped_interrupt_flag) { disable_int(); }
+
+#define disable_int_end()                          \
+    if (__scoped_interrupt_flag) { enable_int(); } \
+    }
 
 bool is_irq_masked(int irq);
 void enable_irq(int irq);

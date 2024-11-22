@@ -2,6 +2,7 @@
 #include <unios/proc.h>
 #include <unios/page.h>
 #include <unios/schedule.h>
+#include <unios/interrupt.h>
 #include <arch/x86.h>
 #include <atomic.h>
 #include <stdlib.h>
@@ -96,10 +97,11 @@ void do_exit(int exit_code) {
         }
         release(&recy_pcb->lock);
     }
-    disable_int();
+    disable_int_begin();
     fa_pcb->stat        = READY;
     exit_pcb->stat      = ZOMBIE;
     exit_pcb->exit_code = exit_code;
+    disable_int_end();
     assert(exit_pcb->lock);
     assert(fa_pcb->lock);
     release(&exit_pcb->lock);

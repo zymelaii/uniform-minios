@@ -5,6 +5,7 @@
 #include <unios/schedule.h>
 #include <unios/memory.h>
 #include <unios/scavenger.h>
+#include <unios/interrupt.h>
 #include <arch/x86.h>
 #include <sys/types.h>
 #include <stdlib.h>
@@ -50,9 +51,9 @@ static void remove_zombie_child(uint32_t pid) {
 
 static void wait_recycle_memory(uint32_t recy_pid) {
     assert(recy_pid != p_proc_current->pcb.pid);
-    disable_int();
+    disable_int_begin();
     recycle_proc_memory(pid2proc(recy_pid));
-    enable_int();
+    disable_int_end();
 }
 
 int do_wait(int* wstatus) {
@@ -72,8 +73,9 @@ int do_wait(int* wstatus) {
                 release(&fa_pcb->lock);
                 return pid;
             }
-            disable_int();
+            disable_int_begin();
             fa_pcb->stat = SLEEPING;
+            disable_int_end();
             release(&fa_pcb->lock);
             schedule();
             continue;
@@ -85,7 +87,7 @@ int do_wait(int* wstatus) {
         wait_recycle_memory(exit_pcb->pid);
         int pid = exit_pcb->pid;
         //! FIXME: lock also release here
-        disable_int();
+        disable_int_begin();
         memset(exit_pcb, 0, sizeof(process_t));
         assert(!exit_pcb->tree_info.child_k_num);
         assert(!exit_pcb->tree_info.child_p_num);
@@ -94,9 +96,9 @@ int do_wait(int* wstatus) {
         assert(!exit_pcb->tree_info.real_ppid);
         exit_pcb->pid  = -1;
         exit_pcb->stat = IDLE;
+        disable_int_end();
         release(&exit_pcb->lock);
         release(&fa_pcb->lock);
-        enable_int();
         return pid;
     }
 }

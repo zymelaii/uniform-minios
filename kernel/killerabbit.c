@@ -7,6 +7,7 @@
 #include <unios/syscall.h>
 #include <unios/scavenger.h>
 #include <unios/tracing.h>
+#include <unios/interrupt.h>
 #include <arch/x86.h>
 #include <sys/defs.h>
 #include <sys/types.h>
@@ -104,9 +105,9 @@ static void remove_killed_child(uint32_t ppid, uint32_t pid) {
 
 static void killerabbit_recycle_memory(uint32_t recy_pid) {
     assert(recy_pid != p_proc_current->pcb.pid);
-    disable_int();
+    disable_int_begin();
     recycle_proc_memory(pid2proc(recy_pid));
-    enable_int();
+    disable_int_end();
 }
 
 static bool killerabbit_kill_one(uint32_t kill_pid, uint32_t fa_pid) {
@@ -127,13 +128,13 @@ static bool killerabbit_kill_one(uint32_t kill_pid, uint32_t fa_pid) {
         release(&recy_pcb->lock);
     }
     killerabbit_recycle_memory(kill_pid);
-    disable_int();
+    disable_int_begin();
     memset(kill_pcb, 0, sizeof(process_t));
     kill_pcb->pid = -1;
     assert(try_lock(&kill_pcb->lock));
     kill_pcb->stat = IDLE;
     fa_pcb->stat   = READY;
-    enable_int();
+    disable_int_end();
     return true;
 }
 
@@ -186,13 +187,13 @@ int do_killerabbit(int pid) {
                     release(&p_proc_current->pcb.lock);
                     return -1;
                 }
-                fa_pcb = (pcb_t*)pid2proc(kill_pcb->tree_info.ppid);
-                disable_int();
+                fa_pcb  = (pcb_t*)pid2proc(kill_pcb->tree_info.ppid);
                 bool ok = try_lock(&fa_pcb->lock);
                 if (fa_pcb->pid == p_proc_current->pcb.pid) { ok = true; }
                 if (ok) {
+                    disable_int_begin();
                     kill_pcb->stat = KILLING;
-                    enable_int();
+                    disable_int_end();
                     ok = killerabbit_kill_one(
                         kill_pid, kill_pcb->tree_info.ppid);
                     assert(ok);
@@ -232,14 +233,14 @@ int do_killerabbit(int pid) {
         release(&recy_pcb->lock);
     }
     killerabbit_recycle_memory(pid);
-    disable_int();
+    disable_int_begin();
     memset(kill_pcb, 0, sizeof(process_t));
     kill_pcb->pid  = -1;
     kill_pcb->lock = 0;
     kill_pcb->stat = IDLE;
     fa_pcb->stat   = READY;
+    disable_int_end();
     release(&kill_pcb->lock);
     release(&fa_pcb->lock);
-    enable_int();
     return 0;
 }
