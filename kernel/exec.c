@@ -111,7 +111,7 @@ static int exec_pcb_init(const char* path) {
     pcb->regs.fs       = (pcb->regs.fs & SA_MASK_RPL) | RPL_USER;
     pcb->regs.ss       = (pcb->regs.ss & SA_MASK_RPL) | RPL_USER;
     pcb->regs.gs       = (pcb->regs.gs & SA_MASK_RPL) | RPL_USER;
-    pcb->regs.eflags   = EFLAGS_RESERVED | EFLAGS_IF | EFLAGS_IOPL(0);
+    pcb->regs.eflags   = EFLAGS(IF, IOPL(0));
 
     uint32_t* frame = (void*)(p_proc_current + 1) - P_STACKTOP;
     memcpy(frame, &pcb->regs, sizeof(pcb->regs));

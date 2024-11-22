@@ -4,6 +4,7 @@
 #include <unios/protect.h>
 #include <unios/layout.h>
 #include <unios/memory.h>
+#include <unios/regs.h>
 #include <unios/sync.h>
 #include <sys/types.h>
 #include <stdint.h>
@@ -49,11 +50,6 @@
 #define ESPREG       (NR_ESPREG * 4)
 #define SSREG        (NR_SSREG * 4)
 #define P_STACKTOP   (SSREG + 4)
-
-//! see https://en.wikipedia.org/wiki/FLAGS_register
-#define EFLAGS_RESERVED 0x0002                //<! always 1 in eflags
-#define EFLAGS_IF       0x0200                //<! interrupt enable flag
-#define EFLAGS_IOPL(pl) (((pl) & 0b11) << 12) //<! I/O privilege level
 
 #define NR_PCBS      64 //<! total pcbs
 #define NR_TASKS     2  //<! predefined task k-pcbs

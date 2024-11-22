@@ -20,8 +20,7 @@ process_t* p_proc_next;
 process_t* proc_table[NR_PCBS];
 rwlock_t   proc_table_rwlock;
 
-#define TASK_ENTRY(handler) \
-    { handler, #handler }
+#define TASK_ENTRY(handler) {handler, #handler}
 
 task_t task_table[NR_TASKS] = {
     TASK_ENTRY(tty_handler),
@@ -233,8 +232,7 @@ bool init_locked_pcb(
     pcb->regs.eip = (uint32_t)entry_point;
 
     //! NOTE: assign task proc iopl=1, user's iopl=0
-    pcb->regs.eflags =
-        EFLAGS_RESERVED | EFLAGS_IF | EFLAGS_IOPL(rpl == RPL_USER ? 0 : 1);
+    pcb->regs.eflags = EFLAGS(IF, IOPL(rpl == RPL_USER ? 0 : 1));
 
     //! kernel space stack frame
     uint32_t* stack = (void*)(proc + 1);
@@ -248,7 +246,7 @@ bool init_locked_pcb(
     //! NOTE: proc inited here always start from kernel space, so allow iopl=1
     //! here
     //! represent: popfd -> eflags
-    frame[-2] = EFLAGS_RESERVED | EFLAGS_IF | EFLAGS_IOPL(1);
+    frame[-2] = EFLAGS(IF, IOPL(1));
 
     pcb->esp_save_int     = (void*)frame;
     pcb->esp_save_syscall = (void*)stack;
