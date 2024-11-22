@@ -3,12 +3,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-void fetch_add(void *atomic, int value) {
-    __sync_fetch_and_add((int *)atomic, value);
-}
-
-void fetch_sub(void *atomic, int value) {
-    __sync_fetch_and_sub((int *)atomic, value);
+int exchange(int *ptr, int value) {
+    return __atomic_exchange_n(ptr, value, __ATOMIC_SEQ_CST);
 }
 
 int compare_exchange_strong(int *value, int expected, int desired) {
@@ -27,6 +23,14 @@ int compare_exchange_weak(int *value, int expected, int desired) {
     return tmp;
 }
 
+void fetch_add(void *atomic, int value) {
+    __sync_fetch_and_add((int *)atomic, value);
+}
+
+void fetch_sub(void *atomic, int value) {
+    __sync_fetch_and_sub((int *)atomic, value);
+}
+
 bool try_lock(void *lock) {
     return compare_exchange_strong((int *)lock, 0, 1) == 0;
 }
@@ -42,5 +46,5 @@ void lock_or(void *lock, void (*callback)()) {
 }
 
 void release(void *lock) {
-    *(int *)lock = 0;
+    exchange((int *)lock, 0);
 }
