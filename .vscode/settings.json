@@ -1,35 +1,33 @@
 {
-    //! format on save
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.inlayHints.enabled": "off",
+    "files.encoding": "utf8",
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "files.trimTrailingWhitespace": true,
+    "extensions.ignoreRecommendations": false,
+    "xml.validation.enabled": false,
+    "files.associations": {
+        "*.asm": "asm-intel-x86-generic",
+        "*.inc": "asm-intel-x86-generic",
+        "*.inc.inc": "asm-intel-x86-generic",
+        "*.ld": "linkerscript",
+        "*.ld.inc": "linkerscript",
+        "*.h.in": "c",
+        "gdb_init_real_mode.txt": "gdb",
+    },
+    "[plaintext]": {
+        "editor.wordWrap": "on"
+    },
     "[c]": {
-        "editor.defaultFormatter": "xaver.clang-format",
+        "editor.defaultFormatter": "xaver.clang-format"
     },
     "[cpp]": {
         "editor.defaultFormatter": "xaver.clang-format",
     },
-    //! todo notes
-    "todo-tree.highlights.enabled": false,
-    "todo-tree.regex.regex": "(//!?(!<)?|#|<!--|;|/\\*|^|^[ \\t]*(-|\\d+.))\\s*($TAGS)",
-    //! linter conf
     "clangd.onConfigChanged": "restart",
     "clangd.restartAfterCrash": true,
-    "clangd.fallbackFlags": [
-        "-x",
-        "c",
-        "-m32",
-        "-std=c99",
-        "-nostdinc",
-        "-nostdlib",
-        "-fno-builtin",
-        "-I${workspaceFolder}/include",
-        "-I${workspaceFolder}/include/kernel",
-        "-I${workspaceFolder}/include/lib",
-        "-I${workspaceFolder}/include/deps",
-        "-I${workspaceFolder}/build/include",
-        "-Wno-unknown-attributes",
-    ],
     "clangd.arguments": [
         "--enable-config",
         "--compile-commands-dir=build",
@@ -39,11 +37,87 @@
         "--header-insertion=never",
         "--background-index",
         "--pch-storage=disk",
-        "-j=8",
+        "-j=8"
     ],
-    //! doc
-    "[restructuredtext]": {
-        "editor.wordWrap": "on",
-        "editor.acceptSuggestionOnEnter": "off",
+    "bookmarks.saveBookmarksInProject": true,
+    "bookmarks.wrapNavigation": true,
+    "todo-tree.highlights.enabled": true,
+    "todo-tree.regex.regex": "(//!?(!<)?|#|<!--|;|/\\*|^|^[ \\t]*(-|\\d+.))\\s*($TAGS)",
+    "todo-tree.tree.flat": true,
+    "todo-tree.general.tags": [
+        "WARNING",
+        "WARN",
+        "TODO",
+        "NOTE",
+        "HINT",
+        "FIXME",
+        "FIX",
+        "BUG",
+        "ATTENTION",
+    ],
+    "todo-tree.general.tagGroups": {
+        "TODO": [
+            "TODO",
+        ],
+        "FIXME": [
+            "FIXME",
+            "FIX",
+        ],
+        "WARNING": [
+            "WARNING",
+            "WARN",
+        ],
+        "BUG": [
+            "BUG",
+        ],
+        "NOTE": [
+            "NOTE",
+            "HINT",
+        ],
+        "ATTENTION": [
+            "ATTENTION",
+        ],
     },
+    "todo-tree.highlights.defaultHighlight": {
+        "foreground": "#569cd6",
+        "borderRadius": "0.1em",
+        "fontWeight": "bold",
+    },
+    "todo-tree.highlights.customHighlight": {
+        "TODO": {
+            "icon": "check-circle",
+            "iconColour": "#0a950a",
+            "background": "#0a950a",
+            "foreground": "#f0f0f0",
+        },
+        "FIXME": {
+            "icon": "flame",
+            "iconColour": "#ed7f18",
+            "background": "#ed7f18",
+            "foreground": "#3e3e3e",
+        },
+        "WARNING": {
+            "icon": "warning",
+            "iconColour": "#fa973a",
+            "background": "#fa973a",
+            "foreground": "#3e3e3e",
+        },
+        "BUG": {
+            "icon": "bug",
+            "iconColour": "#cd5555",
+            "background": "#cd5555",
+            "foreground": "#f0f0f0",
+        },
+        "NOTE": {
+            "icon": "info",
+            "iconColour": "#569cd6",
+            "foreground": "#569cd6",
+            "fontWeight": "regular",
+        },
+        "ATTENTION": {
+            "icon": "star-fill",
+            "iconColour": "#e4e424",
+            "foreground": "#e4e424",
+        },
+    }
 }
