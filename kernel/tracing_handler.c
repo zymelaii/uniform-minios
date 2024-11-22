@@ -31,7 +31,17 @@ static const char *klog_strlevel(int level) {
 }
 
 static char *_klog_serial_handler(char *buf, void *user, int len) {
-    for (int i = 0; i < len; ++i) { serial_write(buf[i]); }
+    int nl_cnt = *(int *)user;
+    for (int i = 0; i < len; ++i) {
+        if (buf[i] == '\n') {
+            ++nl_cnt;
+            continue;
+        }
+        for (int j = 0; j < nl_cnt; ++j) { serial_write('\n'); }
+        nl_cnt = 0;
+        serial_write(buf[i]);
+    }
+    *(int *)user = nl_cnt;
     return buf;
 }
 
@@ -45,9 +55,10 @@ void klog_serial_handler(void *user, int level, const char *fmt, va_list ap) {
     int     min = tm / 60000 % 60;
     int     hr  = tm / 3600000 % 60;
 
+    int              nl_cnt  = 0;
     strfmt_handler_t handler = {
         .callback = _klog_serial_handler,
-        .user     = NULL,
+        .user     = &nl_cnt,
     };
 
     char buf[64] = {};
