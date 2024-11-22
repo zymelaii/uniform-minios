@@ -5,7 +5,7 @@
 
 phyaddr_t cr3_ready;
 
-void switch_pde() {
+void switch_cr3() {
     cr3_ready = p_proc_current->pcb.cr3;
 }
 

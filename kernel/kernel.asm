@@ -35,7 +35,7 @@
 extern cstart
 extern kernel_main
 extern cherry_pick_next_ready_proc
-extern switch_pde
+extern switch_cr3
 
 extern gdt_ptr
 extern idt_ptr
@@ -77,7 +77,7 @@ csinit:
 
     global renew_env
 renew_env:
-    call    switch_pde
+    call    switch_cr3
     mov     eax, [cr3_ready]
     mov     cr3, eax
     mov     eax, [p_proc_current]
