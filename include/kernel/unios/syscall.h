@@ -39,9 +39,6 @@ int do_execve(const char *path, char *const *argv, char *const *envp);
 //! from clock.c
 int do_get_ticks();
 
-//! from pthread.c
-int do_pthread(void *arg);
-
 //! from fork.c
 int do_fork();
 
