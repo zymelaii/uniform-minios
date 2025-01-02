@@ -1,8 +1,10 @@
 #include <unios/keyboard.h>
 #include <unios/interrupt.h>
 #include <unios/keymap.h>
+#include <unios/schedule.h>
 #include <arch/x86.h>
 #include <sys/defs.h>
+#include <atomic.h>
 
 static KB_INPUT    kb_in;
 static MOUSE_INPUT mouse_in;
@@ -81,15 +83,20 @@ void kb_handler(int irq) {
 };
 
 void mouse_handler(int irq) {
+    lock_or(&mouse_in.lock, schedule);
     uint8_t scan_code = inb(0x60);
     if (!mouse_init) {
+        release(&mouse_in.lock);
         mouse_init = 1;
         return;
     }
 
     mouse_in.buf[mouse_in.count++] = scan_code;
 
-    if (mouse_in.count != 3) { return; }
+    if (mouse_in.count != 3) {
+        release(&mouse_in.lock);
+        return;
+    }
 
     tty_t* tty = NULL;
     for (int i = 0; i < NR_CONSOLES; ++i) {
@@ -100,7 +107,10 @@ void mouse_handler(int irq) {
             break;
         }
     }
-    if (tty == NULL) { return; }
+    if (tty == NULL) {
+        release(&mouse_in.lock);
+        return;
+    }
 
     if (mouse_in.buf[0] & 0b001) {
         tty->mouse.buttons |= MOUSE_LEFT_BUTTON;
@@ -129,10 +139,12 @@ void mouse_handler(int irq) {
     }
 
     mouse_in.count = 0;
+    release(&mouse_in.lock);
 }
 
 void init_mouse() {
     mouse_in.count = 0;
+    mouse_in.lock  = 0;
 
     put_irq_handler(MOUSE_IRQ, mouse_handler);
     enable_irq(MOUSE_IRQ);

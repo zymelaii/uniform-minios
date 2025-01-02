@@ -152,6 +152,7 @@ typedef struct kb_inbuf {
 typedef struct mouse_inbuf {
     int     count;
     uint8_t buf[MOUSE_IN_BYTES];
+    int     lock;
 } MOUSE_INPUT;
 
 void init_keyboard();
