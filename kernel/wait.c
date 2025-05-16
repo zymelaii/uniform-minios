@@ -59,7 +59,7 @@ static void wait_recycle_memory(uint32_t recy_pid) {
 int do_wait(int* wstatus) {
     pcb_t* fa_pcb = &p_proc_current->pcb;
     while (true) {
-        lock_or(&fa_pcb->lock, schedule);
+        lock_or(&fa_pcb->lock, sched);
         if (fa_pcb->tree_info.child_p_num == 0
             && fa_pcb->tree_info.child_k_num == 0) {
             if (wstatus != NULL) { *wstatus = 0; }
@@ -77,10 +77,10 @@ int do_wait(int* wstatus) {
             fa_pcb->stat = SLEEPING;
             disable_int_end();
             release(&fa_pcb->lock);
-            schedule();
+            sched();
             continue;
         }
-        lock_or(&exit_pcb->lock, schedule);
+        lock_or(&exit_pcb->lock, sched);
         remove_zombie_child(exit_pcb->pid);
         if (wstatus != NULL) { *wstatus = exit_pcb->exit_code; }
         //! FIXME: no thread release here

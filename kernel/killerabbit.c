@@ -34,7 +34,7 @@ static void transfer_child_proc(uint32_t src_pid, uint32_t dst_pid) {
             src_pcb->tree_info.child_process[i];
         pcb_t* son_pcb = (pcb_t*)pid2proc(src_pcb->tree_info.child_process[i]);
         if (son_pcb->pid != p_proc_current->pcb.pid) {
-            lock_or(&son_pcb->lock, schedule);
+            lock_or(&son_pcb->lock, sched);
             son_pcb->stat = ZOMBIE;
         }
         son_pcb->tree_info.ppid = dst_pid;
@@ -64,7 +64,7 @@ static void killerabbit_handle_child_thread_proc(uint32_t pid) {
             killerabbit_handle_child_thread_proc(
                 child_pcb->tree_info.child_thread[i]);
         }
-        lock_or(&recy_pcb->lock, schedule);
+        lock_or(&recy_pcb->lock, sched);
         transfer_child_proc(child_pcb->pid, NR_RECY_PROC);
         release(&recy_pcb->lock);
         child_pcb->stat = IDLE;
@@ -122,7 +122,7 @@ static bool killerabbit_kill_one(uint32_t kill_pid, uint32_t fa_pid) {
         transfer_child_proc(kill_pid, NR_RECY_PROC);
     } else {
         //! case 1: father isn't recy so need to lock
-        lock_or(&recy_pcb->lock, schedule);
+        lock_or(&recy_pcb->lock, sched);
         transfer_child_proc(kill_pid, NR_RECY_PROC);
         recy_pcb->stat = READY;
         release(&recy_pcb->lock);
@@ -209,15 +209,15 @@ int do_killerabbit(int pid) {
                 } else {
                     release(&p_proc_current->pcb.lock);
                     release(&kill_pcb->lock);
-                    schedule();
+                    sched();
                     continue;
                 }
             } else {
                 release(&p_proc_current->pcb.lock);
-                schedule();
+                sched();
             }
         } else {
-            schedule();
+            sched();
         }
     }
     assert(fa_pcb->stat == READY || fa_pcb->stat == SLEEPING);
@@ -228,7 +228,7 @@ int do_killerabbit(int pid) {
         transfer_child_proc(pid, NR_RECY_PROC);
     } else {
         //! case 1: father isn't recy so need to lock
-        lock_or(&recy_pcb->lock, schedule);
+        lock_or(&recy_pcb->lock, sched);
         transfer_child_proc(pid, NR_RECY_PROC);
         release(&recy_pcb->lock);
     }

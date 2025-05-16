@@ -137,14 +137,14 @@ restart_int:
     mov     esp, [eax + ESP_SAVE_INT]
     cmp     dword [kstate_on_init], 0
     jnz     restart_restore
-    call    schedule
+    call    sched
     jmp     restart_restore
 
     global restart_syscall
 restart_syscall:
     mov     eax, [p_proc_current]
     mov     esp, [eax + ESP_SAVE_SYSCALL]
-    call    schedule
+    call    sched
     jmp     restart_restore
 
     global restart_restore
@@ -164,8 +164,8 @@ restart_initial:
     mov     esp, [eax + ESP_SAVE_INT]
     jmp     restart_restore
 
-    global schedule
-schedule:
+    global sched
+sched:
     pushfd
     pushad
     cli

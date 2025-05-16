@@ -474,7 +474,7 @@ static struct inode *get_inode(int dev, int num) {
 
     struct inode *p;
     struct inode *q = 0;
-    rwlock_wait_wr_or(&inode_table_rwlock, schedule);
+    rwlock_wait_wr_or(&inode_table_rwlock, sched);
     for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++) {
         if (p->i_cnt) { /* not a free slot */
             if ((p->i_dev == dev) && (p->i_num == num)) {
@@ -517,7 +517,7 @@ static struct inode *get_inode_sched(int dev, int num) {
 
     struct inode *p;
     struct inode *q = 0;
-    rwlock_wait_wr_or(&inode_table_rwlock, schedule);
+    rwlock_wait_wr_or(&inode_table_rwlock, sched);
     for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++) {
         if (p->i_cnt) { /* not a free slot */
             if ((p->i_dev == dev) && (p->i_num == num)) {
@@ -806,7 +806,7 @@ static int do_open(MESSAGE *fs_msg) {
     //! find a free slot in file_desc_table
     int             index = 0;
     static uint32_t lock  = 0;
-    lock_or(&lock, schedule);
+    lock_or(&lock, sched);
     while (index < NR_FILE_DESC) {
         if (file_desc_table[index].flag == 0) { break; }
         ++index;

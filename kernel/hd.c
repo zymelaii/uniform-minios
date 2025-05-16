@@ -88,7 +88,7 @@ void hd_close(int device) {
 
 void hd_rdwt(MESSAGE *p) {
     static uint32_t lock = 0;
-    lock_or(&lock, schedule);
+    lock_or(&lock, sched);
     int drive = DRV_OF_DEV(p->DEVICE);
 
     uint64_t pos = p->POSITION;
@@ -209,14 +209,14 @@ void hd_rdwt_sched(MESSAGE *p) {
         in_hd_queue(&hdque, &rwinfo);
         p_proc_current->pcb.channel = &hdque;
         p_proc_current->pcb.stat    = SLEEPING;
-        schedule();
+        sched();
         memcpy(p->BUF, buffer, p->CNT);
     } else {
         memcpy(buffer, p->BUF, p->CNT);
         in_hd_queue(&hdque, &rwinfo);
         p_proc_current->pcb.channel = &hdque;
         p_proc_current->pcb.stat    = SLEEPING;
-        schedule();
+        sched();
     }
 
     kfree(buffer);

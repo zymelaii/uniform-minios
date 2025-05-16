@@ -88,7 +88,7 @@ ph_info_t* clone_ph_info(ph_info_t* src) {
 
 void do_yield() {
     p_proc_current->pcb.live_ticks = 0;
-    schedule();
+    sched();
 }
 
 void do_sleep(int n) {
@@ -96,7 +96,7 @@ void do_sleep(int n) {
     p_proc_current->pcb.channel = &system_ticks;
     while (system_ticks - ticks0 < n) {
         p_proc_current->pcb.stat = SLEEPING;
-        schedule();
+        sched();
     }
 }
 

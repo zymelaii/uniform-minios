@@ -83,7 +83,7 @@ void kb_handler(int irq) {
 };
 
 void mouse_handler(int irq) {
-    lock_or(&mouse_in.lock, schedule);
+    lock_or(&mouse_in.lock, sched);
     uint8_t scan_code = inb(0x60);
     if (!mouse_init) {
         release(&mouse_in.lock);

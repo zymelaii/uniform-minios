@@ -88,7 +88,7 @@ static void krnlobj_lock(int user_id) {
                FLAG_USED | FLAG_BUSY,
                FLAG_USED | FLAG_BUSY | FLAG_LOCK)
            != (FLAG_USED | FLAG_BUSY)) {
-        schedule();
+        sched();
     }
 }
 
@@ -103,7 +103,7 @@ static void krnlobj_unlock(int user_id) {
             FLAG_USED);
         assert(old & FLAG_USED);
         if (old != (FLAG_USED | FLAG_BUSY | FLAG_LOCK)) {
-            schedule();
+            sched();
         } else {
             break;
         }

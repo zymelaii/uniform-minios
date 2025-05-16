@@ -24,7 +24,7 @@ static int transfer_child_proc(uint32_t src_pid, uint32_t dst_pid) {
         dst_pcb->tree_info.child_process[j] =
             src_pcb->tree_info.child_process[i];
         pcb_t* son_pcb = (pcb_t*)pid2proc(src_pcb->tree_info.child_process[i]);
-        lock_or(&son_pcb->lock, schedule);
+        lock_or(&son_pcb->lock, sched);
         son_pcb->tree_info.ppid = dst_pid;
         son_pcb->stat           = ZOMBIE;
         ++dst_pcb->tree_info.child_p_num;
@@ -54,7 +54,7 @@ static void exit_handle_child_thread_proc(uint32_t pid, bool lock_recy) {
                 child_pcb->tree_info.child_thread[i], lock_recy);
         }
         if (lock_recy) {
-            lock_or(&recy_pcb->lock, schedule);
+            lock_or(&recy_pcb->lock, sched);
             transfer_child_proc(child_pcb->pid, NR_RECY_PROC);
             release(&recy_pcb->lock);
         } else {
@@ -73,11 +73,11 @@ void do_exit(int exit_code) {
     pcb_t* recy_pcb = (pcb_t*)pid2proc(NR_RECY_PROC);
     while (true) {
         exit_pcb = (pcb_t*)pid2proc(p_proc_current->pcb.pid);
-        if (!try_lock(&exit_pcb->lock)) { schedule(); }
+        if (!try_lock(&exit_pcb->lock)) { sched(); }
         fa_pcb = (pcb_t*)pid2proc(exit_pcb->tree_info.ppid);
         if (try_lock(&fa_pcb->lock)) { break; }
         release(&exit_pcb->lock);
-        schedule();
+        sched();
     }
 
     assert(exit_pcb->tree_info.ppid >= 0 && exit_pcb->tree_info.ppid < NR_PCBS);
@@ -91,7 +91,7 @@ void do_exit(int exit_code) {
     } else {
         //! case 1: father isn't recy so need to lock
         exit_handle_child_thread_proc(exit_pcb->pid, true);
-        lock_or(&recy_pcb->lock, schedule);
+        lock_or(&recy_pcb->lock, sched);
         if (transfer_child_proc(exit_pcb->pid, NR_RECY_PROC) != 0) {
             recy_pcb->stat = READY;
         }
@@ -106,5 +106,5 @@ void do_exit(int exit_code) {
     assert(fa_pcb->lock);
     release(&exit_pcb->lock);
     release(&fa_pcb->lock);
-    schedule();
+    sched();
 }

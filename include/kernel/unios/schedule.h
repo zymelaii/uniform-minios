@@ -4,6 +4,6 @@
 
 void restart_initial();
 void restart_restore();
-void schedule();
+void sched();
 
 extern phyaddr_t cr3_ready;

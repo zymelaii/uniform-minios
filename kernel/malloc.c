@@ -11,7 +11,7 @@ void *do_malloc(int size) {
     pcb_t *pcb = &p_proc_current->pcb;
 
     size_t real_size = size + sizeof(size_t);
-    lock_or(&pcb->heap_lock, schedule);
+    lock_or(&pcb->heap_lock, sched);
     void *ptr = mballoc_alloc(pcb->allocator, real_size);
     release(&pcb->heap_lock);
 
@@ -42,7 +42,7 @@ void do_free(void *ptr) {
     if (!pg_pte_exist(pde, (uint32_t)real_ptr)) { return; }
 
     size_t size = *(size_t *)real_ptr;
-    lock_or(&pcb->heap_lock, schedule);
+    lock_or(&pcb->heap_lock, sched);
     int resp = mballoc_free(pcb->allocator, real_ptr, size);
     release(&pcb->heap_lock);
 }

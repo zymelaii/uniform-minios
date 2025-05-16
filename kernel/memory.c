@@ -190,7 +190,7 @@ memblk_allocator_t* mballoc_create_by(
 
 void* kmalloc(size_t size) {
     size_t real_size = size + sizeof(size_t);
-    lock_or(&kmem_lock, schedule);
+    lock_or(&kmem_lock, sched);
     void* ptr = mballoc_alloc(kmem_allocator, real_size);
     release(&kmem_lock);
     if (ptr == NULL) { return NULL; }
@@ -209,7 +209,7 @@ void kfree(void* ptr) {
         && ptr < kmem_allocator->memblk_limit);
 
     size_t size = *(size_t*)real_ptr;
-    lock_or(&kmem_lock, schedule);
+    lock_or(&kmem_lock, sched);
     int resp = mballoc_free(kmem_allocator, real_ptr, size);
     release(&kmem_lock);
 

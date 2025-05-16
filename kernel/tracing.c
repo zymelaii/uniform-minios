@@ -9,14 +9,14 @@ static cb_klog_handler_t klog_handler;
 static void             *klog_handler_user;
 
 void klog_set_handler(cb_klog_handler_t handler, void *user) {
-    lock_or(&klog_lock, schedule);
+    lock_or(&klog_lock, sched);
     klog_handler      = handler;
     klog_handler_user = user;
     release(&klog_lock);
 }
 
 static void _klog(int level, const char *fmt, va_list ap) {
-    lock_or(&klog_lock, schedule);
+    lock_or(&klog_lock, sched);
     klog_handler(klog_handler_user, level, fmt, ap);
     release(&klog_lock);
 }

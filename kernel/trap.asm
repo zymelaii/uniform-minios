@@ -3,7 +3,7 @@
 extern kstate_reenter_cntr
 extern irq_table
 extern save_int
-extern schedule
+extern sched
 
 extern exception_handler
 extern page_fault_handler
@@ -29,7 +29,7 @@ save_exception:
 
     global restart_exception
 restart_exception:
-    call    schedule
+    call    sched
     pop     gs
     pop     fs
     pop     es

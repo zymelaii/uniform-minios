@@ -416,7 +416,7 @@ int do_execve(const char* path, char* const* argv, char* const* envp) {
 
     pcb_t*        pcb    = &p_proc_current->pcb;
     lin_memmap_t* memmap = &pcb->memmap;
-    lock_or(&pcb->lock, schedule);
+    lock_or(&pcb->lock, sched);
 
     do {
         if (path == NULL) {
