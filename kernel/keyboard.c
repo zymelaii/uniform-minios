@@ -107,36 +107,36 @@ void mouse_handler(int irq) {
             break;
         }
     }
-    if (tty == NULL) {
-        release(&mouse_in.lock);
-        return;
-    }
 
-    if (mouse_in.buf[0] & 0b001) {
-        tty->mouse.buttons |= MOUSE_LEFT_BUTTON;
-    } else {
-        tty->mouse.buttons &= ~MOUSE_LEFT_BUTTON;
-    }
+    do {
+        if (tty == NULL) { break; }
 
-    if (mouse_in.buf[0] & 0b010) {
-        tty->mouse.buttons |= MOUSE_RIGHT_BUTTON;
-    } else {
-        tty->mouse.buttons &= ~MOUSE_RIGHT_BUTTON;
-    }
+        if (mouse_in.buf[0] & 0b001) {
+            tty->mouse.buttons |= MOUSE_LEFT_BUTTON;
+        } else {
+            tty->mouse.buttons &= ~MOUSE_LEFT_BUTTON;
+        }
 
-    if (mouse_in.buf[0] & 0b100) {
-        tty->mouse.buttons |= MOUSE_MIDDLE_BUTTON;
-    } else {
-        tty->mouse.buttons &= ~MOUSE_MIDDLE_BUTTON;
-    }
+        if (mouse_in.buf[0] & 0b010) {
+            tty->mouse.buttons |= MOUSE_RIGHT_BUTTON;
+        } else {
+            tty->mouse.buttons &= ~MOUSE_RIGHT_BUTTON;
+        }
 
-    //! drag
-    if (tty->mouse.buttons & MOUSE_LEFT_BUTTON) {
-        uint8_t x_dir     = mouse_in.buf[0] & 0x10;
-        uint8_t y_dir     = mouse_in.buf[0] & 0x20;
-        tty->mouse.off_x += x_dir == 0x10 ? -1 : +1;
-        tty->mouse.off_y += y_dir == 0x20 ? -1 : +1;
-    }
+        if (mouse_in.buf[0] & 0b100) {
+            tty->mouse.buttons |= MOUSE_MIDDLE_BUTTON;
+        } else {
+            tty->mouse.buttons &= ~MOUSE_MIDDLE_BUTTON;
+        }
+
+        //! drag
+        if (tty->mouse.buttons & MOUSE_LEFT_BUTTON) {
+            uint8_t x_dir     = mouse_in.buf[0] & 0x10;
+            uint8_t y_dir     = mouse_in.buf[0] & 0x20;
+            tty->mouse.off_x += x_dir == 0x10 ? -1 : +1;
+            tty->mouse.off_y += y_dir == 0x20 ? -1 : +1;
+        }
+    } while (0);
 
     mouse_in.count = 0;
     release(&mouse_in.lock);
